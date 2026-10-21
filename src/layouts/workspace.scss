@@ -1,0 +1,31 @@
+body {
+    /* Dividers â€” between panes */
+    --divider-color: var(--background-modifier-border);
+    --divider-color-hover: var(--interactive-accent);
+    --divider-width: 1px;
+    --divider-width-hover: 3px;
+    --divider-vertical-height: calc(100% - var(--header-height));
+    /* File layout */
+    --file-line-width: 700px;
+    --file-folding-offset: 24px;
+    --file-margins: var(--size-4-8);
+    --file-header-font-size: var(--font-ui-small);
+    --file-header-font-weight: 400;
+    --file-header-border: var(--border-width) solid transparent;
+    --file-header-justify: center;
+    /* View header */
+    --header-height: 40px;
+    /* Sidebar */
+    --sidebar-markdown-font-size: calc(var(--font-text-size) * 0.9);
+    --sidebar-tab-text-display: none;
+    /* Window frame */
+    --titlebar-background: var(--background-secondary);
+    --titlebar-background-focused: var(--background-secondary-alt);
+    --titlebar-border-width: 0px;
+    --titlebar-border-color: var(--background-modifier-border);
+    --titlebar-text-color: var(--text-muted);
+    --titlebar-text-color-focused: var(--text-normal);
+    --titlebar-text-weight: var(--font-bold);
+    /* Workspace */
+    --workspace-background-translucent: rgba(var(--mono-rgb-0), 0.6);
+}

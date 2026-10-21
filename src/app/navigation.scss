@@ -1,0 +1,39 @@
+body {
+    /* File navigator */
+    --nav-item-size: var(--font-ui-small);
+    --nav-item-color: var(--text-muted);
+    --nav-item-color-hover: var(--text-normal);
+    --nav-item-color-active: var(--text-normal);
+    --nav-item-color-selected: var(--text-normal);
+    --nav-item-color-highlighted: var(--text-accent-hover);
+    --nav-item-background-hover: var(--background-modifier-hover);
+    --nav-item-background-active: var(--background-modifier-hover);
+    --nav-item-background-selected: hsla(var(--color-accent-hsl), 0.2);
+    --nav-item-padding: var(--size-4-1) var(--size-4-2) var(--size-4-1) var(--size-4-6);
+    --nav-item-parent-padding: var(--nav-item-padding);
+    --nav-item-children-padding-left: var(--size-2-2);
+    --nav-item-children-margin-left: var(--size-4-3);
+    --nav-item-weight: inherit;
+    --nav-item-weight-hover: inherit;
+    --nav-item-weight-active: inherit;
+    --nav-item-white-space: nowrap;
+    --nav-indentation-guide-width: var(--indentation-guide-width);
+    --nav-indentation-guide-color: var(--indentation-guide-color);
+    --nav-collapse-icon-color: var(--collapse-icon-color);
+    --nav-collapse-icon-color-collapsed: var(--text-faint);
+    /* Ribbon */
+    --ribbon-background: var(--background-secondary);
+    --ribbon-background-collapsed: var(--background-primary);
+    --ribbon-width: 44px;
+    --ribbon-padding: var(--size-4-2) var(--size-4-1) var(--size-4-3);
+    /* Search */
+    --search-clear-button-color: var(--text-muted);
+    --search-clear-button-size: 13px;
+    --search-icon-color: var(--text-muted);
+    --search-icon-size: 18px;
+    --search-result-background: var(--background-primary);
+    /* Vault name */
+    --vault-name-font-size: var(--font-ui-small);
+    --vault-name-font-weight: var(--font-medium);
+    --vault-name-color: var(--text-normal);
+}

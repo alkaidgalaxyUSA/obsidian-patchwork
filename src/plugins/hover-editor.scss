@@ -1,0 +1,6 @@
+/* HOVER EDITOR PLUGIN */
+/* Add borders */
+.popover.hover-editor > .popover-content {
+    border: var(--border-width) var(--color-base-30) solid;
+    box-shadow: 0 0 10px 3px var(--background-modifier-box-shadow);
+}

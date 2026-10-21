@@ -1,0 +1,85 @@
+body {
+    /* Blockquotes */
+    --blockquote-border-thickness: 2px;
+    --blockquote-border-color: var(--interactive-accent);
+    --blockquote-font-style: normal;
+    --blockquote-color: inherit;
+    --blockquote-background-color: transparent;
+    /* Callouts */
+    --callout-border-width: 0px;
+    --callout-border-opacity: 0.25;
+    --callout-padding: var(--size-4-3) var(--size-4-3) var(--size-4-3) var(--size-4-6);
+    --callout-radius: var(--radius-s);
+    --callout-blend-mode: var(--highlight-mix-blend-mode);
+    --callout-title-color: inherit;
+    --callout-title-padding: 0;
+    --callout-title-size: inherit;
+    --callout-content-padding: 0;
+    --callout-content-background: transparent;
+    --callout-bug: rgb(var(--color-red-rgb));
+    --callout-default: rgb(var(--color-blue-rgb));
+    --callout-error: rgb(var(--color-red-rgb));
+    --callout-example: rgb(var(--color-purple-rgb));
+    --callout-fail: rgb(var(--color-red-rgb));
+    --callout-important: rgb(var(--color-cyan-rgb));
+    --callout-info: rgb(var(--color-blue-rgb));
+    --callout-question: rgb(var(--color-yellow-rgb));
+    --callout-success: rgb(var(--color-green-rgb));
+    --callout-summary: rgb(var(--color-cyan-rgb));
+    --callout-tip: rgb(var(--color-cyan-rgb));
+    --callout-todo: rgb(var(--color-blue-rgb));
+    --callout-warning: rgb(var(--color-orange-rgb));
+    --callout-quote: rgb(158, 158, 158);
+    /* Code */
+    --code-white-space: pre-wrap;
+    --code-size: var(--font-smaller);
+    --code-background: var(--background-primary-alt);
+    --code-normal: var(--text-muted);
+    --code-comment: var(--text-faint);
+    --code-function: var(--color-orange);
+    --code-important: var(--color-orange);
+    --code-keyword: var(--color-red);
+    --code-property: var(--color-blue);
+    --code-punctuation: var(--text-muted);
+    --code-string: var(--color-cyan);
+    --code-tag: var(--color-red);
+    --code-value: var(--color-purple);
+    /* Embeds */
+    --embed-max-height: 4000px;
+    --embed-canvas-max-height: 400px;
+    --embed-background: inherit;
+    --embed-border-left: 2px solid var(--interactive-accent);
+    --embed-border-right: none;
+    --embed-border-top: none;
+    --embed-border-bottom: none;
+    --embed-padding: 0 0 0 var(--size-4-6);
+    --embed-font-style: inherit;
+    /* Blocks */
+    --embed-block-shadow-hover: 0 0 0 1px var(--background-modifier-border),
+    inset 0 0 0 1px var(--background-modifier-border);
+    /* Horizontal rules */
+    --hr-color: var(--background-modifier-border);
+    --hr-thickness: 2px;
+    /* Tables */
+    --table-background: transparent;
+    --table-border-width: 1px;
+    --table-border-color: var(--background-modifier-border);
+    --table-white-space: normal;
+    --table-header-background: var(--table-background);
+    --table-header-background-hover: inherit;
+    --table-header-border-width: var(--table-border-width);
+    --table-header-border-color: var(--table-border-color);
+    --table-header-font: inherit;
+    --table-header-size: var(--font-text-size);
+    --table-header-weight: var(--bold-weight);
+    --table-header-color: var(--text-normal);
+    --table-text-size: inherit;
+    --table-text-color: inherit;
+    --table-column-max-width: none;
+    --table-column-alt-background: var(--table-background);
+    --table-column-first-border-width: var(--table-border-width);
+    --table-column-last-border-width: var(--table-border-width);
+    --table-row-background-hover: var(--table-background);
+    --table-row-alt-background: var(--table-background);
+    --table-row-last-border-width: var(--table-border-width);
+}

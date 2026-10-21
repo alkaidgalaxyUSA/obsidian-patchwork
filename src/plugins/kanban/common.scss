@@ -1,0 +1,25 @@
+/* Kanban-common */
+.kanban-plugin {
+    --lane-width: 348px;
+}
+body.theme-light .kanban-plugin__lane-items>div {
+    box-shadow: rgb(140 149 159 / 15%) 0px 3px 6px;
+}
+
+/* Kanban-same-height-cards */
+body.kanban-same-height-cards .kanban-plugin__item-content-wrapper,
+body.kanban-same-height-cards .kanban-plugin__item-title-wrapper {
+    min-height: 68px;
+}
+
+/* Kanban-full-height-column */
+body.kanban-full-height-column button.kanban-plugin__new-item-button {
+    align-self: flex-end;
+}
+body.kanban-full-height-column .kanban-plugin__item-button-wrapper {
+    flex-grow: 1;
+    display: flex;
+}
+body.kanban-full-height-column .kanban-plugin__lane-wrapper {
+    min-height: 100%;
+}

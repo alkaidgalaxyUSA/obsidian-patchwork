@@ -1,0 +1,13 @@
+{
+  "name": "obsidian-theme-patchwork",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SCSS sources and local build tooling for the Patchwork Obsidian theme.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "devDependencies": {
+    "sass": "1.106.0"
+  }
+}

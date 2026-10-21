@@ -1,0 +1,44 @@
+// Patchwork modules with GitHub components and Maple typography, palettes, and tabs.
+// Upstream attribution is preserved in ../licenses/.
+
+// Settings and shared variables.
+@use "app/style-settings.scss";
+@use "app/fonts.scss";
+@use "app/foundations.scss";
+@use "app/icons.scss";
+@use "app/dialogs.scss";
+@use "app/navigation.scss";
+@use "app/core-plugins.scss";
+
+// Layout, control, and document variables.
+@use "layouts/workspace.scss";
+@use "layouts/tabs.scss";
+@use "layouts/status-bar.scss";
+@use "elements/control-variables.scss";
+@use "editor/text-variables.scss";
+@use "editor/block-variables.scss";
+
+// Color schemes and accessibility overrides.
+@use "color-schemes/mappings.scss";
+@use "color-schemes/dark.scss";
+@use "app/mobile.scss";
+@use "color-schemes/light.scss";
+@use "features/colorblind.scss";
+
+// Component and plugin rules in their original cascade order.
+@use "editor/tables.scss";
+@use "elements/buttons.scss";
+@use "editor/callouts.scss";
+@use "editor/headings.scss";
+@use "plugins/kanban/common.scss";
+@use "plugins/kanban/minimal.scss";
+@use "plugins/kanban/full.scss";
+@use "plugins/hover-editor.scss";
+@use "plugins/kanban/fixes.scss";
+@use "elements/input-focus.scss";
+@use "editor/inline-code.scss";
+@use "features/underline-headings.scss";
+
+// Scoped Patchwork component customizations.
+@use "app/file-explorer.scss";
+@use "plugins/claudian.scss";

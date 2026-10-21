@@ -1,0 +1,10 @@
+/* Underline for the top level headers */
+
+body.h1-underline h1, body.h1-underline.markdown-rendered h1 {
+    padding-bottom: .3em;
+    border-bottom: 1px solid var(--color-base-40);
+}
+body.h2-underline h2, body.h2-underline.markdown-rendered h2 {
+    padding-bottom: .3em;
+    border-bottom: 1px solid var(--color-base-40);
+}

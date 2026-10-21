@@ -1,0 +1,24 @@
+/* fix: input borders */
+textarea:active,
+input[type='text']:active,
+input[type='search']:active,
+input[type='email']:active,
+input[type='password']:active,
+input[type='number']:active,
+textarea:focus,
+input[type='text']:focus,
+input[type='search']:focus,
+input[type='email']:focus,
+input[type='password']:focus,
+input[type='number']:focus,
+textarea:focus-visible,
+input[type='text']:focus-visible,
+input[type='search']:focus-visible,
+input[type='email']:focus-visible,
+input[type='password']:focus-visible,
+input[type='number']:focus-visible {
+    box-shadow: 0 0 0 1px var(--background-modifier-border-focus);
+}
+select:focus, .dropdown:focus {
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}

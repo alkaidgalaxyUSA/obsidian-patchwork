@@ -1,0 +1,11 @@
+/* Tables */
+.markdown-rendered td,
+.markdown-rendered th {
+    padding: var(--size-2-3) var(--size-4-3);
+}
+.markdown-rendered th {
+    text-align: center;
+}
+.markdown-rendered tbody tr:nth-child(2n) {
+    background-color: var(--background-secondary);
+}

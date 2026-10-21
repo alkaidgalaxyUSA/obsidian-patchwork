@@ -1,0 +1,13 @@
+/* inline code block */
+.markdown-rendered :not(pre) > code {
+    background-color: var(--inline-code-background);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    color: var(--inline-code);
+}
+
+/* Use Maple's inline-code color in live preview as well as reading mode. */
+.markdown-source-view .cm-inline-code {
+    --code-normal: var(--inline-code);
+    color: var(--inline-code);
+}

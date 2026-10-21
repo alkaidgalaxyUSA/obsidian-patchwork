@@ -1,0 +1,47 @@
+body {
+    /* Buttons */
+    --button-radius: var(--input-radius);
+    /* Checkboxes */
+    --checkbox-radius: var(--radius-s);
+    --checkbox-size: var(--font-text-size);
+    --checkbox-marker-color: var(--background-primary);
+    --checkbox-color: var(--interactive-accent);
+    --checkbox-color-hover: var(--interactive-accent-hover);
+    --checkbox-border-color: var(--text-faint);
+    --checkbox-border-color-hover: var(--text-muted);
+    --checklist-done-decoration: line-through;
+    --checklist-done-color: var(--text-muted);
+    /* Inputs */
+    --input-height: 30px;
+    --input-radius: 5px;
+    --input-font-weight: var(--font-normal);
+    --input-border-width: 1px;
+    /* Sliders */
+    --slider-thumb-border-width: 1px;
+    --slider-thumb-border-color: var(--background-modifier-border-hover);
+    --slider-thumb-height: 18px;
+    --slider-thumb-width: 18px;
+    --slider-thumb-y: -6px;
+    --slider-thumb-radius: 50%;
+    --slider-s-thumb-size: 15px;
+    --slider-s-thumb-position: -5px;
+    --slider-track-background: var(--background-modifier-border);
+    --slider-track-height: 3px;
+    /* Swatch for color inputs */
+    --swatch-radius: 14px;
+    --swatch-height: 24px;
+    --swatch-width: 24px;
+    --swatch-shadow: inset 0 0 0 1px rgba(var(--mono-rgb-100), 0.15);
+    /* Toggles */
+    --toggle-border-width: 2px;
+    --toggle-width: 40px;
+    --toggle-radius: 18px;
+    --toggle-thumb-color: white;
+    --toggle-thumb-radius: 18px;
+    --toggle-thumb-height: 18px;
+    --toggle-thumb-width: 18px;
+    --toggle-s-border-width: 2px;
+    --toggle-s-width: 34px;
+    --toggle-s-thumb-height: 15px;
+    --toggle-s-thumb-width: 15px;
+}
