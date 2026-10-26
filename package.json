@@ -1,13 +1,20 @@
 {
-  "name": "obsidian-theme-patchwork",
+  "name": "obsidian-patchwork",
   "version": "0.1.0",
   "private": true,
-  "description": "SCSS sources and local build tooling for the Patchwork Obsidian theme.",
+  "description": "Independent Obsidian theme and plugin enhancements with local packaging tools.",
   "license": "MIT",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "pwsh -NoProfile -File scripts/Build-Install.ps1"
   },
   "devDependencies": {
     "sass": "1.106.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alkaidgalaxyUSA/obsidian-patchwork.git"
   }
 }

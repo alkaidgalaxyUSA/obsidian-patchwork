@@ -3,3 +3,6 @@
 # Local build dependencies and generated theme packages
 node_modules/
 dist/
+
+# Browser inspection artifacts
+.playwright-mcp/

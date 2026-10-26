@@ -1,0 +1,38 @@
+{
+  "runtimeFiles": ["main.js", "styles.css", "manifest.json", "LICENSE"],
+  "plugins": {
+    "power-editor": {
+      "styles": "src/styles/index.css",
+      "manifest": {
+        "id": "patchwork-power-editor",
+        "name": "Patchwork Editor",
+        "minAppVersion": "1.8.7",
+        "description": "A unified Markdown editor with rich formatting, code cards, document titles and an adaptive outline.",
+        "author": "Patchwork contributors",
+        "isDesktopOnly": true
+      }
+    },
+    "code-editor": {
+      "styles": "styles.css",
+      "manifest": {
+        "id": "code-editor",
+        "name": "Code Editor",
+        "minAppVersion": "1.0.0",
+        "description": "Edit non-markdown text files (code, config, data) directly with syntax highlighting, line numbers, and word wrap.",
+        "author": "saltyfireball",
+        "isDesktopOnly": false
+      }
+    },
+    "claudian-extension": {
+      "styles": "styles.css",
+      "manifest": {
+        "id": "claudian-extension",
+        "name": "Claudian Extension",
+        "minAppVersion": "1.7.2",
+        "description": "Patchwork companion controls and appearance for Claudian.",
+        "author": "sky",
+        "isDesktopOnly": true
+      }
+    }
+  }
+}

@@ -1,0 +1,124 @@
+/*!
+ * Adapted from Maple Theme v1.5.14 by subframe7536.
+ * Copyright (c) 2022 subframe7536. MIT License.
+ * Source: https://github.com/subframe7536/obsidian-theme-maple
+ * License: ../../../../LICENSE
+ */
+
+.theme-dark {
+  --color-red-rgb: 209.304, 137.496, 137.496;
+  --color-red: rgba(var(--color-red-rgb), var(--color-opacity));
+  --color-orange-rgb: 206.04, 162.52, 140.76;
+  --color-orange: rgba(var(--color-orange-rgb), var(--color-opacity));
+  --color-yellow-rgb: 214.2, 181.56, 132.6;
+  --color-yellow: rgba(var(--color-yellow-rgb), var(--color-opacity));
+  --color-green-rgb: 147.288, 199.512, 155.992;
+  --color-green: rgba(var(--color-green-rgb), var(--color-opacity));
+  --color-cyan-rgb: 126.48, 199.92, 197.472;
+  --color-cyan: rgba(var(--color-cyan-rgb), var(--color-opacity));
+  --color-blue-rgb: 126.48, 183.6, 240.72;
+  --color-blue: rgba(var(--color-blue-rgb), var(--color-opacity));
+  --color-purple-rgb: 186.2265, 179.265, 238.935;
+  --color-purple: rgba(var(--color-purple-rgb), var(--color-opacity));
+}
+.theme-dark:not(.color-dark-dim-disable) {
+  --color-opacity: 0.85;
+}
+.theme-dark {
+  --theme-accent-active-h: var(--theme-accent-h);
+  --theme-accent-active-s: calc(20% + var(--accent-s) / 10);
+  --theme-accent-active-l: calc(40% + var(--accent-l) / 10);
+  --theme-accent-inactive-h: var(--theme-accent-h);
+  --theme-accent-inactive-s: calc(15% + var(--accent-s) / 10);
+  --theme-accent-inactive-l: calc(30% + var(--accent-l) / 10);
+  --color-accent-hsl:
+    var(--base-accent-h), var(--theme-accent-active-s),
+    calc(var(--theme-accent-active-l) * var(--color-opacity));
+  --color-accent: hsl(var(--color-accent-hsl));
+  --color-accent-1: hsl(
+    calc(var(--base-accent-h) - 3),
+    calc(var(--theme-accent-active-s) * 1.02),
+    calc(var(--theme-accent-active-l) * 1.15 * var(--color-opacity))
+  );
+  --color-accent-2: hsl(
+    calc(var(--base-accent-h) - 5),
+    calc(var(--theme-accent-active-s) * 1.05),
+    calc(var(--theme-accent-active-l) * 1.29 * var(--color-opacity))
+  );
+  --text-normal: hsla(var(--base-accent-h), 50%, 94%, 75%);
+  --text-on-accent: #eaeaea !important;
+}
+.theme-dark:not(.color-highlight-only) {
+  --background-primary-hsl: var(--base-accent-h), 6%, 11%;
+  --background-primary-alt-hsl: var(--base-accent-h), 10%, 13%;
+  --background-secondary-hsl: calc(var(--base-accent-h) - 8), 6%, 12%;
+  --background-modifier-hover: hsl(
+    var(--base-accent-h),
+    var(--theme-accent-active-s),
+    max(50%, var(--accent-l) * 0.6),
+    20%
+  );
+  --frame-bg: hsl(
+    var(--base-accent-h),
+    calc(var(--theme-accent-active-s) * 0.5),
+    calc(8% + var(--theme-accent-active-l) * 0.1 * var(--color-opacity))
+  );
+}
+.theme-dark.color-use-minimal {
+  --text-on-accent: #1e1e1f !important;
+  --base-accent-h: var(--setting-color-active-custom-dark-h, 210);
+}
+.theme-dark.color-use-minimal:not(.color-highlight-only) {
+  --background-primary-hsl: var(--base-accent-h), 4%, 10%;
+  --background-primary-alt-hsl: var(--base-accent-h), 8%, 12%;
+  --background-secondary-hsl: calc(var(--base-accent-h) - 8), 4%, 12%;
+  --frame-bg: hsl(
+    var(--base-accent-h),
+    calc(var(--theme-accent-active-s) * 0.1),
+    calc(8% + var(--theme-accent-active-l) * 0.1 * var(--color-opacity))
+  );
+}
+.theme-dark.color-use-minimal {
+  --theme-accent-active-s: var(--setting-color-active-custom-dark-s, 4%);
+  --theme-accent-active-l: var(--setting-color-active-custom-dark-l, 72%);
+  --theme-accent-inactive-s: var(--setting-color-inactive-custom-dark-s, 12%);
+  --theme-accent-inactive-l: var(--setting-color-inactive-custom-dark-l, 42%);
+}
+.theme-dark.color-use-custom:not(.color-highlight-only) {
+  --bg-delta-dark: var(--setting-bg-delta-dark, 0%);
+  --background-primary-hsl:
+    var(--base-accent-h), calc(5% + var(--bg-delta-dark) / 2), calc(11% + var(--bg-delta-dark));
+  --background-primary-alt-hsl:
+    var(--base-accent-h), calc(10% + var(--bg-delta-dark) / 2), calc(13% + var(--bg-delta-dark));
+  --background-secondary-hsl:
+    calc(var(--base-accent-h) - 18), calc(6% + var(--bg-delta-dark) / 2),
+    calc(12% + var(--bg-delta-dark));
+}
+.theme-dark.color-use-custom {
+  --base-accent-h: var(--setting-accent-h-dark, 207);
+  --theme-accent-active-s: 24%;
+  --theme-accent-active-l: 52%;
+  --theme-accent-inactive-s: 12%;
+  --theme-accent-inactive-l: 32%;
+}
+.theme-dark.color-use-custom.color-active-alt-dark {
+  --theme-accent-h: calc(var(--base-accent-h) + 60);
+}
+.theme-dark.color-use-custom.color-active-custom-dark {
+  --theme-accent-active-h: var(--setting-color-active-custom-dark-h);
+  --theme-accent-active-s: var(--setting-color-active-custom-dark-s);
+  --theme-accent-active-l: var(--setting-color-active-custom-dark-l);
+  --theme-accent-inactive-h: var(--setting-color-inactive-custom-dark-h);
+  --theme-accent-inactive-s: var(--setting-color-inactive-custom-dark-s);
+  --theme-accent-inactive-l: var(--setting-color-inactive-custom-dark-l);
+}
+.theme-dark.color-use-custom:is(.color-modify-bg-dark, .color-highlight-only) {
+  --default-mod-bg-hsl: 0, 0%, 8%;
+  --background-primary-hsl: var(--setting-bg-primary-dark-hsl, var(--default-mod-bg-hsl));
+  --background-primary-alt-hsl: var(
+    --setting-bg-primary-alt-dark-hsl,
+    var(--default-mod-bg-hsl)
+  );
+  --background-secondary-hsl: var(--setting-bg-secondary-dark-hsl, var(--default-mod-bg-hsl));
+  --frame-bg: var(--setting-bg-frame-dark, hsl(var(--default-mod-bg-hsl)));
+}

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/obsidian-theme-patchwork.iml" filepath="$PROJECT_DIR$/.idea/obsidian-theme-patchwork.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/obsidian-patchwork.iml" filepath="$PROJECT_DIR$/.idea/obsidian-patchwork.iml" />
     </modules>
   </component>
 </project>

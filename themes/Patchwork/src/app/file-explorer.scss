@@ -1,0 +1,113 @@
+/*!
+ * File explorer adapted from Maple Theme v1.5.14 by subframe7536.
+ * Copyright (c) 2022 subframe7536. MIT License.
+ * Source: https://github.com/subframe7536/obsidian-theme-maple
+ * License: ../../../../LICENSE
+ */
+
+/* Keep Maple's explorer layout local; retain Patchwork's palette. */
+.workspace-leaf-content[data-type="file-explorer"] {
+    --nav-item-size: calc(var(--size-4-4) * 0.9);
+    --line-height-tight: 1.5;
+    --nav-item-children-padding-left: var(--size-4-2);
+    --nav-indentation-guide-width: 0px;
+    --nav-item-background-active: var(--interactive-accent);
+    --nav-item-background-selected: var(--background-modifier-hover);
+    --nav-item-color-active: var(--text-on-accent);
+
+}
+
+.workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container {
+    justify-content: flex-start;
+    padding-left: var(--size-4-1);
+}
+
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title) {
+    position: relative;
+}
+
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title).is-being-dragged {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title).is-being-renamed {
+    background-color: var(--nav-item-background-selected) !important;
+    --nav-item-color-active: var(--text-normal) !important;
+}
+
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title).is-selected {
+    font-weight: 550;
+}
+
+/* Preserve the text and drag cursors during rename and drag operations. */
+body:not(.is-grabbing) .workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title):not(.is-being-renamed):not(.is-being-dragged) {
+    --cursor: pointer;
+    cursor: pointer;
+}
+
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder .collapse-icon svg.svg-icon > * {
+    display: none;
+}
+
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title-content {
+    padding-left: var(--size-4-1);
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder .nav-folder-children {
+    transition: border-color var(--animation-fast);
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder .nav-folder-children:hover {
+    border-color: var(--background-modifier-hover);
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder .collapse-icon {
+    margin-inline-start: calc(var(--size-2-1) - var(--size-4-5));
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder .collapse-icon svg.svg-icon {
+    display: inline-block;
+    flex-shrink: 0;
+    background: url("../icons/menu-folder.svg") center / contain no-repeat;
+    width: 18px;
+    height: 18px;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder .collapse-icon.is-collapsed svg.svg-icon {
+    transform: none;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title::before {
+    content: "";
+    position: absolute;
+    flex-shrink: 0;
+    translate: calc(var(--size-2-1) - var(--size-4-5)) -50%;
+    top: 50%;
+    --file-icon: url("../icons/menu-default.svg");
+    background: var(--file-icon) center / contain no-repeat;
+    width: 18px;
+    height: 18px;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title[data-path$=".md" i]:where(:not([data-path$="excalidraw.md" i], [data-path$=".smm.md" i]))::before {
+    --file-icon: url("../icons/menu-markdown.svg");
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title[data-path$=".sql" i]::before {
+    --file-icon: url("../icons/menu-sql.svg");
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title:is([data-path$=".ps1" i], [data-path$=".cmd" i], [data-path$=".bat" i], [data-path$=".sh" i])::before {
+    --file-icon: url("../icons/menu-shell.svg");
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title {
+    padding-inline-end: 0;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title .nav-file-tag {
+    margin-right: var(--size-2-3);
+    background-color: var(--background-modifier-hover);
+    color: var(--text-accent);
+    line-height: unset;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title.is-active:not(.is-selected) .nav-file-title-content {
+    color: var(--nav-item-color-active);
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title.is-active:not(.is-selected) .nav-file-tag {
+    backdrop-filter: brightness(0.85);
+    color: var(--nav-item-color-active);
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title-content {
+    padding-left: var(--size-4-1);
+}

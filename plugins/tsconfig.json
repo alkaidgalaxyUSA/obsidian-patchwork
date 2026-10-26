@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ES2021",
+    "moduleResolution": "bundler",
+    "lib": ["DOM", "DOM.Iterable", "ES2021"],
+    "types": ["node"],
+    "strict": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true
+  },
+  "include": ["power-editor/src/**/*", "code-editor/src/**/*", "claudian-extension/src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

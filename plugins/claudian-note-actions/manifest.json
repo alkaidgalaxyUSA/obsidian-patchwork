@@ -1,9 +1,0 @@
-{
-  "id": "claudian-note-actions",
-  "name": "Claudian Note Actions",
-  "version": "0.1.0",
-  "minAppVersion": "1.7.2",
-  "description": "Insert Claudian code blocks into the most recently active Markdown note.",
-  "author": "sky",
-  "isDesktopOnly": true
-}
