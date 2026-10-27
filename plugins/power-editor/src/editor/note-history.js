@@ -1,3 +1,4 @@
+import { markdownLeaves } from "../utils/markdown-views";
 class NoteHistory {
     constructor(plugin, editor, titles) {
         this.app = plugin.app;
@@ -44,8 +45,20 @@ class NoteHistory {
         if (!target) return;
         const stop = () => { event.preventDefault(); event.stopImmediatePropagation(); };
         // Composer history must never fall through into the most recent Markdown leaf.
-        if (target.closest(".claudian-container")) { stop(); return; }
-        const leaf = this.app.workspace.getLeavesOfType("markdown").find((leaf) => leaf.view.containerEl.contains(target));
+        if (target.closest(".claudian-container")) {
+            const composer = target.closest(".claudian-input");
+            const cm = composer && this.editor.EditorView.findFromDOM(target);
+            if (cm) {
+                stop();
+                (redo ? this.editor.redo : this.editor.undo)(cm);
+            } else if (target.closest("input, textarea, [contenteditable='true']")) {
+                // Native text fields keep browser history, without Obsidian routing
+                // the shortcut into a background note.
+                event.stopImmediatePropagation();
+            } else stop();
+            return;
+        }
+        const leaf = markdownLeaves(this.app).find((leaf) => leaf.view.containerEl.contains(target));
         if (!leaf) return;
         const view = leaf.view;
         if (!target.closest(".inline-title, .cm-content, .pw-code-edge")) return;

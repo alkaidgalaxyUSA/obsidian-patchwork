@@ -1,4 +1,5 @@
-import { App, Menu, MarkdownView } from "obsidian";
+import { activeMarkdownView } from "../utils/markdown-views";
+import { App, Menu } from "obsidian";
 
 const openMenus = new Set<EditorMenu>();
 export function closeEditorMenus() {
@@ -16,7 +17,7 @@ export class EditorMenu extends Menu {
         dom.addClass("pw-editor-menu");
         super.showAtPosition(position);
         openMenus.add(this);
-        const view = this.app.workspace.getActiveViewOfType(MarkdownView)?.containerEl;
+        const view = activeMarkdownView(this.app)?.containerEl;
         const bounds = view?.getBoundingClientRect();
         if (bounds && bounds.width > 0) {
             const r = dom.getBoundingClientRect();

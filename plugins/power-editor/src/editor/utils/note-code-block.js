@@ -7,7 +7,10 @@ const LANGUAGES = [
     ["kotlin", "Kotlin"], ["swift", "Swift"], ["php", "PHP"], ["ruby", "Ruby"],
     ["powershell", "PowerShell"], ["dockerfile", "Dockerfile"], ["diff", "Diff"],
 ];
-const THEMES = [["night-owl", "Night Owl"], ["light", "Light"], ["graphite", "Graphite"], ["warm", "Warm"]];
+const THEMES = [
+    ["one-dark-pro", "One Dark Pro"], ["night-owl", "Night Owl"], ["darcula", "Darcula"],
+    ["light", "Light"], ["graphite", "Graphite"], ["warm", "Warm"],
+];
 const FONT_SIZES = [12, 13, 14, 15, 16, 18, 20, 24];
 const KEYS = { name: "title", theme: "pw-theme", font: "pw-font", indent: "pw-indent", unit: "pw-unit", wrap: "pw-wrap", lineNumbers: "pw-lines", autoIndent: "pw-auto-indent", height: "pw-height", width: "pw-width", offset: "pw-offset" };
 
@@ -85,6 +88,7 @@ function updateOpening(block, key, value) {
 function codeAttributes(options) {
     return {
         "data-pw-code": "", "data-pw-theme": options.theme,
+        "data-pw-language": /^(markdown|md|mkd)$/i.test(options.language) ? "markdown" : options.language,
         "data-pw-wrap": options.wrap ? "on" : "off",
         "data-pw-width": options.width,
         "data-pw-lines": options.lineNumbers ? "on" : "off",

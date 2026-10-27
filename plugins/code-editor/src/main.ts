@@ -1,4 +1,5 @@
 import { Plugin } from "obsidian";
+import { installIcons } from "../../utils/icons";
 import type { CodeEditorSettings } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 import { CodeEditorView, CODE_EDITOR_VIEW_TYPE } from "./view";
@@ -9,6 +10,7 @@ export default class CodeEditorPlugin extends Plugin {
 	settings!: CodeEditorSettings;
 
 	async onload() {
+		installIcons(this);
 		await this.loadSettings();
 
 		// Settings tab (always available)
@@ -26,6 +28,17 @@ export default class CodeEditorPlugin extends Plugin {
 		// Register file extensions
 		const extensions = getAllExtensions(this.settings.additionalExtensions);
 		this.registerExtensions(extensions, CODE_EDITOR_VIEW_TYPE);
+
+		this.addCommand({
+			id: "copy-sql-section",
+			name: "Copy SQL selection or current section",
+			checkCallback: checking => {
+				const view = this.app.workspace.getActiveViewOfType(CodeEditorView);
+				if (view?.file?.extension.toLowerCase() !== "sql") return false;
+				if (!checking) void view.copySqlSelectionOrSection();
+				return true;
+			},
+		});
 
 		// Command to open current file in code editor
 		this.addCommand({

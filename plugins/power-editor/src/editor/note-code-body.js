@@ -1,4 +1,6 @@
 import { codeAttributes } from "./utils/note-code-block.js";
+import { codeTokens } from "./utils/code-highlighting.js";
+import { isNightOwlMarkdown } from "./utils/markdown-code-tokens.js";
 
 class NoteCodeBody {
     constructor(controller, outer, block) {
@@ -75,9 +77,11 @@ class NoteCodeBody {
                 ranges.push(api.Decoration.line({ attributes: { "data-pw-line-number": String(number) } }).range(state.doc.line(number).from));
             }
         }
+        const lineDecorations = ranges.length;
+        const { language, unit, theme } = this.block.options;
         // Reuse the note's language parser and token classes; keep a single Markdown source.
         const { contentFrom, contentTo } = this.block;
-        if (this.outer.state.doc.sliceString(contentFrom, contentTo) === state.doc.toString()) {
+        if (!isNightOwlMarkdown(language, theme) && this.outer.state.doc.sliceString(contentFrom, contentTo) === state.doc.toString()) {
             const tree = api.syntaxTree(this.outer.state);
             const before = ranges.length;
             api.highlightTree(tree, {
@@ -96,6 +100,15 @@ class NoteCodeBody {
                 const to = Math.min(node.to, contentTo) - contentFrom;
                 if (from < to) ranges.push(api.Decoration.mark({ class: tokens.map((token) => `cm-${token}`).join(" ") }).range(from, to));
             } });
+        }
+        // Markdown's parser can enter HTML mode before a fence or stop parsing
+        // inside a large widget. Use the same language modes as reading view.
+        if (ranges.length === lineDecorations) {
+            const text = state.doc.toString();
+            this.fallbackTokens = codeTokens(this.dom.ownerDocument, text, language, unit, this.fallbackTokens, theme);
+            if (this.fallbackTokens?.text === text) for (const token of this.fallbackTokens.tokens) {
+                ranges.push(api.Decoration.mark({ class: token.className }).range(token.from, token.to));
+            }
         }
         return api.Decoration.set(ranges, true);
     }

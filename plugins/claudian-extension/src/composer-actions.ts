@@ -1,4 +1,5 @@
-import { Notice, setIcon } from "obsidian";
+import { setIcon } from "../../utils/icons";
+import { Notice} from "obsidian";
 import type { App } from "obsidian";
 import type { ClaudianTab, ClaudianView, ComposerEntry } from "./types";
 const TOOLBAR_CLASS = "claudian-extension-composer-toolbar";

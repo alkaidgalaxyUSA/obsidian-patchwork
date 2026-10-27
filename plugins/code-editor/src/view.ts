@@ -1,3 +1,4 @@
+import { iconName } from "../../utils/icons";
 import { TextFileView, WorkspaceLeaf, Notice } from "obsidian";
 import {
 	Decoration,
@@ -22,6 +23,7 @@ import type { CodeEditorSettings, CodeEditorTheme, TokenStyle } from "./types";
 import { getLanguageFromExtension } from "./extensions";
 import { highlightToTokens } from "./highlighter";
 import { getStyleMap, getCombinedOverrides, getForegroundColor } from "./themes";
+import { copySqlSelectionOrSection, sqlSectionExtensions } from "./sql-sections";
 
 // Check if content appears to be binary (contains null bytes)
 function isBinaryContent(content: string, checkLength = 8192): boolean {
@@ -163,6 +165,8 @@ export class CodeEditorView extends TextFileView {
 	private currentContent = "";
 	private lineNumbersCompartment = new Compartment();
 	private wordWrapCompartment = new Compartment();
+	private languageCompartment = new Compartment();
+	private editorLanguage = "";
 
 	constructor(leaf: WorkspaceLeaf, settings: CodeEditorSettings) {
 		super(leaf);
@@ -178,7 +182,19 @@ export class CodeEditorView extends TextFileView {
 	}
 
 	getIcon(): string {
-		return "file-code";
+		return iconName("file-code");
+	}
+
+	async copySqlSelectionOrSection(): Promise<void> {
+		if (this.file?.extension.toLowerCase() !== "sql" || !this.editorView) return;
+		await copySqlSelectionOrSection(this.editorView);
+	}
+
+	private languageExtensions(language: string) {
+		return [
+			createSyntaxHighlightPlugin(language, this.settings.theme),
+			language === "sql" ? sqlSectionExtensions : [],
+		];
 	}
 
 	async onOpen(): Promise<void> {
@@ -193,6 +209,7 @@ export class CodeEditorView extends TextFileView {
 		// Determine language from file extension
 		const ext = this.file?.extension ?? "";
 		const language = getLanguageFromExtension(ext);
+		this.editorLanguage = language;
 
 		// Build extensions array
 		const extensions = [
@@ -215,7 +232,7 @@ export class CodeEditorView extends TextFileView {
 			// Keymaps
 			editorKeymaps,
 			// Syntax highlighting using highlight.js
-			createSyntaxHighlightPlugin(language, this.settings.theme),
+			this.languageCompartment.of(this.languageExtensions(language)),
 			// Save on change
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
@@ -236,6 +253,7 @@ export class CodeEditorView extends TextFileView {
 				},
 				"&.cm-focused .cm-cursor": {
 					borderLeftColor: "var(--text-normal)",
+					marginLeft: "0",
 				},
 				// Match the focused selection layer so CodeMirror's light default cannot win.
 				"&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground":
@@ -300,6 +318,11 @@ export class CodeEditorView extends TextFileView {
 			this.currentContent = data;
 
 			if (this.editorView) {
+				const language = getLanguageFromExtension(this.file?.extension ?? "");
+				if (language !== this.editorLanguage) {
+					this.editorLanguage = language;
+					this.editorView.dispatch({ effects: this.languageCompartment.reconfigure(this.languageExtensions(language)) });
+				}
 				const currentDoc = this.editorView.state.doc.toString();
 				if (currentDoc !== data) {
 					this.editorView.dispatch({

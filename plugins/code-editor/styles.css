@@ -27,20 +27,10 @@
    !important. */
 .ce-editor-container.ce-editor-container .cm-editor,
 .ce-editor-container.ce-editor-container .cm-editor * {
-	font-family: var(--font-monospace);
-	font-feature-settings:
-		"calt" 1,
-		"liga" 1,
-		"dlig" 0,
-		"ss01" 1,
-		"ss02" 1,
-		"ss03" 1,
-		"ss04" 1,
-		"ss05" 1,
-		"ss06" 1,
-		"ss07" 1,
-		"ss08" 1,
-		"ss09" 1;
+	font-family: Consolas, "Cascadia Mono", "Liberation Mono", monospace;
+	font-feature-settings: normal;
+	font-variant-alternates: normal;
+	font-variant-ligatures: none;
 }
 
 .ce-editor-container .cm-scroller {
@@ -63,6 +53,17 @@
 	text-align: right;
 	padding: 0 16px 0 8px;
 	min-width: 3ch;
+}
+
+/* CodeMirror assigns a negative inline z-index; opaque line backgrounds hide it.
+   Keep the translucent selection above lines, below the cursor and gutters. */
+.ce-editor-container .cm-selectionLayer {
+	z-index: 1 !important;
+}
+
+/* SQL group highlighting never changes the saved document. */
+.ce-editor-container .cm-line.ce-sql-section-hover {
+	background: rgba(80, 110, 160, 0.12);
 }
 
 /* Binary file warning */

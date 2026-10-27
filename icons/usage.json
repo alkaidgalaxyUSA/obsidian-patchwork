@@ -1,0 +1,623 @@
+{
+  "action-a-large-small.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-alert-triangle.svg": [
+    "plugins/power-editor/src/blocks.ts"
+  ],
+  "action-align-center.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-align-left.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-align-right.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-archive.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-arrow-down-right.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-arrow-down.svg": [
+    "plugins/claudian-extension/src/zen-actions.ts"
+  ],
+  "action-arrow-left-right.svg": [
+    "plugins/power-editor/src/editor/note-code-controls.js",
+    "plugins/power-editor/src/editor/note-code-editor.js"
+  ],
+  "action-arrow-up-right.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-arrow-up.svg": [
+    "plugins/claudian-extension/src/composer-actions.ts",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-badge-check.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-badge-x.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-battery.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-beer.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-bold.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-bookmark.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-calendar-check.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-calendar-clock.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-calendar-plus.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-calendar-search.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-calendar-x.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-calendar.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-camera.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-captions.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-case-sensitive.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-check.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/editor/note-code-menus.js"
+  ],
+  "action-chevron-down.svg": [
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-chevron-left.svg": [
+    "plugins/claudian-extension/src/sidebar-actions.ts"
+  ],
+  "action-chevron-right.svg": [
+    "plugins/claudian-extension/src/sidebar-actions.ts",
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-chevron-up.svg": [
+    "plugins/power-editor/src/editor/note-code-editor.js"
+  ],
+  "action-chevrons-down-up.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js"
+  ],
+  "action-chevrons-up-down.svg": [
+    "plugins/power-editor/src/editor/note-code-editor.js"
+  ],
+  "action-circle-check.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js"
+  ],
+  "action-clipboard-list.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-clipboard-paste.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-clipboard-type.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-clipboard.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-code-2.svg": [
+    "plugins/claudian-extension/src/code-actions.ts"
+  ],
+  "action-code-square.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-code.svg": [
+    "plugins/claudian-extension/src/utils/code-block.ts",
+    "plugins/code-editor/src/settings-tab.ts",
+    "plugins/power-editor/src/editor/note-code-actions.js",
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/editor/note-paragraph-controls.js",
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/editor/utils/document-blocks.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-columns-2.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-columns-3.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-columns.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-copy.svg": [
+    "plugins/claudian-extension/src/code-actions.ts",
+    "plugins/power-editor/src/editor/note-code-actions.js",
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-database.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-delete.svg": [
+    "plugins/power-editor/src/editor/note-code-actions.js",
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-diff.svg": [
+    "plugins/power-editor/src/editor/utils/note-code-block.js"
+  ],
+  "action-divide.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-document.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-ellipsis-vertical.svg": [
+    "plugins/power-editor/src/menus/toolbar-overflow.ts"
+  ],
+  "action-ellipsis.svg": [
+    "plugins/claudian-extension/src/code-actions.ts",
+    "plugins/power-editor/src/editor/note-code-editor.js"
+  ],
+  "action-eraser.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-expand.svg": [
+    "plugins/claudian-extension/src/sidebar-actions.ts"
+  ],
+  "action-eye-closed.svg": [
+    "plugins/power-editor/src/editor/note-outline.js"
+  ],
+  "action-eye.svg": [
+    "plugins/power-editor/src/editor/note-outline.js"
+  ],
+  "action-file-code.svg": [
+    "plugins/code-editor/src/view.ts"
+  ],
+  "action-file.svg": [
+    "plugins/power-editor/src/main.ts",
+    "plugins/power-editor/src/tasks.ts"
+  ],
+  "action-files.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-fish.svg": [
+    "plugins/code-editor/src/extensions.ts"
+  ],
+  "action-focus.svg": [
+    "plugins/power-editor/src/editor/note-code-body.js",
+    "plugins/power-editor/src/editor/note-code-editor.js"
+  ],
+  "action-folder.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-grip-vertical.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-group.svg": [
+    "plugins/claudian-extension/src/code-actions.ts",
+    "plugins/claudian-extension/src/sidebar-actions.ts",
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-heading-1.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-heading-2.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-heading-3.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-heading-4.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js"
+  ],
+  "action-heading-5.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js"
+  ],
+  "action-heading-6.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js"
+  ],
+  "action-heading.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/editor/note-title.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-help-circle.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-highlighter.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-history.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-image.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-indent-decrease.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-indent-increase.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-indent.svg": [
+    "plugins/power-editor/src/editor/note-code-actions.js",
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-info.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-italic.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-keyboard.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-layout.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-lightbulb.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-link.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/files.ts",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-list-checks.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-list-ordered.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-list-plus.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-list-todo.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js"
+  ],
+  "action-list-tree.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-list.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts",
+    "plugins/power-editor/src/tasks.ts"
+  ],
+  "action-magnet.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-megaphone.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-menu.svg": [
+    "plugins/claudian-extension/src/code-actions.ts",
+    "plugins/power-editor/src/main.ts",
+    "plugins/power-editor/src/menus/toolbar-overflow.ts"
+  ],
+  "action-message-circle.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-mic.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-minus.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-mouse.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-move-horizontal.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-move.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-option.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js"
+  ],
+  "action-outdent.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-paintbrush.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-palette.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-panel-left.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-panel-right.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-panel-top.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-panels-top-left.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-paperclip.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-paste.svg": [
+    "plugins/power-editor/src/editor/note-code-controls.js"
+  ],
+  "action-pen-line.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-pen.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-pencil.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-pizza.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-play.svg": [
+    "plugins/power-editor/src/editor/note-code-editor.js"
+  ],
+  "action-plus.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-popcorn.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-quote.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/editor/note-paragraph-controls.js",
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/editor/utils/document-blocks.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-rainbow.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-recycle.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-redo-2.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-redo.svg": [
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/editor/note-title.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-refresh-cw.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-remove-formatting.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-repeat-2.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js"
+  ],
+  "action-ruler.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-scissors.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js"
+  ],
+  "action-scroll.svg": [
+    "plugins/power-editor/src/editor/note-code-controls.js",
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/editor/note-outline.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-search.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-send.svg": [
+    "plugins/claudian-extension/src/composer-actions.ts"
+  ],
+  "action-settings.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js"
+  ],
+  "action-shell.svg": [
+    "plugins/power-editor/src/editor/utils/note-code-block.js"
+  ],
+  "action-sidebar-left.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-sidebar-right.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-sigma.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-smile.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-sparkles.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-square-code.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js"
+  ],
+  "action-square.svg": [
+    "plugins/claudian-extension/src/composer-actions.ts"
+  ],
+  "action-strikethrough.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-switch.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js"
+  ],
+  "action-table-2.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js"
+  ],
+  "action-table.svg": [
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/editor/note-code-actions.js",
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-tabs.svg": [
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/editor/utils/note-code-block.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-text-cursor-input.svg": [
+    "plugins/claudian-extension/src/code-actions.ts"
+  ],
+  "action-text-search.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-text.svg": [
+    "plugins/claudian-extension/src/code-actions.ts",
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/editor/utils/document-blocks.js",
+    "plugins/power-editor/src/format.ts",
+    "plugins/power-editor/src/main.ts",
+    "plugins/power-editor/src/tasks.ts"
+  ],
+  "action-toolbox.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-trash-2.svg": [
+    "plugins/power-editor/src/editor/note-code-menus.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-triangle.svg": [
+    "plugins/claudian-extension/src/zen-actions.ts"
+  ],
+  "action-type.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-underline.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-undo-2.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-undo.svg": [
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/editor/note-title.js",
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-upload.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-user.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-verified.svg": [
+    "plugins/power-editor/src/main.ts",
+    "plugins/power-editor/src/page.ts"
+  ],
+  "action-view.svg": [
+    "plugins/power-editor/src/tasks.ts"
+  ],
+  "action-wand-2.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-wine.svg": [
+    "plugins/power-editor/src/main.ts"
+  ],
+  "action-workflow.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js"
+  ],
+  "action-x.svg": [
+    "plugins/power-editor/src/embed.ts",
+    "plugins/power-editor/src/format.ts",
+    "plugins/power-editor/src/main.ts",
+    "plugins/power-editor/src/tasks.ts"
+  ],
+  "action-zap.svg": [
+    "plugins/power-editor/src/blocks.ts"
+  ],
+  "code-drag.svg": [
+    "plugins/power-editor/src/editor/note-code-controls.js",
+    "plugins/power-editor/src/editor/note-paragraph-controls.js"
+  ],
+  "code-fold.svg": [
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/styles/editor.css"
+  ],
+  "code-header-toggle.svg": [
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/claudian-extension/src/zen-actions.ts"
+  ],
+  "code-run.svg": [
+    "plugins/power-editor/src/editor/note-code-editor.js"
+  ],
+  "menu-default.svg": [
+    "themes/Patchwork/src/app/file-explorer.scss"
+  ],
+  "menu-folder.svg": [
+    "themes/Patchwork/src/app/file-explorer.scss"
+  ],
+  "menu-locked.svg": [
+    "themes/Patchwork/src/app/file-explorer.scss"
+  ],
+  "menu-markdown.svg": [
+    "themes/Patchwork/src/app/file-explorer.scss"
+  ],
+  "menu-shell.svg": [
+    "themes/Patchwork/src/app/file-explorer.scss"
+  ],
+  "menu-sql.svg": [
+    "themes/Patchwork/src/app/file-explorer.scss"
+  ],
+  "tab-audio.svg": [
+    "themes/Patchwork/src/layouts/tabs.scss"
+  ],
+  "tab-database.svg": [
+    "themes/Patchwork/src/layouts/tabs.scss"
+  ],
+  "tab-document.svg": [
+    "themes/Patchwork/src/layouts/tabs.scss"
+  ],
+  "tab-video.svg": [
+    "themes/Patchwork/src/layouts/tabs.scss"
+  ]
+}

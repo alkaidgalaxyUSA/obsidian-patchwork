@@ -1,4 +1,5 @@
-import { App, setIcon } from "obsidian";
+import { iconName, setIcon } from "../../../utils/icons";
+import { App} from "obsidian";
 import { EditorMenu } from "./editor-menu";
 
 export interface ToolbarAction {
@@ -93,7 +94,7 @@ export class ToolbarOverflow {
             separator = false;
             hasItems = true;
             menu.addItem(entry => {
-                entry.setTitle(action.label).setIcon(action.icon)
+                entry.setTitle(action.label).setIcon(iconName(action.icon))
                     .setDisabled(item.classList.contains("is-disabled"))
                     .onClick(() => {
                         menu.hide();

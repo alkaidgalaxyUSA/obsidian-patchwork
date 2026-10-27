@@ -1,3 +1,5 @@
+import { MARKDOWN_VIEW_SELECTOR } from "../utils/markdown-views";
+import { canRunPowerShell, runPowerShell } from "../utils/run-powershell";
 import { LANGUAGES, THEMES, scanCodeBlocks, updateOpening, codeAttributes } from "./utils/note-code-block.js";
 import { NoteCodeMenus } from "./note-code-menus.js";
 import { wrapCodeLines, unwrapCodeLines } from "./utils/code-lines.js";
@@ -58,7 +60,6 @@ class NoteCodeEditor {
             this.controlsPlugin,
             this.EditorView.atomicRanges.of((view) => view.state.field(this.field, false)?.headingMarkers ?? this.Decoration.none),
             this.Prec.highest(this.keymap.of([
-                { key: "`", run: (view) => this.typeFenceTrigger(view) },
                 { key: "Enter", run: (view) => this.enter(view) },
                 { key: "Backspace", run: (view) => this.exitEmptyHeading(view) || this.protectDelete(view, true) },
                 { key: "Mod-Backspace", run: (view) => this.protectDelete(view, true) },
@@ -271,7 +272,7 @@ class NoteCodeEditor {
             header.append(element);
             return element;
         };
-        button("fold", reading ? "Fold" : "Collapse code block", "chevron-down");
+        button("fold", reading ? "Fold" : "Collapse code block", "code-fold");
         const name = doc.createElement(reading ? "span" : "input");
         if (!reading) {
             name.type = "text";
@@ -317,6 +318,8 @@ class NoteCodeEditor {
             select("theme", "Code theme");
         }
         separator();
+        button("run", "Run", "code-run").hidden = true;
+        separator();
         const copy = button("copy", "Copy code", "copy");
         copy.classList.add("pw-code-copy");
         if (reading) {
@@ -330,7 +333,7 @@ class NoteCodeEditor {
         } else {
             separator();
             button("more", "More code settings", "ellipsis").setAttribute("aria-haspopup", "dialog");
-            button("toggle-header", "Hide code block header", "chevron-up").classList.add("pw-code-header-toggle");
+            button("toggle-header", "Hide code block header", "code-header-toggle").classList.add("pw-code-header-toggle");
         }
         header.addEventListener("pointerdown", (event) => event.stopPropagation());
         header.addEventListener("change", (event) => {
@@ -357,6 +360,9 @@ class NoteCodeEditor {
             const action = event.target.closest("button[data-action]")?.dataset.action;
             const binding = this.bindings.get(header);
             if (!action || !binding) return;
+            if (action === "run" && event.isTrusted && canRunPowerShell(binding.getBlock()?.options.language ?? "")) {
+                runPowerShell(this.app, binding.runText?.() ?? binding.copy());
+            }
             if (action === "fold") binding.fold();
             if (action === "width") binding.toggleWidth?.();
             if (action === "toggle-header") binding.toggleHeader();
@@ -373,6 +379,7 @@ class NoteCodeEditor {
 
     refreshHeader(header, options, folded, headerHidden = false) {
         for (const [key, value] of Object.entries(codeAttributes(options))) header.setAttribute(key, value);
+        header.querySelector('[data-action="run"]').hidden = !canRunPowerShell(options.language);
         const input = header.querySelector("input");
         if (input && input !== header.ownerDocument.activeElement) input.value = options.name;
         if (header.dataset.mode === "reading") {
@@ -389,7 +396,7 @@ class NoteCodeEditor {
         }
         const fold = header.querySelector('[data-action="fold"]');
         header.dataset.collapsed = String(folded);
-        this.setIcon(fold, folded ? "chevron-right" : "chevron-down");
+        this.setIcon(fold, "code-fold");
         fold.setAttribute("aria-label", header.dataset.mode === "reading" ? (folded ? "Unfold" : "Fold") : (folded ? "Expand code block" : "Collapse code block"));
         fold.setAttribute("aria-expanded", String(!folded));
         const hidden = headerHidden && !folded;
@@ -398,7 +405,7 @@ class NoteCodeEditor {
         if (!toggle) return;
         toggle.setAttribute("aria-label", hidden ? "Show code block header" : "Hide code block header");
         toggle.setAttribute("aria-expanded", String(!hidden));
-        this.setIcon(toggle, hidden ? "chevron-down" : "chevron-up");
+        this.setIcon(toggle, "code-header-toggle");
     }
 
     protectedBlocks(state) {
@@ -526,22 +533,6 @@ class NoteCodeEditor {
         return true;
     }
 
-    typeFenceTrigger(view) {
-        if (!this.isLive(view.state) || view.state.readOnly || view.composing || view.state.selection.ranges.length !== 1) return false;
-        const position = view.state.selection.main.head;
-        if (this.protectedBlocks(view.state).some((block) => position > block.openTo && position <= block.to)) return false;
-        const line = view.state.doc.lineAt(position);
-        const before = line.text.slice(0, position - line.from);
-        const after = line.text.slice(position - line.from);
-        // Only a fence-only line uses delayed creation; inline code stays native Markdown.
-        const range = view.state.selection.main;
-        if (!range.empty || !/^ {0,3}`*$/.test(before) || after.trim()) return false;
-        const pending = range.empty && /^ {0,3}`{2,}$/.test(before) && !after.trim();
-        view.dispatch({ changes: { from: range.from, to: range.to, insert: "`" }, selection: { anchor: range.from + 1 },
-            effects: pending ? this.pendingEffect.of({ from: line.from, pending: true }) : undefined, userEvent: "input.type" });
-        return true;
-    }
-
     leaveBlockSide(view, left) {
         if (!this.isLive(view.state) || view.state.selection.ranges.length !== 1 || !view.state.selection.main.empty) return false;
         const position = view.state.selection.main.head;
@@ -567,31 +558,7 @@ class NoteCodeEditor {
         const line = view.state.doc.lineAt(position);
         if (this.exitEmptyQuote(view, line)) return true;
         const block = this.protectedBlocks(view.state).find((entry) => position >= entry.contentFrom && position <= entry.contentTo);
-        if (!block) {
-            const before = line.text.slice(0, position - line.from);
-            const after = line.text.slice(position - line.from);
-            const match = before.match(/^( {0,3})(```)[\t ]*$/);
-            if (!match || (after.trim() && after.trim() !== match[2])) return false;
-            const candidate = { options: { language: "" } };
-            if (!this.isManaged(candidate)) return false;
-            const existing = view.state.field(this.field).blocks.find((entry) => entry.from === line.from && entry.closeFrom !== undefined);
-            if (existing) {
-                const empty = existing.closeFrom === existing.contentFrom;
-                view.dispatch({
-                    changes: empty ? { from: existing.contentFrom, insert: `${existing.prefix}\n` } : undefined,
-                    selection: { anchor: existing.contentFrom + (empty ? existing.prefix.length : 0) },
-                    effects: this.pendingEffect.of({ from: existing.from, pending: false }),
-                    scrollIntoView: true,
-                    userEvent: "input",
-                });
-                view.focus();
-                return true;
-            }
-            const insert = `${before}\n${match[1]}\n${match[1]}${match[2]}${line.to === view.state.doc.length ? "\n" : ""}`;
-            view.dispatch({ changes: { from: line.from, to: line.to, insert }, selection: { anchor: line.from + before.length + 1 + match[1].length }, effects: this.pendingEffect.of({ from: line.from, pending: false }), scrollIntoView: true, userEvent: "input" });
-            view.focus();
-            return true;
-        }
+        if (!block) return false;
         const before = view.state.doc.sliceString(line.from, position);
         const after = view.state.doc.sliceString(position, line.to);
         const leading = block.options.autoIndent ? before.match(/^\s*/)[0] : "";
@@ -679,7 +646,7 @@ class NoteCodeEditor {
     }
 
     enhanceReading(element, context) {
-        const scope = '.mod-root .workspace-leaf-content[data-type="markdown"]';
+        const scope = `.mod-root ${MARKDOWN_VIEW_SELECTOR}`;
         if (!element.closest(scope) && !context.containerEl?.closest(scope)) { this.enhanceSyntax(element, context); return; }
         this.enhanceReadingHeadings(element, context);
         for (const pre of element.querySelectorAll("pre")) {
@@ -726,6 +693,7 @@ class NoteCodeEditor {
             this.bindings.set(header, {
                 getBlock: () => block,
                 copy: () => pre.querySelector("code").textContent,
+                runText: () => info.text.slice(block.contentFrom, block.contentTo),
                 fold: () => { pre.hidden = !pre.hidden; refresh(); },
                 toggleWidth: () => {
                     block = { ...block, options: { ...block.options, width: block.options.width === "wide" ? "normal" : "wide" } };
@@ -745,8 +713,13 @@ class NoteCodeEditor {
             const pre = code.parentElement;
             const originalStyle = pre.getAttribute("style");
             const originalTheme = pre.getAttribute("data-pw-theme");
+            const originalLanguage = pre.getAttribute("data-pw-language");
             const standalone = pre.dataset.pwCode === undefined;
             if (standalone) {
+                if (/^(markdown|md|mkd)$/i.test(language)) {
+                    pre.dataset.pwLanguage = "markdown";
+                    pre.dataset.pwTheme ??= "night-owl";
+                }
                 const info = context.getSectionInfo(pre);
                 const block = info && scanCodeBlocks(this.Text.of(info.text.split("\n"))).find((entry) => entry.startLine - 1 === info.lineStart);
                 if (block) {
@@ -775,6 +748,8 @@ class NoteCodeEditor {
                     else pre.setAttribute("style", originalStyle);
                     if (originalTheme === null) pre.removeAttribute("data-pw-theme");
                     else pre.setAttribute("data-pw-theme", originalTheme);
+                    if (originalLanguage === null) pre.removeAttribute("data-pw-language");
+                    else pre.setAttribute("data-pw-language", originalLanguage);
                 }
                 this.readingChildren.delete(child);
             });

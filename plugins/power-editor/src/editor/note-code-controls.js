@@ -101,7 +101,7 @@ class NoteCodeControls {
         const grip = this.button(root, "pw-code-drag", "can drag and click");
         grip.setAttribute("aria-haspopup", "dialog");
         grip.setAttribute("aria-expanded", "false");
-        for (let dot = 0; dot < 8; dot++) grip.append(this.doc.createElement("i"));
+        this.controller.setIcon(grip, "code-drag");
         const wide = this.button(root, "pw-code-wide", "adaptive width display", "arrow-left-right");
         const resize = this.button(root, "pw-code-resize", "Resize code block height");
         resize.setAttribute("role", "separator");

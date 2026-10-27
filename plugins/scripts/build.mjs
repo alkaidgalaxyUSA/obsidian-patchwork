@@ -1,11 +1,26 @@
 import { build } from "esbuild";
 import { builtinModules } from "node:module";
-import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const iconRoot = resolve(root, "../icons");
+const iconAssets = {};
+for (const file of (await readdir(iconRoot)).sort()) {
+  if (!/^(action-|code-)[a-z0-9-]+\.svg$/.test(file)) continue;
+  const key = file.replace(/^action-/, "").replace(/\.svg$/, "");
+  if (key in iconAssets) throw new Error(`Duplicate icon key: ${key}`);
+  iconAssets[key] = await readFile(join(iconRoot, file), "utf8");
+}
+const iconPlugin = {
+  name: "patchwork-icons",
+  setup(build) {
+    build.onResolve({ filter: /^patchwork:icons$/ }, () => ({ path: "icons", namespace: "patchwork-icons" }));
+    build.onLoad({ filter: /.*/, namespace: "patchwork-icons" }, () => ({ contents: `export default ${JSON.stringify(iconAssets)};`, loader: "js" }));
+  }
+};
 const config = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const { version } = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Invalid shared plugin version.");
@@ -44,7 +59,8 @@ for (const name of targets) {
     platform: "node",
     target: "es2021",
     external: ["obsidian", "electron", "@codemirror/*", "@lezer/*", ...builtinModules, "node:*"],
-    define: { __PED_BUILD__: JSON.stringify(manifest.version) },
+    define: { __PED_BUILD__: JSON.stringify(manifest.version), __PATCHWORK_PLUGIN_ID__: JSON.stringify(manifest.id) },
+    plugins: [iconPlugin],
     supported: { "regexp-lookbehind-assertions": false },
     treeShaking: true,
     logLevel: "info",
@@ -52,7 +68,7 @@ for (const name of targets) {
     sourcemap: false
   });
   const cssEntry = join(source, definition.styles);
-  await build({ entryPoints: [cssEntry], outfile: join(output, "styles.css"), bundle: true, logLevel: "info" });
+  await build({ entryPoints: [cssEntry], outfile: join(output, "styles.css"), bundle: true, loader: { ".svg": "dataurl" }, logLevel: "info" });
   await writeFile(join(output, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
   await cp(join(root, "../LICENSE"), join(output, "LICENSE"));
   run("--check", [join(output, "main.js")]);

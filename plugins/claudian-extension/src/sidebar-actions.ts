@@ -1,4 +1,5 @@
-import { setIcon } from "obsidian";
+import { setIcon } from "../../utils/icons";
+
 import type { App, WorkspaceLeaf } from "obsidian";
 import type { SidebarDock, SidebarEntry, SidebarHandle, WidthLimit } from "./types";
 const TOOLBAR_CLASS = "claudian-extension-top-toolbar";

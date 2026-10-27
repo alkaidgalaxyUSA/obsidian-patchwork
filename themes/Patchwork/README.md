@@ -8,7 +8,7 @@ requiring Obsidian 1.14.0 or later.
 
 - `src/theme.scss`: the theme entry point, importing only local theme modules.
 - `src/app/`: settings, fonts, navigation, dialogs, file explorer, and mobile rules.
-- `src/icons/`: replaceable SVG artwork for file-explorer icons.
+- `../../icons/`: shared, replaceable SVG artwork for explorer, tab and plugin icons.
 - `src/editor/`: Markdown typography, tables, headings, callouts, and code colors.
 - `src/layouts/`: workspace, document tabs, and status bar.
 - `src/elements/`: standard controls, buttons, and focus styles.
@@ -46,7 +46,7 @@ original Style Settings namespace and non-plugin option IDs remain unchanged.
 
 ### File explorer icons
 
-Replace the matching SVG file in `src/icons/` without changing its filename:
+Replace the matching SVG file in the repository-root `icons/` directory without changing its filename:
 
 | File | Usage |
 | --- | --- |
@@ -55,8 +55,9 @@ Replace the matching SVG file in `src/icons/` without changing its filename:
 | `menu-markdown.svg` | Markdown notes |
 | `menu-sql.svg` | SQL scripts |
 | `menu-shell.svg` | PowerShell, CMD, BAT and SH scripts |
+| `menu-locked.svg` | Encrypted Markdown notes (`.mdenc`) |
 
-Preserve a valid SVG namespace and `viewBox`. The display size remains 18px.
+Preserve a valid SVG namespace and `viewBox`. The display size is 21.6px.
 After replacing an icon, run the theme build below. The build reads these SVGs
 and embeds them in the generated CSS, so installed themes remain self-contained
 and do not depend on development paths or network resources. Source changes do

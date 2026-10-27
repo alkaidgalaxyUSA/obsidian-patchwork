@@ -1,3 +1,5 @@
+import { Menu } from "obsidian";
+
 class NoteNavigation {
     constructor(plugin) {
         this.app = plugin.app;
@@ -46,7 +48,8 @@ class NoteNavigation {
             const collapse = doc.querySelector(".sidebar-toggle-button.mod-right");
             const host = collapse?.parentElement || doc.querySelector(".mod-root .workspace-tab-header-container");
             this.refreshHeaders(doc, entry, !!host);
-            const buttons = [leaf?.view.modeButtonEl, leaf?.view.moreOptionsButtonEl].filter(Boolean);
+            // Keep only the native menu; mode and encryption actions remain in menus/commands.
+            const buttons = [leaf?.view.moreOptionsButtonEl].filter(Boolean);
             if (!host || !buttons.length) {
                 this.restore(entry);
                 entry.toolbar.remove();
@@ -98,16 +101,64 @@ class NoteNavigation {
             if (entry.leaf) this.app.workspace.setActiveLeaf(entry.leaf, { focus: false });
         };
         const keydown = (event) => this.navigate(doc, event);
+        const enter = (event) => {
+            if (event.pointerType === "touch") return;
+            activate();
+            this.openMore(entry);
+        };
+        const leave = (event) => this.scheduleMoreClose(entry, event.relatedTarget);
+        const click = (event) => {
+            if (!entry.slots.some((slot) => slot.button.contains(event.target))) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            activate();
+            this.openMore(entry);
+        };
         toolbar.addEventListener("pointerdown", activate, true);
         toolbar.addEventListener("focusin", activate);
+        toolbar.addEventListener("pointerenter", enter);
+        toolbar.addEventListener("pointerleave", leave);
+        toolbar.addEventListener("click", click, true);
         doc.defaultView.addEventListener("keydown", keydown, true);
         entry.cleanup = () => {
             toolbar.removeEventListener("pointerdown", activate, true);
             toolbar.removeEventListener("focusin", activate);
+            toolbar.removeEventListener("pointerenter", enter);
+            toolbar.removeEventListener("pointerleave", leave);
+            toolbar.removeEventListener("click", click, true);
             doc.defaultView.removeEventListener("keydown", keydown, true);
         };
         this.documents.set(doc, entry);
         return entry;
+    }
+
+    openMore(entry) {
+        const doc = entry.toolbar.ownerDocument;
+        doc.defaultView.clearTimeout(entry.moreCloseTimer);
+        if (entry.menu?.dom.isConnected || !entry.leaf) return;
+        const menu = new Menu();
+        entry.leaf.view.onPaneMenu(menu, "more-options");
+        menu.setParentElement(entry.toolbar);
+        menu.dom.classList.add("pw-code-hover-submenu");
+        entry.menu = menu;
+        const events = new doc.defaultView.AbortController();
+        const options = { signal: events.signal };
+        doc.addEventListener("pointerover", (event) => this.scheduleMoreClose(entry, event.target), options);
+        menu.dom.addEventListener("pointerleave", (event) => this.scheduleMoreClose(entry, event.relatedTarget), options);
+        menu.onHide(() => {
+            events.abort();
+            doc.defaultView.clearTimeout(entry.moreCloseTimer);
+            if (entry.menu === menu) entry.menu = undefined;
+        });
+        const bounds = entry.toolbar.getBoundingClientRect();
+        menu.showAtPosition({ x: bounds.left, y: bounds.bottom + 4 });
+    }
+
+    scheduleMoreClose(entry, target) {
+        const win = entry.toolbar.ownerDocument.defaultView;
+        win.clearTimeout(entry.moreCloseTimer);
+        if (!entry.menu || target?.nodeType && (entry.toolbar.contains(target) || entry.menu.isInside(target))) return;
+        entry.moreCloseTimer = win.setTimeout(() => entry.menu?.hide(), 120);
     }
 
     navigate(doc, event) {
@@ -125,6 +176,8 @@ class NoteNavigation {
     }
 
     restore(entry) {
+        entry.toolbar.ownerDocument.defaultView.clearTimeout(entry.moreCloseTimer);
+        entry.menu?.hide();
         entry.observer.disconnect();
         for (const { button, marker, parent } of entry.slots) {
             if (marker.parentNode) marker.replaceWith(button);

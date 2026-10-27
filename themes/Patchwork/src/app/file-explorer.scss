@@ -5,16 +5,33 @@
  * License: ../../../../LICENSE
  */
 
-/* Keep Maple's explorer layout local; retain Patchwork's palette. */
+/* Youdao note-list metrics, retaining Patchwork's custom file icons and tree. */
 .workspace-leaf-content[data-type="file-explorer"] {
-    --nav-item-size: calc(var(--size-4-4) * 0.9);
-    --line-height-tight: 1.5;
-    --nav-item-children-padding-left: var(--size-4-2);
+    --nav-item-size: 13px;
+    --pw-nav-row-background: var(--background-modifier-hover);
+    --pw-nav-surface: var(--background-secondary);
+    --pw-nav-divider: var(--background-modifier-border);
+    --nav-item-padding: 4px 8px 4px 30px;
+    --nav-item-parent-padding: 4px 8px 4px 30px;
+    --nav-item-children-padding-start: 0px;
+    --nav-item-children-margin-start: 14px;
     --nav-indentation-guide-width: 0px;
-    --nav-item-background-active: var(--interactive-accent);
-    --nav-item-background-selected: var(--background-modifier-hover);
-    --nav-item-color-active: var(--text-on-accent);
+    --nav-item-background-hover: var(--pw-nav-row-background);
+    --nav-item-background-active: var(--pw-nav-row-background);
+    --nav-item-background-selected: var(--pw-nav-row-background);
+    --nav-item-color-active: var(--nav-item-color);
 
+}
+
+.theme-dark .workspace-leaf-content[data-type="file-explorer"] {
+    --pw-nav-row-background: #2f3033;
+    --pw-nav-surface: #202124;
+    --pw-nav-divider: #37393b;
+    --nav-item-color: #e1e3e5;
+    --nav-item-color-hover: #e1e3e5;
+    --nav-item-color-active: #e1e3e5;
+    --nav-item-color-selected: #e1e3e5;
+    background-color: var(--pw-nav-surface);
 }
 
 .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container {
@@ -22,8 +39,64 @@
     padding-left: var(--size-4-1);
 }
 
+.workspace-leaf-content[data-type="file-explorer"] .nav-files-container {
+    border-top: 0;
+    padding-inline-start: 0;
+}
+
 .workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title) {
     position: relative;
+    box-sizing: border-box;
+    height: 50px;
+    align-items: center;
+    border: 1px solid transparent;
+    border-top-color: var(--pw-nav-divider);
+    border-radius: 0;
+    margin-block: 0;
+    font-family: "PingFang SC", "Source Han Sans", "思源黑体", "Microsoft Yahei", "WenQuanYi Micro Hei", Arial, sans-serif;
+    font-size: var(--nav-item-size);
+    font-weight: 500;
+    line-height: 19.5px;
+    padding-block: 13px;
+    text-rendering: auto;
+    -webkit-font-smoothing: auto;
+    color: var(--nav-item-color) !important;
+}
+
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title-content, .nav-folder-title-content) {
+    position: relative;
+    top: 0;
+    line-height: 19.5px;
+    padding-right: 8px;
+    /* Keep Git status coloring from changing the menu's text palette. */
+    color: inherit !important;
+}
+
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title):is(:hover, :focus-within, .has-focus, .is-active, .is-selected) {
+    background-color: var(--pw-nav-row-background);
+    border-top-color: var(--pw-nav-surface);
+    border-radius: 4px;
+}
+
+/* Use the row background for focus; retain the rename input's focus ring. */
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title).has-focus:not(.is-being-renamed) {
+    box-shadow: none !important;
+}
+
+/* Mask the next row's divider, including across expanded folder boundaries. */
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title):is(:hover, :focus-within, .has-focus, .is-active, .is-selected)::after {
+    content: "";
+    position: absolute;
+    inset-inline: -1px;
+    bottom: -2px;
+    height: 1px;
+    z-index: 1;
+    background-color: var(--pw-nav-surface);
+    pointer-events: none;
+}
+
+.workspace-leaf-content[data-type="file-explorer"] .nav-files-container > div > .tree-item:nth-child(1 of .tree-item:not(.mod-root)) > .tree-item-self {
+    border-top-color: var(--pw-nav-surface);
 }
 
 .workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title).is-being-dragged {
@@ -36,8 +109,9 @@
     --nav-item-color-active: var(--text-normal) !important;
 }
 
-.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title).is-selected {
-    font-weight: 550;
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title):is(.is-active, .is-selected) {
+    font-weight: 500;
+    color: var(--nav-item-color-active) !important;
 }
 
 /* Preserve the text and drag cursors during rename and drag operations. */
@@ -65,9 +139,10 @@ body:not(.is-grabbing) .workspace-leaf-content[data-type="file-explorer"] :is(.n
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder .collapse-icon svg.svg-icon {
     display: inline-block;
     flex-shrink: 0;
-    background: url("../icons/menu-folder.svg") center / contain no-repeat;
-    width: 18px;
-    height: 18px;
+    background: url("../../../../icons/menu-folder.svg") center / contain no-repeat;
+    width: 21.6px;
+    height: 21.6px;
+    translate: 0 -1px;
 }
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder .collapse-icon.is-collapsed svg.svg-icon {
     transform: none;
@@ -76,21 +151,24 @@ body:not(.is-grabbing) .workspace-leaf-content[data-type="file-explorer"] :is(.n
     content: "";
     position: absolute;
     flex-shrink: 0;
-    translate: calc(var(--size-2-1) - var(--size-4-5)) -50%;
-    top: 50%;
-    --file-icon: url("../icons/menu-default.svg");
+    translate: calc(var(--size-2-1) - var(--size-4-5) - 3.6px) -50%;
+    top: calc(50% - 1px);
+    --file-icon: url("../../../../icons/menu-default.svg");
     background: var(--file-icon) center / contain no-repeat;
-    width: 18px;
-    height: 18px;
+    width: 21.6px;
+    height: 21.6px;
 }
 .workspace-leaf-content[data-type="file-explorer"] .nav-file-title[data-path$=".md" i]:where(:not([data-path$="excalidraw.md" i], [data-path$=".smm.md" i]))::before {
-    --file-icon: url("../icons/menu-markdown.svg");
+    --file-icon: url("../../../../icons/menu-markdown.svg");
 }
 .workspace-leaf-content[data-type="file-explorer"] .nav-file-title[data-path$=".sql" i]::before {
-    --file-icon: url("../icons/menu-sql.svg");
+    --file-icon: url("../../../../icons/menu-sql.svg");
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title[data-path$=".mdenc" i]::before {
+    --file-icon: url("../../../../icons/menu-locked.svg");
 }
 .workspace-leaf-content[data-type="file-explorer"] .nav-file-title:is([data-path$=".ps1" i], [data-path$=".cmd" i], [data-path$=".bat" i], [data-path$=".sh" i])::before {
-    --file-icon: url("../icons/menu-shell.svg");
+    --file-icon: url("../../../../icons/menu-shell.svg");
 }
 .workspace-leaf-content[data-type="file-explorer"] .nav-file-title {
     padding-inline-end: 0;
@@ -100,9 +178,6 @@ body:not(.is-grabbing) .workspace-leaf-content[data-type="file-explorer"] :is(.n
     background-color: var(--background-modifier-hover);
     color: var(--text-accent);
     line-height: unset;
-}
-.workspace-leaf-content[data-type="file-explorer"] .nav-file-title.is-active:not(.is-selected) .nav-file-title-content {
-    color: var(--nav-item-color-active);
 }
 .workspace-leaf-content[data-type="file-explorer"] .nav-file-title.is-active:not(.is-selected) .nav-file-tag {
     backdrop-filter: brightness(0.85);

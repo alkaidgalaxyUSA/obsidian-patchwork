@@ -1,4 +1,5 @@
 import { formatBlock } from "./editor/utils/block-formats.js";
+import { transformLiteralText } from "./utils/literal-text";
 /* Pure formatting helpers behind the toolbar: heading levels, list detection
  * for active states, and clear-formatting. Covered by tests.ts. */
 
@@ -241,6 +242,7 @@ export interface Marks {
 }
 
 export function detectMarks(text: string): Marks {
+	text = text.replace(/\\[!-/:-@\[-`{-~]/g, "\uE000\uE001");
 	return {
 		bold: /\*\*[^*]/.test(text) || /<(?:b|strong)[\s>]/i.test(text),
 		italic: /(^|[^*])\*[^*\n]+\*(?!\*)/.test(text) || /<(?:i|em)[\s>]/i.test(text),
@@ -331,6 +333,7 @@ export function clearAllFormatting(line: string): string {
  *  or highlight wraps AROUND the **, keeping it inside the tag (<mark>**x**
  *  </mark>) where the engine can still render it as bold. */
 export function expandStyleRange(line: string, from: number, to: number): { from: number; to: number } {
+	line = line.replace(/\\[!-/:-@\[-`{-~]/g, "\uE000\uE001");
 	const spans: [number, number][] = [];
 	const res = [
 		/==[^=\n]+?==/g,
@@ -446,6 +449,10 @@ export function sweepHighlights(text: string, background: string | null): { text
  *  the inline HTML the toolbar can write (u/span/mark…). Links keep their text
  *  and target, clearing style shouldn't destroy where things point. */
 export function stripFormatting(text: string): string {
+	return transformLiteralText(text, stripUnescapedFormatting);
+}
+
+function stripUnescapedFormatting(text: string): string {
 	let t = text;
 	for (let i = 0; i < 3; i++) {
 		t = t
@@ -500,11 +507,11 @@ export function cleanCopyText(md: string, mode: "clean" | "plain"): string {
  *  the active line, but it draws <strong>/<em>/<s>. Only flush spans convert,
  *  so an == operator or a spaced * is left alone. */
 export function mdEmphasisToHtml(text: string): string {
-	return text
+	return transformLiteralText(text, value => value
 		.replace(/\*\*(\S|\S[^\n]*?\S)\*\*/g, "<strong>$1</strong>")
 		.replace(/~~(\S|\S[^\n]*?\S)~~/g, "<s>$1</s>")
 		.replace(/(^|[^\w*])\*([^\s*]|[^\s*][^*\n]*?[^\s*])\*(?![\w*])/g, "$1<em>$2</em>")
-		.replace(/(^|[^\w_])_([^\s_]|[^\s_][^_\n]*?[^\s_])_(?![\w_])/g, "$1<em>$2</em>");
+		.replace(/(^|[^\w_])_([^\s_]|[^\s_][^_\n]*?[^\s_])_(?![\w_])/g, "$1<em>$2</em>"));
 }
 
 /** The inverse: HTML emphasis back to Markdown, for when a highlight or color

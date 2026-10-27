@@ -532,8 +532,6 @@ body button.claudian-extension-zen-expand:hover {
 body button.claudian-extension-zen-expand svg {
     width: 9px;
     height: 7px;
-    fill: currentColor;
-    stroke-width: 0;
     pointer-events: none;
 }
 

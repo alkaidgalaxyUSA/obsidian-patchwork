@@ -37,6 +37,9 @@ class NoteParagraphControls {
 
     alignHeading(entry, block, top) {
         if (!block.type.startsWith("heading-")) {
+            const rect = this.view.coordsAtPos(block.contentFrom ?? block.from);
+            if (rect) entry.root.style.setProperty("--pw-paragraph-control-center", `${(rect.top + rect.bottom) / 2 - top}px`);
+            else entry.root.style.removeProperty("--pw-paragraph-control-center");
             delete entry.root.dataset.headingLabel;
             entry.root.style.removeProperty("--pw-heading-control-center");
             entry.root.style.removeProperty("--pw-heading-highlight-top");
@@ -72,7 +75,9 @@ class NoteParagraphControls {
         const content = this.view.contentDOM.getBoundingClientRect();
         const live = this.controller.isLive(this.view.state) && !this.view.state.readOnly;
         for (const block of live ? this.blocks : []) {
-            if (!this.view.visibleRanges.some((range) => block.to >= range.from && block.from <= range.to)) continue;
+            // Visible ranges are half-open: touching a fold boundary does not
+            // make the hidden block visible or give it a handle on the heading.
+            if (!this.view.visibleRanges.some((range) => block.to > range.from && block.from < range.to)) continue;
             const first = this.view.lineBlockAt(block.from);
             const last = this.view.lineBlockAt(block.to);
             const key = String(block.from);
@@ -105,7 +110,7 @@ class NoteParagraphControls {
         const grip = this.controls.button(root, "pw-code-drag", "can drag and click");
         grip.setAttribute("aria-haspopup", "dialog");
         grip.setAttribute("aria-expanded", "false");
-        for (let dot = 0; dot < 8; dot++) grip.append(this.controls.doc.createElement("i"));
+        this.controller.setIcon(grip, "code-drag");
         const entry = { root, header: root, grip, paragraph: true };
         this.controller.bindings.set(root, {
             getBlock: () => this.current(entry), canIndent: false,

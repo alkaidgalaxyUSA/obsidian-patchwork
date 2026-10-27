@@ -139,7 +139,7 @@ function Copy-VerifiedFile {
 function Embed-PatchworkSvgIcons {
   param([string]$CssPath, [string]$IconRoot)
   $css = [IO.File]::ReadAllText($CssPath)
-  $pattern = 'url\(\s*["'']\.\./icons/(?<name>[a-z0-9][a-z0-9-]*\.svg)["'']\s*\)'
+  $pattern = 'url\(\s*["''](?:\.\./)+icons/(?<name>[a-z0-9][a-z0-9-]*\.svg)["'']\s*\)'
   $result = [regex]::Replace($css, $pattern, [Text.RegularExpressions.MatchEvaluator]{
     param($match)
     $path = Get-PatchworkChildPath -Parent $IconRoot -RelativePath $match.Groups['name'].Value
@@ -359,7 +359,7 @@ function Invoke-PatchworkBuild {
           throw "Stylesheet compilation failed: $($package.Id)"
         }
         if ($package.Kind -eq 'themes') {
-          Embed-PatchworkSvgIcons -CssPath $cssOutput -IconRoot (Join-Path (Split-Path -Path $package.StyleEntry -Parent) 'icons')
+          Embed-PatchworkSvgIcons -CssPath $cssOutput -IconRoot (Join-Path $projectRoot 'icons')
         }
         $runtimeFiles = @($runtimeFiles + $package.StyleOutput | Select-Object -Unique)
       }
@@ -498,5 +498,4 @@ if ($cli -and @($packages | Where-Object Kind -eq 'plugins').Count) {
 }
 if ($SkipReload) { Write-Host 'Automatic reload skipped. Enable the selected plugins manually.' }
 Write-Host 'Build and installation complete. Unselected plugins, settings and notes were preserved.'
-
 

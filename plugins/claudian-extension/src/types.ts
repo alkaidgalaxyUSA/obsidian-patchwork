@@ -3,11 +3,28 @@ import type { View, WorkspaceSidedock } from "obsidian";
 export interface CodeBlock { text: string; language: string; }
 export type InsertMode = "auto" | "raw" | "fenced";
 
+export interface EditorSelectionContext {
+    notePath: string;
+    selectedText: string;
+    lineCount: number;
+    startLine?: number;
+}
+
+export interface ClaudianEditorSelection {
+    storedSelection: EditorSelectionContext | null;
+    poll(): void;
+    clear(): void;
+    updateIndicator(): void;
+    getContext(): unknown;
+    onUserSelectionChanged?: (() => void) | null;
+}
+
 // Only the upstream Claudian fields consumed by this extension are described here.
 // Runtime capability checks remain in place because these are not public APIs.
 export interface ClaudianTab {
     dom?: { inputEl?: HTMLTextAreaElement; inputWrapper?: HTMLElement };
     controllers: {
+        composerSelections?: { editor?: ClaudianEditorSelection };
         inputController: {
             sendMessage(): unknown;
             cancelStreaming(): unknown;
@@ -26,7 +43,7 @@ export interface ClaudianTab {
 }
 
 export interface ClaudianView extends View {
-    getTabManager?(): { getAllTabs(): ClaudianTab[] };
+    getTabManager?(): { getAllTabs(): ClaudianTab[]; getActiveTab?(): ClaudianTab | null };
 }
 
 export type SidebarDock = WorkspaceSidedock & {

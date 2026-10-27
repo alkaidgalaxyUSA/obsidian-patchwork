@@ -1,9 +1,11 @@
 import { Plugin, FileSystemAdapter } from "obsidian";
+import { installIcons } from "../../utils/icons";
 import { NoteInserter } from "./note-inserter";
 import { CodeActions } from "./code-actions";
 import { ComposerActions } from "./composer-actions";
 import { SidebarActions } from "./sidebar-actions";
 import { ZenActions } from "./zen-actions";
+import { SelectionActions } from "./selection-actions";
 
 export default class ClaudianExtensionPlugin extends Plugin {
     inserter!: NoteInserter;
@@ -11,8 +13,10 @@ export default class ClaudianExtensionPlugin extends Plugin {
     composerActions!: ComposerActions;
     sidebarActions!: SidebarActions;
     zenActions!: ZenActions;
+    selectionActions!: SelectionActions;
 
     onload() {
+        installIcons(this);
         if (!(this.app.vault.adapter instanceof FileSystemAdapter)) {
             throw new Error("Claudian Extension requires a desktop filesystem vault.");
         }
@@ -25,9 +29,16 @@ export default class ClaudianExtensionPlugin extends Plugin {
         this.register(() => this.sidebarActions.dispose());
         this.zenActions = new ZenActions(this.app);
         this.register(() => this.zenActions.dispose());
+        this.selectionActions = new SelectionActions(this.app);
+        this.register(() => this.selectionActions.dispose());
+        this.selectionActions.sync();
+        this.registerEvent(this.app.workspace.on("editor-menu", (menu, editor, view) => {
+            this.selectionActions.addEditorMenu(menu, editor, view.file?.path);
+        }));
 
         this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
             this.inserter.remember(leaf);
+            this.selectionActions.sync();
         }));
         this.registerEvent(this.app.workspace.on("file-open", () => {
             this.inserter.remember(this.app.workspace.getMostRecentLeaf());
@@ -36,6 +47,7 @@ export default class ClaudianExtensionPlugin extends Plugin {
             this.attachDocuments();
             this.sidebarActions.sync();
             this.zenActions.sync();
+            this.selectionActions.sync();
         }));
         this.registerEvent(this.app.workspace.on("window-open", (_workspaceWindow, win) => {
             this.actions.attach(win.document);
@@ -48,11 +60,13 @@ export default class ClaudianExtensionPlugin extends Plugin {
             this.composerActions.sync();
             this.sidebarActions.sync();
             this.zenActions.sync();
+            this.selectionActions.sync();
             // Also catches programmatic draft edits, background work, and newly opened tabs.
             this.registerInterval(window.setInterval(() => {
                 this.composerActions.sync();
                 this.sidebarActions.sync();
                 this.zenActions.sync();
+                this.selectionActions.sync();
             }, 250));
         });
     }

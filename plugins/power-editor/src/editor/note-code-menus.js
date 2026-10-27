@@ -74,12 +74,14 @@ class NoteCodeMenus {
         const win = this.panel.ownerDocument.defaultView;
         const below = win.innerHeight - rect.bottom - 14;
         const above = rect.top - 14;
-        const height = Math.min(340, Math.max(below, above));
+        const height = ["settings", "block"].includes(this.panel.dataset.menu)
+            ? win.innerHeight - 16 : Math.min(340, Math.max(below, above));
         this.panel.style.maxHeight = `${height}px`;
         const bounds = this.panel.getBoundingClientRect();
         const left = this.panel.dataset.menu === "block" ? rect.right - bounds.width : rect.left;
         this.panel.style.left = `${Math.max(8, Math.min(left, win.innerWidth - bounds.width - 8))}px`;
-        this.panel.style.top = `${below >= Math.min(bounds.height, 240) ? rect.bottom + 6 : Math.max(8, rect.top - bounds.height - 6)}px`;
+        const top = below >= bounds.height || below >= above ? rect.bottom + 6 : rect.top - bounds.height - 6;
+        this.panel.style.top = `${Math.max(8, Math.min(top, win.innerHeight - bounds.height - 8))}px`;
     }
 
     row(label, action, icon) {
@@ -102,11 +104,10 @@ class NoteCodeMenus {
         return button;
     }
 
-    renderChoices(key, values, back) {
+    renderChoices(key, values, submenu) {
         const options = this.binding.getBlock()?.options;
         if (!options) { this.close(false); return; }
         this.panel.replaceChildren();
-        if (back) this.row("‹ Back", () => { this.renderSettings(); this.position(); this.panel.firstElementChild?.focus(); });
         const list = this.panel.ownerDocument.createElement("div");
         list.setAttribute("role", "listbox");
         list.setAttribute("aria-label", key);
@@ -117,10 +118,8 @@ class NoteCodeMenus {
                 const panel = this.panel;
                 await binding.update(key, value);
                 if (this.panel !== panel) return;
-                if (!back) { this.close(); return; }
-                this.renderSettings();
-                this.position();
-                this.panel.firstElementChild?.focus();
+                if (!submenu) { this.close(); return; }
+                this.closeSubmenu();
             });
             button.setAttribute("role", "option");
             button.setAttribute("aria-selected", String(options[key] === value));
@@ -143,17 +142,25 @@ class NoteCodeMenus {
             ["Indent Unit", "unit", [2, 4, 8].map((size) => [size, `${size} columns`])],
         ]) {
             if (key === "indent") this.separator();
-            const row = this.row(label, () => {
-                this.renderChoices(key, values, true);
+            const openChoices = (focus = true) => {
+                if (this.submenuTrigger !== row) {
+                    this.openSubmenu(label, key, row);
+                    this.renderChoices(key, values, true);
+                }
                 this.position();
-                this.panel.querySelector('[aria-selected="true"]')?.focus();
-            });
+                if (focus) this.panel.querySelector('[aria-selected="true"], button')?.focus({ preventScroll: true });
+                this.panel.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+            };
+            const row = this.row(label, () => openChoices());
+            if (key === "font") this.bindHoverSubmenu(row, () => openChoices(false));
             this.chevron(row);
+            row.setAttribute("aria-haspopup", "dialog");
         }
         this.separator();
         for (const [label, key] of [["Auto Wrap", "wrap"], ["Line Numbers", "lineNumbers"], ["Auto Indent", "autoIndent"]]) {
             if (key === "autoIndent") this.separator();
             const row = this.row(label, async () => {
+                this.closeSubmenu(false);
                 const binding = this.binding;
                 const enabled = !binding.getBlock().options[key];
                 await binding.update(key, enabled ? "on" : "off");
@@ -165,10 +172,6 @@ class NoteCodeMenus {
             track.className = "pw-code-switch";
             track.setAttribute("aria-hidden", "true");
             row.append(track);
-        }
-        if (this.binding.paragraph) {
-            this.separator();
-            this.row("Insert paragraph below", () => { const action = this.binding.paragraph; this.close(false); action(); });
         }
     }
 
@@ -196,10 +199,7 @@ class NoteCodeMenus {
             if (label === "Indent" && this.binding.canIndent === false) continue;
             if (divider) this.separator();
             const row = this.row(label, action, icon);
-            if (label === "Turn into") row.addEventListener("pointerenter", (event) => {
-                if (event.pointerType === "touch" || this.submenuTrigger === row) return;
-                this.renderTypes("turn-into", row, false);
-            });
+            if (label === "Turn into") this.bindHoverSubmenu(row, () => this.renderTypes("turn-into", row, false));
             if (label === "Delete") row.classList.add("pw-code-menu-danger");
             if (submenu) { this.chevron(row); row.setAttribute("aria-haspopup", "dialog"); }
         }
@@ -209,6 +209,36 @@ class NoteCodeMenus {
         const binding = this.binding;
         this.close(false);
         binding?.perform?.(action, value);
+    }
+
+    bindHoverSubmenu(row, open) {
+        row.addEventListener("pointerenter", (event) => {
+            if (event.pointerType === "touch") return;
+            this.cancelSubmenuClose();
+            if (this.submenuTrigger !== row) open();
+        });
+        row.addEventListener("pointerleave", (event) => {
+            if (this.submenuTrigger === row) this.scheduleSubmenuClose(event);
+        });
+    }
+
+    cancelSubmenuClose() {
+        this.submenuTimerWindow?.clearTimeout(this.submenuCloseTimer);
+        this.submenuCloseTimer = undefined;
+        this.submenuTimerWindow = undefined;
+    }
+
+    scheduleSubmenuClose(event) {
+        if (event.pointerType === "touch" || !this.parentPanel) return;
+        this.cancelSubmenuClose();
+        const next = event.relatedTarget;
+        if (next?.nodeType && (this.panel.contains(next) || this.submenuTrigger?.contains(next))) return;
+        const panel = this.panel;
+        this.submenuTimerWindow = panel.ownerDocument.defaultView;
+        // Allow crossing the small gap between the trigger and its submenu.
+        this.submenuCloseTimer = this.submenuTimerWindow.setTimeout(() => {
+            if (this.panel === panel) this.closeSubmenu(false);
+        }, 120);
     }
 
     openSubmenu(label, menu, trigger) {
@@ -223,6 +253,11 @@ class NoteCodeMenus {
         this.panel.setAttribute("role", "dialog");
         this.panel.setAttribute("aria-label", label);
         this.panel.addEventListener("keydown", (event) => this.keydown(event));
+        if (menu === "font" || menu === "types" && label === "Turn into") {
+            this.panel.classList.add("pw-code-hover-submenu");
+            this.panel.addEventListener("pointerenter", () => this.cancelSubmenuClose());
+            this.panel.addEventListener("pointerleave", (event) => this.scheduleSubmenuClose(event));
+        }
         doc.body.append(this.panel);
     }
 
@@ -230,7 +265,8 @@ class NoteCodeMenus {
         const rect = this.submenuTrigger.getBoundingClientRect();
         const parent = this.parentPanel.getBoundingClientRect();
         const win = this.panel.ownerDocument.defaultView;
-        this.panel.style.maxHeight = `${Math.min(420, win.innerHeight - 16)}px`;
+        const height = ["types", "font"].includes(this.panel.dataset.menu) ? win.innerHeight - 16 : Math.min(420, win.innerHeight - 16);
+        this.panel.style.maxHeight = `${height}px`;
         const bounds = this.panel.getBoundingClientRect();
         const left = parent.right + 6 + bounds.width <= win.innerWidth - 8 ? parent.right + 6 : parent.left - bounds.width - 6;
         this.panel.style.left = `${Math.max(8, Math.min(left, win.innerWidth - bounds.width - 8))}px`;
@@ -238,6 +274,7 @@ class NoteCodeMenus {
     }
 
     closeSubmenu(focus = true) {
+        this.cancelSubmenuClose();
         if (!this.parentPanel) return;
         this.panel?.remove();
         this.panel = this.parentPanel;

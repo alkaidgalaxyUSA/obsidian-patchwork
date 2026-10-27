@@ -1,3 +1,5 @@
+import { noteHeadings } from "../utils/note-headings";
+import { markdownLeaves } from "../utils/markdown-views";
 import { outlineLabel } from "./utils/outline-headings.js";
 
 class NoteOutline {
@@ -23,7 +25,7 @@ class NoteOutline {
     }
 
     refresh() {
-        const leaves = this.app.workspace.getLeavesOfType("markdown")
+        const leaves = markdownLeaves(this.app)
             .filter((leaf) => leaf.view.file && leaf.view.containerEl.closest(".mod-root"));
         const views = new Set(leaves.map((leaf) => leaf.view));
         for (const [view, entry] of this.entries) {
@@ -124,6 +126,12 @@ class NoteOutline {
             mode.disconnect();
             if (entry.frame) win.cancelAnimationFrame(entry.frame);
             if (entry.jumpFrame) win.cancelAnimationFrame(entry.jumpFrame);
+            entry.headings = [];
+            entry.items = [];
+            entry.marks = [];
+            entry.signature = "";
+            list.replaceChildren();
+            rail.replaceChildren();
             root.remove();
         };
         this.entries.set(view, entry);
@@ -132,7 +140,7 @@ class NoteOutline {
 
     updateHeadings(entry) {
         const { view, list, rail } = entry;
-        const headings = this.app.metadataCache.getFileCache(view.file)?.headings || [];
+        const headings = noteHeadings(this.app, view.file);
         const signature = JSON.stringify([view.file.path, headings.map(({ heading, level, position }) => [heading, level, position.start.line])]);
         if (entry.signature === signature) return;
         if (entry.path !== view.file.path) this.reset(entry);

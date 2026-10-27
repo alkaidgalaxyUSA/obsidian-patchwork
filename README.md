@@ -56,6 +56,57 @@ The Claudian companion is **Claudian Extension**, ID `claudian-extension`.
 The repository, npm package, checkout directory, and distribution root are named
 **obsidian-patchwork**.
 
+## Encrypted Markdown views
+
+Power Editor shares its toolbar, code cards, title, navigation and outline with
+unlocked Meld Encrypt `.mdenc` notes. Meld Encrypt remains a separate plugin and
+owns passwords, encryption, saving and locking. The adapter does not change the
+encrypted file format or replace Meld's view with a regular Markdown view.
+
+Document and frontmatter actions use the unlocked editor and Meld's save method,
+never plaintext writes to encrypted files. Reading-mode edits temporarily use the
+source editor and restore Reading View after saving. Headings and frontmatter are
+read from the open document without adding decrypted content to the global index.
+Locked or unsupported Meld views are not enhanced; unlock the note before editing.
+Encrypted notes remain excluded from vault-wide Markdown scans. Attachments are
+not encrypted by this integration. Lock/password actions remain in the top bar.
+
+The adapter targets Meld Encrypt 3.1.1's view lifecycle. It fails closed if those
+unlock-state properties change. UI compatibility does not add automatic locking
+or protect an unlocked session from other plugins.
+
+## SQL section copying
+
+In Code Editor, mark each SQL group with a standalone comment:
+
+```sql
+-- @section Find orders
+SELECT * FROM orders WHERE customer_id = 1001;
+
+-- @section Repair order status
+BEGIN;
+UPDATE orders SET status = 'completed' WHERE id = 123;
+COMMIT;
+```
+
+Hovering highlights the entire group. Right-click inside a group to select its SQL,
+then choose **Copy** in the original context menu. The native menu's appearance,
+item order and other actions are preserved; no custom menu or inline buttons are added.
+Outside a group, right-clicking does not change the selection.
+A group ends at the next marker or the end of
+the file; semicolons do not split it. Copying excludes the marker and blank edge
+lines, but keeps business comments, indentation and every statement in the group.
+Markers inside common quoted strings, dollar-quoted bodies and block comments
+are ignored. This is a grouping aid, not a complete SQL dialect parser.
+
+The command **Code Editor: Copy SQL selection or current section** copies selected
+text first, otherwise the group containing the cursor. Assign a shortcut in
+Obsidian's Hotkeys settings if desired; no existing shortcut is overridden.
+Empty groups or positions before the first marker show a notice without changing
+the clipboard. Files without markers are never copied wholesale as a fallback.
+Copying does not change the saved SQL and never executes it. This feature is
+limited to `.sql` files; existing files are not automatically regrouped.
+
 ## Build and installation
 
 Requirements: PowerShell 7+, Node.js 22+, declared npm dependencies and an open

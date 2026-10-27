@@ -1,6 +1,14 @@
+import { iconName, installIcons, setIcon } from "../../utils/icons";
+import { MarkdownViewAdapter } from "./editor/markdown-view-adapter";
+import { activeMarkdownView, markdownViews } from "./utils/markdown-views";
+import { noteFrontmatter, processNote, processNoteFrontmatter } from "./utils/note-storage";
+import { noteHeadings } from "./utils/note-headings";
 import { ToolbarOverflow, type ToolbarAction } from "./menus/toolbar-overflow";
 import { installEditorRuntime } from "./editor/editor-runtime.js";
 import { canFormatEditor } from "./utils/editor-context";
+import { isEscapedAt, transformLiteralText } from "./utils/literal-text";
+import { selectionIsProse } from "./editor/literal-text-input";
+import { toggleInlineText, type InlineFormat, type FormatToken } from "./utils/inline-format";
 import { EditorMenu, closeEditorMenus } from "./menus/editor-menu";
 import { LANGUAGES, scanCodeBlocks } from "./editor/utils/note-code-block.js";
 import { formatBlock } from "./editor/utils/block-formats.js";
@@ -10,7 +18,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { syntaxTree } from "@codemirror/language";
 import { EditorState, RangeSetBuilder } from "@codemirror/state";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
-import { type Command, Editor, EditorPosition, EditorSuggest, FuzzySuggestModal, EditorSuggestContext, EditorSuggestTriggerInfo, ItemView, MarkdownPostProcessorContext, MarkdownView, Menu, Modal, Notice as ObsidianNotice, Platform, Plugin, PluginSettingTab, Setting, type ExtraButtonComponent, type SettingDefinitionItem, type SettingDefinitionPage, type SettingDefinitionRender, TFile, TFolder, WorkspaceLeaf, htmlToMarkdown, requestUrl, setIcon } from "obsidian";
+import { type Command, Editor, EditorPosition, EditorSuggest, FuzzySuggestModal, EditorSuggestContext, EditorSuggestTriggerInfo, ItemView, MarkdownPostProcessorContext, MarkdownView, Menu, Modal, Notice as ObsidianNotice, Platform, Plugin, PluginSettingTab, Setting, type ExtraButtonComponent, type SettingDefinitionItem, type SettingDefinitionPage, type SettingDefinitionRender, TFile, TFolder, WorkspaceLeaf, htmlToMarkdown, requestUrl} from "obsidian";
 
 let pluginNoticesEnabled = () => true;
 
@@ -173,6 +181,7 @@ function wysiwygDecorations(plugin: PatchworkEditorPlugin) {
 							// standing in for a lookbehind, so the span starts after it
 							const s = from + em.index + (em[1]?.length ?? 0);
 							const e = from + em.index + em[0].length;
+							if (isEscapedAt(inner, s - from) || isEscapedAt(inner, e - from - mlen)) continue;
 							if (spans.some((sp) => s < sp.to && e > sp.from)) continue; // no overlap/nesting
 							spans.push({ from: s, to: e, mlen, style: st });
 						}
@@ -519,6 +528,9 @@ function commentChips(plugin: PatchworkEditorPlugin) {
 }
 
 interface PatchworkEditorSettings {
+    explorerCollapsed?: boolean;
+    explorerFilesFirst?: boolean;
+    explorerCompact?: boolean;
 	showToolbar: boolean;
 	showOnMobile: boolean;
 	showBubble: boolean;
@@ -596,6 +608,9 @@ interface PatchworkEditorSettings {
 }
 
 const DEFAULT_SETTINGS: PatchworkEditorSettings = {
+	explorerCollapsed: false,
+	explorerFilesFirst: false,
+	explorerCompact: false,
 	showToolbar: true,
 	showOnMobile: false,
 	showBubble: true,
@@ -701,25 +716,24 @@ const BUTTON_IDS: [string, string][] = [
 	["highlight", "Highlight"],
 	["code", "Inline code"],
 	["color", "Text color"],
-	["fontsize", "Font size, sub & superscript"],
+	["fontsize", "Font size"],
 	["painter", "Format painter"],
 	["emoji", "Emoji"],
 	["bullet", "Bulleted list"],
 	["ordered", "Numbered list"],
 	["task", "Checklist"],
-	["quote", "Quote"],
-	["callout", "Callout (tip, note, warning…)"],
-	["toggle", "Toggle block (collapsible)"],
+	["callout", "Callout"],
+	["toggle", "Quote"],
 	["align", "Text alignment"],
 	["indent", "Increase indent"],
 	["outdent", "Decrease indent"],
-	["link", "Insert link"],
-	["file", "Insert a file (PDF, document)"],
+	["link", "Link"],
+	["file", "Attach file"],
 	["codeblock", "Code block"],
-	["table", "Insert table"],
+	["table", "Table"],
 	["hr", "Horizontal rule"],
 	["findreplace", "Find & replace"],
-	["dictate", "Dictate (speech to text)"],
+	["dictate", "Dictate"],
 	["ai", "AI edit"],
 	["clear", "Clear formatting"],
 ];
@@ -736,7 +750,6 @@ const TABLE_INERT = new Set([
 	"bullet",
 	"ordered",
 	"task",
-	"quote",
 	"callout",
 	"toggle",
 	"align",
@@ -754,7 +767,7 @@ const DEFAULT_BUTTON_ORDER: string[] = [
 	"undo", "redo", "|",
 	"heading", "|",
 	"bold", "italic", "underline", "strike", "highlight", "code", "color", "fontsize", "painter", "emoji", "|",
-	"bullet", "ordered", "task", "quote", "callout", "toggle", "|",
+	"bullet", "ordered", "task", "callout", "toggle", "|",
 	"align", "indent", "outdent", "|",
 	"link", "file", "codeblock", "table", "hr", "findreplace", "|",
 	"dictate", "ai", "clear",
@@ -1022,7 +1035,7 @@ class CoverModal extends Modal {
 	}
 
 	private current() {
-		return parseCover(this.app.metadataCache.getFileCache(this.file)?.frontmatter);
+		return parseCover(noteFrontmatter(this.app, this.file));
 	}
 
 	onOpen() {
@@ -1094,7 +1107,7 @@ class CoverModal extends Modal {
 		});
 
 		c.createDiv({ cls: "ped-cover-sect", text: "Title" });
-		const overlaid = parsePageLayout(this.app.metadataCache.getFileCache(this.file)?.frontmatter).overlayTitle;
+		const overlaid = parsePageLayout(noteFrontmatter(this.app, this.file)).overlayTitle;
 		const ovRow = c.createDiv({ cls: "ped-cover-heights" });
 		const ovBtn = ovRow.createEl("button", { cls: "ped-cover-height", text: "Float title over cover" });
 		ovBtn.toggleClass("is-active", overlaid);
@@ -1300,7 +1313,7 @@ class TodayView extends ItemView {
 	}
 
 	getIcon() {
-		return "calendar-check";
+		return iconName("calendar-check");
 	}
 
 	async onOpen() {
@@ -1377,7 +1390,7 @@ class CommentsView extends ItemView {
 	}
 
 	getIcon() {
-		return "message-circle";
+		return iconName("message-circle");
 	}
 
 	async onOpen() {
@@ -1437,7 +1450,7 @@ class CommentsView extends ItemView {
 	}
 
 	private async resolve(f: TFile, cm: NoteComment) {
-		await this.plugin.app.vault.process(f, (data) => {
+		await processNote(this.plugin.app, f, (data) => {
 			const lines = data.split("\n");
 			const line = lines[cm.line];
 			if (line == null) return data;
@@ -1486,7 +1499,7 @@ class TocBlock extends MarkdownRenderChild {
 		const lo = rangeM ? Number(rangeM[1]) : 1;
 		const hi = rangeM ? Number(rangeM[2]) : 6;
 		const f = this.plugin.app.vault.getAbstractFileByPath(this.path);
-		const headings = (f instanceof TFile ? this.plugin.app.metadataCache.getFileCache(f)?.headings : null) ?? [];
+		const headings = (f instanceof TFile ? noteHeadings(this.plugin.app, f) : null) ?? [];
 		const shown = headings.filter((h) => h.level >= lo && h.level <= hi);
 		if (!shown.length) {
 			root.createDiv({ cls: "ped-todo-empty", text: "No headings yet." });
@@ -1664,7 +1677,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	 * inside that window gets exactly what Ctrl+C always gave.
 	 */
 	private onEditorCopy(e: ClipboardEvent) {
-		const prose = this.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+		const prose = activeMarkdownView(this.app)?.editor;
 		if (!prose || !canFormatEditor(this.app, prose)) return;
 		if (!this.settings.richCopy) return;
 		const el = (e.target instanceof HTMLElement ? e.target : document.activeElement) as HTMLElement | null;
@@ -1821,6 +1834,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	 * beats one that silently does nothing.
 	 */
 	async onload() {
+		installIcons(this);
 		try {
 			await this.boot();
 		} catch (e) {
@@ -1845,6 +1859,23 @@ export default class PatchworkEditorPlugin extends Plugin {
 	private async boot() {
 		await this.loadSettings();
 		installEditorRuntime(this);
+        new MarkdownViewAdapter(this, (encryptedViewClosed) => {
+            if (encryptedViewClosed) {
+                closeEditorMenus();
+                this.noteCodeEditor.menus.close(false);
+                this.closeEmojiPicker();
+                this.closeColorPopover();
+                this.closeImageBar();
+                this.bubbleEl?.hide();
+                this.rightPress = null;
+                this.noteTitle.historyView = undefined;
+            }
+            this.ensureToolbars();
+            this.noteTitle.refresh();
+            this.noteOutline.schedule();
+            this.noteNavigation.schedule();
+            this.queuePageChrome();
+        });
 		pluginNoticesEnabled = () => this.settings.showNotifications;
 		this.addSettingTab(new PatchworkEditorSettingTab(this));
 		// Ground-truth check for which code is actually running (Settings shows the
@@ -1924,7 +1955,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			"keydown",
 			(e: KeyboardEvent) => {
 				if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
-				const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+				const view = activeMarkdownView(this.app);
 				const cm = view ? this.cmOf(view) : null;
 				if (!cm || !cm.hasFocus) return;
 				const sel = cm.state.selection.main;
@@ -1984,7 +2015,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			(e: KeyboardEvent) => {
 				const back = e.key === "Backspace";
 				if ((!back && e.key !== "Delete") || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
-				const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+				const view = activeMarkdownView(this.app);
 				const cm = view ? this.cmOf(view) : null;
 				if (!cm || !cm.hasFocus) return;
 				const sel = cm.state.selection.main;
@@ -2033,7 +2064,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 				menu.addItem((i) =>
 					i
 						.setTitle("Convert lead-ins into callouts…")
-						.setIcon("lightbulb")
+						.setIcon(iconName("lightbulb"))
 						.onClick(() => this.openCalloutConverter(target.path === "/" ? "" : target.path))
 				);
 			})
@@ -2257,7 +2288,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 		});
 		this.addCommand({
 			id: "code-block",
-			name: "Code block (pick a language)",
+			name: "Code block",
 			icon: "code-square",
 			editorCallback: (ed) => this.insertCodeBlock(ed),
 		});
@@ -2271,7 +2302,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 		this.addCommand({ id: "move-block-down", name: "Move block down", editorCallback: (ed) => this.moveBlockBy(ed, 1) });
 		this.addCommand({ id: "dictate", name: "Dictate at the cursor (start/stop)", icon: "mic", editorCallback: (ed) => void this.toggleDictation(ed) });
 		// every toolbar action as a bindable command
-		this.addCommand({ id: "underline", icon: "underline", name: "Underline", editorCallback: (ed) => this.toggleWrap(ed, "<u>", "</u>") });
+		this.addCommand({ id: "underline", icon: "underline", name: "Underline", editorCallback: (ed) => this.toggleEmphasis(ed, "underline") });
 		this.addCommand({ id: "clear-formatting", name: "Clear formatting", editorCallback: (ed) => this.clearFormatting(ed) });
 		this.addCommand({
 			id: "clean-note-highlights",
@@ -2323,7 +2354,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 				// better answer than the cursor for which link was meant. A
 				// selection is the exception: that is what the user aimed with.
 				if (this.rightPress?.offered) return;
-				const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+				const view = activeMarkdownView(this.app);
 				const at = editor.getSelection() || !view ? null : this.rightPressPos(view);
 				const probe = at ?? editor.getCursor();
 				if (!linkAt(editor.getLine(probe.line), probe.ch)) return;
@@ -2331,7 +2362,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 				menu.addItem((i) =>
 					i
 						.setTitle("Edit link (Patchwork Editor)")
-						.setIcon("link")
+						.setIcon(iconName("link"))
 						.setSection("selection")
 						.onClick(() => this.openLinkDialog(editor, at))
 				);
@@ -2344,13 +2375,13 @@ export default class PatchworkEditorPlugin extends Plugin {
 		// guaranteed to be exclusive, and the same item twice on one menu is
 		// its own bug.
 		const onLinkMenu = (menu: Menu) => {
-			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			const view = activeMarkdownView(this.app);
 			if (!view || this.rightPress?.offered) return;
 			const at = this.rightPressPos(view);
 			if (!at || !linkAt(view.editor.getLine(at.line), at.ch)) return;
 			if (this.rightPress) this.rightPress.offered = true;
 			menu.addItem((i) =>
-				i.setTitle("Edit link (Patchwork Editor)").setIcon("link").onClick(() => this.openLinkDialog(view.editor, at))
+				i.setTitle("Edit link (Patchwork Editor)").setIcon(iconName("link")).onClick(() => this.openLinkDialog(view.editor, at))
 			);
 		};
 		this.registerEvent(this.app.workspace.on("url-menu", (menu) => onLinkMenu(menu)));
@@ -2365,7 +2396,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			this.app.workspace.on("editor-menu", (menu, editor) => {
 				if (!editor.getSelection()) return;
 				menu.addItem((i) =>
-					i.setTitle("Copy as rich text").setIcon("clipboard-type").setSection("selection").onClick(() => void this.copyRichText(editor))
+					i.setTitle("Copy as rich text").setIcon(iconName("clipboard-type")).setSection("selection").onClick(() => void this.copyRichText(editor))
 				);
 			})
 		);
@@ -2412,7 +2443,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 				menu.addItem((i) =>
 					i
 						.setTitle("File (PDF, document)")
-						.setIcon("paperclip")
+						.setIcon(iconName("paperclip"))
 						.setSection("selection.insert.basic")
 						.onClick(() => this.insertFile(editor))
 				);
@@ -2486,7 +2517,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			name: "Verify this note",
 			icon: "badge-check",
 			callback: () => {
-				const f = this.app.workspace.getActiveViewOfType(MarkdownView)?.file;
+				const f = activeMarkdownView(this.app)?.file;
 				if (f) this.openVerifyMenu(undefined, f);
 			},
 		});
@@ -2505,7 +2536,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			name: "Add or change page icon",
 			icon: "smile",
 			callback: () => {
-				const f = this.app.workspace.getActiveViewOfType(MarkdownView)?.file;
+				const f = activeMarkdownView(this.app)?.file;
 				if (f) this.openIconMenu(undefined, f);
 			},
 		});
@@ -2803,7 +2834,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			void (async () => {
 				const f = input.files?.[0];
 				if (!f) return;
-				const source = this.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path ?? "";
+				const source = activeMarkdownView(this.app)?.file?.path ?? "";
 				const dest = await this.app.fileManager.getAvailablePathForAttachment(f.name || `Photo ${Date.now()}.jpg`, source);
 				const file = await this.app.vault.createBinary(dest, await f.arrayBuffer());
 				let link = this.app.fileManager.generateMarkdownLink(file, source);
@@ -2824,7 +2855,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	 * scan, or a spreadsheet.
 	 */
 	insertFile(ed: Editor) {
-		const notePath = this.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path ?? "";
+		const notePath = activeMarkdownView(this.app)?.file?.path ?? "";
 		const input = createEl("input", { type: "file" });
 		input.multiple = true;
 		input.addEventListener("change", () => {
@@ -2956,7 +2987,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			e.preventDefault();
 			e.stopPropagation();
 			this.todoHandled = true;
-			void this.app.vault.process(file, (data) => {
+			void processNote(this.app, file, (data) => {
 				const lines = data.split("\n");
 				const res = lines[lineNo] != null ? toggleTodo(lines[lineNo], todayStr(), this.settings.stampDoneDates) : null;
 				if (!res) return data;
@@ -3054,7 +3085,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 		const at = t.line ?? -1;
 		let before: string[] | null = null;
 		let after: string[] | null = null;
-		await this.app.vault.process(file, (data) => {
+		await processNote(this.app, file, (data) => {
 			const lines = data.split("\n");
 			if (at < 0 || lines[at] == null) return data;
 			const now = parseTodo(lines[at]);
@@ -3080,7 +3111,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 		const notice = new Notice(frag, 5000);
 		link.addEventListener("click", () => {
 			notice.hide();
-			void this.app.vault.process(file, (data) => {
+			void processNote(this.app, file, (data) => {
 				const lines = data.split("\n");
 				const cur = lines.slice(at, at + after.length);
 				if (JSON.stringify(cur) !== JSON.stringify(after)) return data;
@@ -3201,11 +3232,11 @@ export default class PatchworkEditorPlugin extends Plugin {
 		const menu = new EditorMenu(this.app);
 		const today = todayStr();
 		const set = (date: string | null) => void this.setTodoDue(t, date);
-		menu.addItem((i) => i.setTitle("Today").setIcon("calendar-check").onClick(() => set(today)));
-		menu.addItem((i) => i.setTitle("Tomorrow").setIcon("calendar").onClick(() => set(isoAddDays(today, 1))));
-		menu.addItem((i) => i.setTitle("Next week").setIcon("calendar-plus").onClick(() => set(parseDatePhrase("next week", today))));
+		menu.addItem((i) => i.setTitle("Today").setIcon(iconName("calendar-check")).onClick(() => set(today)));
+		menu.addItem((i) => i.setTitle("Tomorrow").setIcon(iconName("calendar")).onClick(() => set(isoAddDays(today, 1))));
+		menu.addItem((i) => i.setTitle("Next week").setIcon(iconName("calendar-plus")).onClick(() => set(parseDatePhrase("next week", today))));
 		menu.addItem((i) =>
-			i.setTitle("Pick date…").setIcon("calendar-search").onClick(() => {
+			i.setTitle("Pick date…").setIcon(iconName("calendar-search")).onClick(() => {
 				new TextPromptModal(this.app, "Due date, a date or phrase like 'next friday' or 'aug 1'", t.due ?? today, (raw) => {
 					const d = parseDatePhrase(raw, todayStr());
 					if (d) set(d);
@@ -3213,7 +3244,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 				}).open();
 			})
 		);
-		if (t.due) menu.addItem((i) => i.setTitle("Remove due date").setIcon("calendar-x").onClick(() => set(null)));
+		if (t.due) menu.addItem((i) => i.setTitle("Remove due date").setIcon(iconName("calendar-x")).onClick(() => set(null)));
 		menu.showAtMouseEvent(e);
 	}
 
@@ -3249,7 +3280,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			new Notice("Inbox path is a folder: " + path);
 			return;
 		}
-		await this.app.vault.process(file, (data) => (data.trim() ? data.replace(/\s*$/, "\n") : "") + line + "\n");
+		await processNote(this.app, file, (data) => (data.trim() ? data.replace(/\s*$/, "\n") : "") + line + "\n");
 		new Notice("Added: " + line.replace(/^\s*- \[ \] /, ""));
 	}
 
@@ -3344,7 +3375,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			if (!(file instanceof TFile)) return;
 			const info = ctx.getSectionInfo(el);
 			if (!info) return;
-			await this.app.vault.process(file, (data) => {
+			await processNote(this.app, file, (data) => {
 				const lines = data.split("\n");
 				const open = lines[info.lineStart];
 				const close = lines[info.lineEnd];
@@ -3456,10 +3487,10 @@ export default class PatchworkEditorPlugin extends Plugin {
 				btn.oncontextmenu = (e) => {
 					e.preventDefault();
 					const m = new EditorMenu(this.app);
-					m.addItem((it) => it.setTitle("Rename tab").setIcon("pencil").onClick(() => renameTab(btn, i)));
+					m.addItem((it) => it.setTitle("Rename tab").setIcon(iconName("pencil")).onClick(() => renameTab(btn, i)));
 					if (panes.length > 1)
 						m.addItem((it) =>
-							it.setTitle("Delete tab").setIcon("trash-2").onClick(() => {
+							it.setTitle("Delete tab").setIcon(iconName("trash-2")).onClick(() => {
 								panes.splice(i, 1);
 								if (active >= i) active = Math.max(0, active - 1);
 								this.tabActive.set(key, active);
@@ -3506,7 +3537,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			if (!(file instanceof TFile)) return;
 			const info = ctx.getSectionInfo(el);
 			if (!info) return;
-			await this.app.vault.process(file, (data) => {
+			await processNote(this.app, file, (data) => {
 				const lines = data.split("\n");
 				const open = lines[info.lineStart];
 				const close = lines[info.lineEnd];
@@ -3625,10 +3656,10 @@ export default class PatchworkEditorPlugin extends Plugin {
 				btn.oncontextmenu = (e) => {
 					e.preventDefault();
 					const m = new EditorMenu(this.app);
-					m.addItem((it) => it.setTitle("Rename tab").setIcon("pencil").onClick(() => renameTab(btn, i)));
+					m.addItem((it) => it.setTitle("Rename tab").setIcon(iconName("pencil")).onClick(() => renameTab(btn, i)));
 					if (panes.length > 1)
 						m.addItem((it) =>
-							it.setTitle("Delete tab").setIcon("trash-2").onClick(() => {
+							it.setTitle("Delete tab").setIcon(iconName("trash-2")).onClick(() => {
 								panes.splice(i, 1);
 								if (active >= i) active = Math.max(0, active - 1);
 								void writeBack();
@@ -3687,7 +3718,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			if (!(file instanceof TFile)) return;
 			const info = ctx.getSectionInfo(el);
 			if (!info) return;
-			await this.app.vault.process(file, (data) => {
+			await processNote(this.app, file, (data) => {
 				const lines = data.split("\n");
 				const open = lines[info.lineStart];
 				const close = lines[info.lineEnd];
@@ -3898,7 +3929,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 
 	/** Toggle the per-note width, font, and cover-overlay classes on the view. */
 	private applyPageLayout(view: MarkdownView) {
-		const layout = parsePageLayout(view.file ? this.app.metadataCache.getFileCache(view.file)?.frontmatter : undefined);
+		const layout = parsePageLayout(view.file ? noteFrontmatter(this.app, view.file) : undefined);
 		const host = view.containerEl;
 		host.toggleClass("ped-full-width", layout.fullWidth);
 		host.toggleClass("ped-font-serif", layout.font === "serif");
@@ -3907,7 +3938,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	}
 
 	async writePageProp(file: TFile, key: string, value: unknown) {
-		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+		await processNoteFrontmatter(this.app, file, (fm: Record<string, unknown>) => {
 			if (value == null) delete fm[key];
 			else fm[key] = value;
 		});
@@ -3916,15 +3947,15 @@ export default class PatchworkEditorPlugin extends Plugin {
 	/** A small menu for the per-note page options: full width, body font, and
 	 *  (when a cover is set) whether the title floats over it. */
 	openPageOptions() {
-		const file = this.app.workspace.getActiveViewOfType(MarkdownView)?.file;
+		const file = activeMarkdownView(this.app)?.file;
 		if (!file) return;
-		const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+		const fm = noteFrontmatter(this.app, file);
 		const layout = parsePageLayout(fm);
 		const menu = new EditorMenu(this.app);
 		menu.addItem((i) =>
 			i
 				.setTitle("Full width")
-				.setIcon("move-horizontal")
+				.setIcon(iconName("move-horizontal"))
 				.setChecked(layout.fullWidth)
 				.onClick(() => void this.writePageProp(file, "full-width", layout.fullWidth ? null : true))
 		);
@@ -3933,7 +3964,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			menu.addItem((i) =>
 				i
 					.setTitle(label)
-					.setIcon(icon)
+					.setIcon(iconName(icon))
 					.setChecked((layout.font ?? "default") === val)
 					.onClick(() => void this.writePageProp(file, "font", val === "default" ? null : val))
 			);
@@ -3945,7 +3976,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			menu.addItem((i) =>
 				i
 					.setTitle("Title over cover")
-					.setIcon("image")
+					.setIcon(iconName("image"))
 					.setChecked(layout.overlayTitle)
 					.onClick(() => void this.writePageProp(file, "cover-overlay", layout.overlayTitle ? null : true))
 			);
@@ -3957,7 +3988,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	 *  inline title. Click to change or remove. */
 	private applyPageIcon(view: MarkdownView) {
 		const file = view.file;
-		const icon = file ? parseIcon(this.app.metadataCache.getFileCache(file)?.frontmatter) : null;
+		const icon = file ? parseIcon(noteFrontmatter(this.app, file)) : null;
 		for (const titleEl of Array.from(view.containerEl.querySelectorAll(".inline-title"))) {
 			const parent = titleEl.parentElement;
 			if (!parent) continue;
@@ -3996,7 +4027,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	 *  the content itself. */
 	private applyEditedStamp(view: MarkdownView) {
 		const file = view.file;
-		const when = file ? editedAt(this.app.metadataCache.getFileCache(file)?.frontmatter, file.stat?.mtime ?? 0) : 0;
+		const when = file ? editedAt(noteFrontmatter(this.app, file), file.stat?.mtime ?? 0) : 0;
 		const on = this.settings.showEdited !== "off" && !!file && !!when;
 		const pos = this.settings.editedPosition;
 		const wantTitle = on && (pos === "title" || pos === "rule" || pos === "both");
@@ -4069,23 +4100,23 @@ export default class PatchworkEditorPlugin extends Plugin {
 	openIconMenu(evt: MouseEvent | undefined, file: TFile) {
 		const menu = new EditorMenu(this.app);
 		menu.addItem((i) =>
-			i.setTitle("Change icon…").setIcon("smile").onClick(() => {
+			i.setTitle("Change icon…").setIcon(iconName("smile")).onClick(() => {
 				const anchor =
 					(evt?.target instanceof HTMLElement ? evt.target : null) ??
-					(this.app.workspace.getActiveViewOfType(MarkdownView)?.containerEl.querySelector<HTMLElement>(".view-header-title-container")) ??
+					(activeMarkdownView(this.app)?.containerEl.querySelector<HTMLElement>(".view-header-title-container")) ??
 					document.body;
 				this.pickEmoji(anchor, (ch) => {
-					void this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+					void processNoteFrontmatter(this.app, file, (fm: Record<string, unknown>) => {
 						fm["icon"] = ch;
 					});
 				});
 			})
 		);
-		if (parseIcon(this.app.metadataCache.getFileCache(file)?.frontmatter))
+		if (parseIcon(noteFrontmatter(this.app, file)))
 			menu.addItem((i) =>
-				i.setTitle("Remove icon").setIcon("x").onClick(
+				i.setTitle("Remove icon").setIcon(iconName("x")).onClick(
 					() =>
-						void this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+						void processNoteFrontmatter(this.app, file, (fm: Record<string, unknown>) => {
 							delete fm["icon"];
 						})
 				)
@@ -4096,7 +4127,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 
 	private applyCover(view: MarkdownView) {
 		const file = view.file;
-		const spec = file ? parseCover(this.app.metadataCache.getFileCache(file)?.frontmatter) : null;
+		const spec = file ? parseCover(noteFrontmatter(this.app, file)) : null;
 		const hosts = [
 			view.containerEl.querySelector(".markdown-source-view .cm-sizer"),
 			view.containerEl.querySelector(".markdown-preview-view .markdown-preview-sizer"),
@@ -4155,7 +4186,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	}
 
 	async writeCover(file: TFile, value: string | null, y?: number) {
-		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+		await processNoteFrontmatter(this.app, file, (fm: Record<string, unknown>) => {
 			if (value == null) {
 				delete fm["cover"];
 				delete fm["cover-y"];
@@ -4168,7 +4199,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	}
 
 	async writeCoverHeight(file: TFile, height: CoverHeight) {
-		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+		await processNoteFrontmatter(this.app, file, (fm: Record<string, unknown>) => {
 			if (height === "standard") delete fm["cover-h"];
 			else fm["cover-h"] = height;
 		});
@@ -4193,7 +4224,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	/** The visual cover picker: gradient and solid swatches, your own images,
 	 *  and a height control, all applied live behind the modal. */
 	openCoverMenu(_evt?: MouseEvent) {
-		const file = this.app.workspace.getActiveViewOfType(MarkdownView)?.file;
+		const file = activeMarkdownView(this.app)?.file;
 		if (!file) return;
 		new CoverModal(this, file).open();
 	}
@@ -4347,7 +4378,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 		let badge = header.querySelector<HTMLElement>(":scope > .ped-verify");
 		const file = view.file;
 		const st = file
-			? verificationState(this.app.metadataCache.getFileCache(file)?.frontmatter, todayStr())
+			? verificationState(noteFrontmatter(this.app, file), todayStr())
 			: ({ state: "none" } as const);
 		if (!file || st.state === "none") {
 			badge?.remove();
@@ -4365,17 +4396,17 @@ export default class PatchworkEditorPlugin extends Plugin {
 
 	/** Notion's page verification: verify now, verify with expiry, remove. */
 	openVerifyMenu(evt: MouseEvent | undefined, file: TFile) {
-		const st = verificationState(this.app.metadataCache.getFileCache(file)?.frontmatter, todayStr());
+		const st = verificationState(noteFrontmatter(this.app, file), todayStr());
 		const menu = new EditorMenu(this.app);
 		const write = (until: string | null) =>
-			void this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+			void processNoteFrontmatter(this.app, file, (fm: Record<string, unknown>) => {
 				fm["verified"] = todayStr();
 				if (until == null) delete fm["verified-until"];
 				else fm["verified-until"] = until;
 			});
-		menu.addItem((i) => i.setTitle("Verify (no expiry)").setIcon("badge-check").onClick(() => write(null)));
+		menu.addItem((i) => i.setTitle("Verify (no expiry)").setIcon(iconName("badge-check")).onClick(() => write(null)));
 		menu.addItem((i) =>
-			i.setTitle("Verify with expiry…").setIcon("calendar-clock").onClick(() =>
+			i.setTitle("Verify with expiry…").setIcon(iconName("calendar-clock")).onClick(() =>
 				new TextPromptModal(this.app, "Verified until, a date or phrase like 'in 6 months'", "in 6 months", (raw) => {
 					const d = parseDatePhrase(raw, todayStr());
 					if (d) write(d);
@@ -4385,9 +4416,9 @@ export default class PatchworkEditorPlugin extends Plugin {
 		);
 		if (st.state !== "none")
 			menu.addItem((i) =>
-				i.setTitle("Remove verification").setIcon("badge-x").onClick(
+				i.setTitle("Remove verification").setIcon(iconName("badge-x")).onClick(
 					() =>
-						void this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+						void processNoteFrontmatter(this.app, file, (fm: Record<string, unknown>) => {
 							delete fm["verified"];
 							delete fm["verified-until"];
 						})
@@ -4495,7 +4526,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	 *  plugin does to a view means anything before the view is there, and the
 	 *  work runs again when the tab opens. */
 	private markdownViews(): MarkdownView[] {
-		return this.app.workspace.getLeavesOfType("markdown").flatMap((leaf) => (leaf.view instanceof MarkdownView ? [leaf.view] : []));
+		return markdownViews(this.app);
 	}
 
 	private ensureToolbars() {
@@ -4585,7 +4616,8 @@ export default class PatchworkEditorPlugin extends Plugin {
 			heading: () => {
 				if (hidden.has("heading")) return;
 				const heading = el.createEl("button", { cls: "ped-btn ped-heading", attr: { "aria-label": "Paragraph style" } });
-				headingLabel = heading.createSpan({ text: "\u00b6" });
+				headingLabel = heading.createSpan({ cls: "ped-heading-label" });
+				setIcon(headingLabel, "heading");
 				heading.addEventListener("pointerdown", (e) => e.preventDefault());
 				const run = () => {
                     const ed = this.activeEditor();
@@ -4597,8 +4629,8 @@ export default class PatchworkEditorPlugin extends Plugin {
 			},
 			bold: () => void btn("bold", "bold", "Bold", (ed) => this.toggleEmphasis(ed, "bold")),
 			italic: () => void btn("italic", "italic", "Italic", (ed) => this.toggleEmphasis(ed, "italic")),
-			underline: () => void btn("underline", "underline", "Underline", (ed) => this.toggleWrap(ed, "<u>", "</u>")),
-			strike: () => void btn("strike", "strikethrough", "Strikethrough", () => this.cmd("editor:toggle-strikethrough")),
+			underline: () => void btn("underline", "underline", "Underline", (ed) => this.toggleEmphasis(ed, "underline")),
+			strike: () => void btn("strike", "strikethrough", "Strikethrough", (ed) => this.toggleEmphasis(ed, "strike")),
 			highlight: () => {
 				const hl: HTMLElement | null = btn("highlight", "highlighter", "Highlight color", (ed) => this.openColorPopover(ed, anchor(hl), "hl"), "menu");
 			},
@@ -4607,14 +4639,14 @@ export default class PatchworkEditorPlugin extends Plugin {
 				const color: HTMLElement | null = btn("color", "palette", "Font color", (ed) => this.openColorPopover(ed, anchor(color), "text"), "menu");
 			},
 			fontsize: () => {
-				const fsize: HTMLElement | null = btn("fontsize", "a-large-small", "Font size, subscript & superscript", (ed) => this.showFontSizeMenu(ed, anchor(fsize)), "menu");
+				const fsize: HTMLElement | null = btn("fontsize", "a-large-small", "Font size", (ed) => this.showFontSizeMenu(ed, anchor(fsize)), "menu");
 				if (fsize && !fsize.querySelector("svg")) setIcon(fsize, "type");
 			},
 			painter: () => {
 				const painter = btn(
 					"painter",
 					"paintbrush",
-					"Format painter: click to paint once, click again to keep painting, Esc to stop. Copying unformatted text strips formatting instead.",
+					"Format painter",
 					(ed) => this.armPainter(ed),
 					"menu"
 				);
@@ -4629,12 +4661,11 @@ export default class PatchworkEditorPlugin extends Plugin {
 			bullet: () => void btn("bullet", "list", "Bulleted list", () => this.cmd("editor:toggle-bullet-list")),
 			ordered: () => void btn("ordered", "list-ordered", "Numbered list", () => this.cmd("editor:toggle-numbered-list")),
 			task: () => void btn("task", "list-checks", "Checklist", () => this.cmd("editor:toggle-checklist-status")),
-			quote: () => void btn("quote", "quote", "Quote", () => this.cmd("editor:toggle-blockquote")),
 			callout: () => {
 				const callout: HTMLElement | null = btn(
 					"callout",
 					"lightbulb",
-					"Callout: turn this block into a tip, note, warning...",
+					"Callout",
 					(ed) => {
 						const r = (anchor(callout)).getBoundingClientRect();
 						this.pickCalloutAtCursor(ed, { x: r.left, y: r.bottom + 4 });
@@ -4643,7 +4674,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 				);
 			},
 			toggle: () =>
-				void btn("toggle", "chevron-right", "Toggle block: collapse this block behind its first line (click again to unwrap)", (ed) =>
+				void btn("toggle", "chevron-right", "Quote", (ed) =>
 					this.toggleBlock(ed)
 				),
 			align: () => {
@@ -4651,18 +4682,18 @@ export default class PatchworkEditorPlugin extends Plugin {
 			},
 			indent: () => void btn("indent", "indent-increase", "Increase indent", (ed) => this.indent(ed, 1)),
 			outdent: () => void btn("outdent", "indent-decrease", "Decrease indent", (ed) => this.indent(ed, -1)),
-			link: () => void btn("link", "link", "Insert or edit link", (ed) => this.openLinkDialog(ed), "menu"),
-			file: () => void btn("file", "paperclip", "Attach a file: it is saved with this note and linked here", (ed) => this.insertFile(ed), "menu"),
+			link: () => void btn("link", "link", "Link", (ed) => this.openLinkDialog(ed), "menu"),
+			file: () => void btn("file", "paperclip", "Attach file", (ed) => this.insertFile(ed), "menu"),
 			codeblock: () => {
-				const cbBtn: HTMLElement | null = btn("codeblock", "code-square", "Code block (pick a language)", (ed) => this.insertCodeBlock(ed, rectBelow(anchor(cbBtn))), "menu");
+				const cbBtn: HTMLElement | null = btn("codeblock", "code-square", "Code block", (ed) => this.insertCodeBlock(ed, rectBelow(anchor(cbBtn))), "menu");
 			},
 			table: () => {
-				const tbl: HTMLElement | null = btn("table", "table", "Insert table", (ed) => this.openTableGrid(ed, anchor(tbl)), "menu");
+				const tbl: HTMLElement | null = btn("table", "table", "Table", (ed) => this.openTableGrid(ed, anchor(tbl)), "menu");
 			},
 			hr: () => void btn("hr", "minus", "Horizontal rule", () => this.cmd("editor:insert-horizontal-rule")),
-			findreplace: () => void btn("findreplace", "text-search", "Find & replace in this note", () => this.cmd("editor:open-search-replace")),
+			findreplace: () => void btn("findreplace", "text-search", "Find & replace", () => this.cmd("editor:open-search-replace")),
 			dictate: () => {
-				const mic = btn("dictate", "mic", "Dictate: click, talk, click again to stop (right-click: raw / tidy / bullets)", (ed) =>
+				const mic = btn("dictate", "mic", "Dictate", (ed) =>
 					void this.toggleDictation(ed)
 				);
 				mic?.addEventListener("contextmenu", (e) => {
@@ -4670,7 +4701,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 					this.showDictationModes(mic);
 				});
 			},
-			ai: () => void btn("ai", "sparkles", "AI edit the selection", (ed) => this.showAiMenu(ed, anchor(buttons.get("ai") ?? null)), "menu"),
+			ai: () => void btn("ai", "sparkles", "AI edit", (ed) => this.showAiMenu(ed, anchor(buttons.get("ai") ?? null)), "menu"),
 			clear: () => void btn("clear", "remove-formatting", "Clear formatting", (ed) => this.clearFormatting(ed)),
 		};
 
@@ -4711,7 +4742,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 		// which routes the toolbar and commands into the pane like a note
 		const info = this.app.workspace.activeEditor;
 		if (info && isPaneOwner(info) && info.editor && canFormatEditor(this.app, info.editor)) return info.editor;
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = activeMarkdownView(this.app);
 		return view && view.getMode() === "source" && canFormatEditor(this.app, view.editor) ? view.editor : null;
 	}
 
@@ -4737,66 +4768,20 @@ export default class PatchworkEditorPlugin extends Plugin {
 		this.queueStateRefresh();
 	}
 
-	private toggleWrap(ed: Editor, open: string, close: string) {
+	/** All four actions share selection mapping and escaped-literal handling. */
+	private toggleEmphasis(ed: Editor, kind: InlineFormat) {
 		if (!canFormatEditor(this.app, ed)) return;
-		const sel = ed.getSelection();
-		if (sel.startsWith(open) && sel.endsWith(close)) {
-			ed.replaceSelection(sel.slice(open.length, sel.length - close.length));
-			return;
-		}
-		if (sel) {
-			ed.replaceSelection(open + sel + close);
-			return;
-		}
-		const cur = ed.getCursor();
-		ed.replaceRange(open + close, cur);
-		ed.setCursor({ line: cur.line, ch: cur.ch + open.length });
-	}
-
-	/** Bold/italic that adapts to context: inside a color or highlight the
-	 *  emphasis must be HTML (Obsidian won't format ** inside inline HTML off
-	 *  the active line), everywhere else Obsidian's native ** / * keeps the
-	 *  Markdown portable. */
-	private toggleEmphasis(ed: Editor, kind: "bold" | "italic") {
-		if (!canFormatEditor(this.app, ed)) return;
-		const from = ed.getCursor("from");
-		const to = ed.getCursor("to");
-		const inWrapper =
-			from.line === to.line &&
-			(() => {
-				const w = wrapperAt(ed.getLine(from.line), from.ch, to.ch);
-				return w.highlighted || w.color != null;
-			})();
-		if (inWrapper) this.toggleHtmlEmphasis(ed, kind === "bold" ? ["strong", "b"] : ["em", "i"]);
-		else this.cmd(kind === "bold" ? "editor:toggle-bold" : "editor:toggle-italics");
-	}
-
-	/** Toggle an HTML emphasis wrapper around the selection: if it already sits
-	 *  inside one of `tags`, strip that tag; otherwise wrap in the first tag. */
-	private toggleHtmlEmphasis(ed: Editor, tags: string[]) {
-		if (!canFormatEditor(this.app, ed)) return;
-		const from = ed.getCursor("from");
-		const to = ed.getCursor("to");
-		if (from.line === to.line) {
-			const line = ed.getLine(from.line);
-			const re = new RegExp(`<(${tags.join("|")})>([\\s\\S]*?)<\\/\\1>`, "gi");
-			let m: RegExpExecArray | null;
-			while ((m = re.exec(line))) {
-				const s = m.index;
-				const openLen = m[0].indexOf(">") + 1;
-				const innerFrom = s + openLen;
-				const innerTo = s + m[0].length - `</${m[1]}>`.length;
-				if (innerFrom <= from.ch && innerTo >= to.ch) {
-					ed.transaction({ changes: [{ from: { line: from.line, ch: s }, to: { line: from.line, ch: s + m[0].length }, text: m[2] }] });
-					ed.setSelection({ line: from.line, ch: from.ch - openLen }, { line: from.line, ch: to.ch - openLen });
-					this.queueStateRefresh();
-					return;
-				}
-			}
-		}
-		const open = `<${tags[0]}>`;
-		const close = `</${tags[0]}>`;
-		ed.replaceSelection(open + ed.getSelection() + close);
+		const cm = (ed as Editor & { cm?: EditorView }).cm;
+		if (!cm) return;
+		const selection = cm.state.selection.main;
+		const from = cm.state.doc.lineAt(selection.from).from;
+		const to = cm.state.doc.lineAt(selection.to).to;
+		const tokens: FormatToken[] = [];
+		syntaxTree(cm.state).iterate({ from, to, enter(node) {
+			if (node.from >= from && node.to <= to) tokens.push({ from: node.from - from, to: node.to - from, name: node.name });
+		} });
+		const result = toggleInlineText(cm.state.sliceDoc(from, to), selection.anchor - from, selection.head - from, kind, tokens);
+		cm.dispatch({ changes: { from, to, insert: result.text }, selection: { anchor: from + result.anchor, head: from + result.head }, userEvent: "input.format" });
 		this.queueStateRefresh();
 	}
 
@@ -4858,7 +4843,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	insertColumnsMenu(ed: Editor) {
 		const menu = new EditorMenu(this.app);
 		const opt = (title: string, icon: string, layout: ColumnLayout) =>
-			menu.addItem((i) => i.setTitle(title).setIcon(icon).onClick(() => this.insertColumns(ed, layout)));
+			menu.addItem((i) => i.setTitle(title).setIcon(iconName(icon)).onClick(() => this.insertColumns(ed, layout)));
 		opt("Two columns", "columns-2", "two");
 		opt("Three columns", "columns-3", "three");
 		opt("Sidebar, then content", "panel-left", "sidebar-left");
@@ -5071,7 +5056,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	 *  the cursor in place. `at` overrides both, for a right-click, which
 	 *  carries a position of its own and no selection. */
 	private openLinkDialog(ed: Editor, at: EditorPosition | null = null) {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = activeMarkdownView(this.app);
 		if (!view) return;
 		const doc = this.cursorDoc(ed);
 		let from = at ?? doc.from;
@@ -5238,18 +5223,20 @@ export default class PatchworkEditorPlugin extends Plugin {
 	 *  clean text on the clipboard instead. Only steps in when there is actually
 	 *  something to strip, so plain selections copy exactly as before. */
 	private onCopyOut(e: ClipboardEvent, isCut: boolean) {
-		const prose = this.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+		const prose = activeMarkdownView(this.app)?.editor;
 		if (!prose || !canFormatEditor(this.app, prose)) return;
 		const mode = this.settings.copyMode;
-		if (mode === "off") return;
 		const target = e.target as HTMLElement | null;
 		if (!target?.closest?.(".markdown-source-view.mod-cm6")) return;
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = activeMarkdownView(this.app);
 		if (!view || view.getMode() !== "source" || !view.containerEl.contains(target)) return;
 		const ed = view.editor;
 		const sel = ed.getSelection();
 		if (!sel) return;
-		const cleaned = cleanCopyText(sel, mode);
+		const cm = this.cmOf(view);
+		const clean = (text: string) => mode === "off" ? text : cleanCopyText(text, mode);
+		const cleaned = cm && selectionIsProse(cm.state)
+			? transformLiteralText(sel, clean, true) : clean(sel);
 		if (cleaned === sel) return; // nothing formatted, let Obsidian's own copy run
 		e.preventDefault();
 		e.stopPropagation();
@@ -5286,7 +5273,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			new Notice("Select formatted text first, then click the painter.");
 			return;
 		}
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = activeMarkdownView(this.app);
 		const tree = view ? this.treeMarks(view) : null;
 		const from = ed.getCursor("from");
 		const to = ed.getCursor("to");
@@ -5387,7 +5374,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			new Notice("Microphone unavailable or permission denied.");
 			return;
 		}
-		const target = this.app.workspace.getActiveViewOfType(MarkdownView)?.editor ?? ed;
+		const target = activeMarkdownView(this.app)?.editor ?? ed;
 		const rec = new MediaRecorder(stream);
 		this.recorder = rec;
 		this.recChunks = [];
@@ -5494,7 +5481,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 		const menu = new EditorMenu(this.app);
 		const opt = (label: string, mode: PatchworkEditorSettings["dictationMode"], icon: string) =>
 			menu.addItem((i) =>
-				i.setTitle(label).setIcon(icon).setChecked(this.settings.dictationMode === mode).onClick(() => {
+				i.setTitle(label).setIcon(iconName(icon)).setChecked(this.settings.dictationMode === mode).onClick(() => {
 					this.settings.dictationMode = mode;
 					void this.persistSettings();
 				})
@@ -5554,13 +5541,23 @@ export default class PatchworkEditorPlugin extends Plugin {
 	openHeadingMenu(ed: Editor, anchor: HTMLElement) {
 		const menu = new EditorMenu(this.app);
 		const cur = headingLevel(ed.getLine(ed.getCursor().line));
-		const opt = (label: string, level: number) =>
+		const opt = (label: string, level: number) => {
+			const title = anchor.ownerDocument.createDocumentFragment();
+			const preview = title.createSpan({ cls: "pw-heading-preview" });
+			const text = preview.createSpan({ text: label });
+			if (level) {
+				text.style.fontSize = `var(--h${level}-size)`;
+				text.style.fontWeight = `var(--h${level}-weight)`;
+				text.style.fontFamily = `var(--h${level}-font, var(--font-text))`;
+				text.style.lineHeight = `var(--h${level}-line-height)`;
+			}
 			menu.addItem((i) =>
 				i
-					.setTitle(label)
+					.setTitle(title)
 					.setChecked(cur === level)
 					.onClick(() => this.applyHeading(ed, level))
 			);
+		};
 		opt("Normal text", 0);
 		for (let h = 1; h <= 6; h++) opt("Heading " + h, h);
 		const r = anchor.getBoundingClientRect();
@@ -5572,7 +5569,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 		const menu = new EditorMenu(this.app);
 		const cur = alignOf(ed.getLine(ed.getCursor().line));
 		const opt = (label: string, icon: string, a: Align) =>
-			menu.addItem((i) => i.setTitle(label).setIcon(icon).setChecked(cur === a).onClick(() => this.applyAlign(ed, a)));
+			menu.addItem((i) => i.setTitle(label).setIcon(iconName(icon)).setChecked(cur === a).onClick(() => this.applyAlign(ed, a)));
 		opt("Align left", "align-left", "left");
 		opt("Align center", "align-center", "center");
 		opt("Align right", "align-right", "right");
@@ -5608,11 +5605,10 @@ export default class PatchworkEditorPlugin extends Plugin {
 			return b;
 		};
 		const sep = () => el.createDiv({ cls: "ped-sep" });
-		// Paragraph style leads, as it does on the toolbar, and its label shows
-		// the current level so the bubble reports the block you are in and not
-		// just the inline marks.
+		// Use the same paragraph-style icon in the toolbar and selection bubble.
 		const bheading = el.createEl("button", { cls: "ped-btn ped-heading", attr: { "aria-label": "Paragraph style" } });
-		this.bubbleHeadingLabel = bheading.createSpan({ text: "¶" });
+		this.bubbleHeadingLabel = bheading.createSpan({ cls: "ped-heading-label" });
+		setIcon(this.bubbleHeadingLabel, "heading");
 		bheading.addEventListener("pointerdown", (e) => e.preventDefault());
 		bheading.addEventListener("click", () => {
 			const ed = this.activeEditor();
@@ -5621,7 +5617,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 		sep();
 		btn("bold", "bold", "Bold", (ed) => this.toggleEmphasis(ed, "bold"));
 		btn("italic", "italic", "Italic", (ed) => this.toggleEmphasis(ed, "italic"));
-		btn("underline", "underline", "Underline", (ed) => this.toggleWrap(ed, "<u>", "</u>"));
+		btn("underline", "underline", "Underline", (ed) => this.toggleEmphasis(ed, "underline"));
 		const bhl = btn("highlight", "highlighter", "Highlight color", (ed) => this.openColorPopover(ed, bhl ?? el, "hl"), "menu");
 		const bcolor = btn("color", "palette", "Font color", (ed) => this.openColorPopover(ed, bcolor ?? el, "text"), "menu");
 		sep();
@@ -5630,9 +5626,9 @@ export default class PatchworkEditorPlugin extends Plugin {
 		btn("task", "list-checks", "Checklist", () => this.cmd("editor:toggle-checklist-status"));
 		const balign = btn("align", "align-left", "Text alignment", (ed) => this.openAlignMenu(ed, balign ?? el), "menu");
 		sep();
-		btn("link", "link", "Insert or edit link", (ed) => this.openLinkDialog(ed), "menu");
+		btn("link", "link", "Link", (ed) => this.openLinkDialog(ed), "menu");
 		btn("comment", "message-circle", "Add comment", (ed) => this.addComment(ed));
-		const bp = btn("painter", "paintbrush", "Format painter: click to paint once, double-click to keep painting", (ed) => this.armPainter(ed), "menu");
+		const bp = btn("painter", "paintbrush", "Format painter", (ed) => this.armPainter(ed), "menu");
 		bp?.addEventListener("dblclick", () => {
 			const ed = this.activeEditor();
 			if (ed) this.armPainter(ed, true);
@@ -5729,10 +5725,10 @@ export default class PatchworkEditorPlugin extends Plugin {
 	 *  to one of the background colors. `label` carries the scan counts. */
 	private showHighlightSweepMenu(label: string, run: (hex: string | null) => void) {
 		const menu = new EditorMenu(this.app);
-		menu.addItem((i) => i.setTitle(`Remove ${label}`).setIcon("eraser").onClick(() => run(null)));
+		menu.addItem((i) => i.setTitle(`Remove ${label}`).setIcon(iconName("eraser")).onClick(() => run(null)));
 		menu.addSeparator();
 		for (const [name, hex] of BG_COLORS) {
-			menu.addItem((i) => i.setTitle(`Convert to ${name.toLowerCase()} background`).setIcon("highlighter").onClick(() => run(hex)));
+			menu.addItem((i) => i.setTitle(`Convert to ${name.toLowerCase()} background`).setIcon(iconName("highlighter")).onClick(() => run(hex)));
 		}
 		menu.showAtPosition({ x: window.innerWidth / 2 - 140, y: 140 });
 	}
@@ -5775,7 +5771,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			void (async () => {
 				let changed = 0;
 				for (const f of hits) {
-					await this.app.vault.process(f, (cur) => {
+					await processNote(this.app, f, (cur) => {
 						const res = sweepHighlights(cur, hex);
 						if (res.count > 0) changed++;
 						return res.text;
@@ -5822,11 +5818,11 @@ export default class PatchworkEditorPlugin extends Plugin {
 		}
 		const menu = new EditorMenu(this.app);
 		for (const [label, em] of FONT_SIZES) {
-			menu.addItem((i) => i.setTitle(label).setIcon("case-sensitive").onClick(() => this.applyFontSize(ed, em)));
+			menu.addItem((i) => i.setTitle(label).setIcon(iconName("case-sensitive")).onClick(() => this.applyFontSize(ed, em)));
 		}
 		menu.addSeparator();
-		menu.addItem((i) => i.setTitle("Superscript").setIcon("arrow-up-right").onClick(() => this.applyScript(ed, "sup")));
-		menu.addItem((i) => i.setTitle("Subscript").setIcon("arrow-down-right").onClick(() => this.applyScript(ed, "sub")));
+		menu.addItem((i) => i.setTitle("Superscript").setIcon(iconName("arrow-up-right")).onClick(() => this.applyScript(ed, "sup")));
+		menu.addItem((i) => i.setTitle("Subscript").setIcon(iconName("arrow-down-right")).onClick(() => this.applyScript(ed, "sub")));
 		const r = anchor.getBoundingClientRect();
 		menu.showAtPosition({ x: r.left, y: r.bottom + 4 });
 	}
@@ -5846,15 +5842,15 @@ export default class PatchworkEditorPlugin extends Plugin {
 	private showAiMenu(ed: Editor, anchor: HTMLElement) {
 		const menu = new EditorMenu(this.app);
 		for (const [title, instruction] of AI_ACTIONS) {
-			menu.addItem((i) => i.setTitle(title).setIcon("sparkles").onClick(() => void this.aiAction(ed, instruction)));
+			menu.addItem((i) => i.setTitle(title).setIcon(iconName("sparkles")).onClick(() => void this.aiAction(ed, instruction)));
 		}
 		for (const a of this.settings.aiActions) {
 			if (a.name.trim() && a.prompt.trim())
-				menu.addItem((i) => i.setTitle(a.name).setIcon("wand-2").onClick(() => void this.aiAction(ed, a.prompt)));
+				menu.addItem((i) => i.setTitle(a.name).setIcon(iconName("wand-2")).onClick(() => void this.aiAction(ed, a.prompt)));
 		}
 		menu.addSeparator();
-		menu.addItem((i) => i.setTitle("Continue writing").setIcon("pen-line").onClick(() => void this.aiGenerate(ed, "continue")));
-		menu.addItem((i) => i.setTitle("Summarize page into bullets").setIcon("list").onClick(() => void this.aiGenerate(ed, "summarize")));
+		menu.addItem((i) => i.setTitle("Continue writing").setIcon(iconName("pen-line")).onClick(() => void this.aiGenerate(ed, "continue")));
+		menu.addItem((i) => i.setTitle("Summarize page into bullets").setIcon(iconName("list")).onClick(() => void this.aiGenerate(ed, "summarize")));
 		const r = anchor.getBoundingClientRect();
 		menu.showAtPosition({ x: r.left, y: r.bottom + 4 });
 	}
@@ -5909,7 +5905,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			this.bubbleEl?.hide();
 			return;
 		}
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = activeMarkdownView(this.app);
 		// A table plugin's own bar is docked in this view and the cursor is in a
 		// table, so it owns cell formatting: floating a second set of buttons
 		// over the selection would be the same duplication the docked hand-off
@@ -6012,7 +6008,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 			const path = callout.getAttribute("data-ped-path") ?? "";
 			const file = path ? this.app.vault.getAbstractFileByPath(path) : null;
 			if (lineNo < 0 || !(file instanceof TFile)) return;
-			void this.app.vault.process(file, (data) => {
+			void processNote(this.app, file, (data) => {
 				const lines = data.split("\n");
 				const next = lineNo < lines.length ? setCalloutEmoji(lines[lineNo], ch) : null;
 				if (next != null) lines[lineNo] = next;
@@ -6096,13 +6092,13 @@ export default class PatchworkEditorPlugin extends Plugin {
 			menu.addItem((i) =>
 				i
 					.setTitle(`${f.emoji}  ${f.label}`)
-					.setIcon(f.icon)
+					.setIcon(iconName(f.icon))
 					.onClick(() => pick({ type: f.type, emoji: f.emoji }))
 			);
 		}
 		menu.addSeparator();
 		menu.addItem((i) =>
-			i.setTitle("Toggle block (collapsible)").setIcon("chevron-right").onClick(() => pick({ type: "toggle", folded: true }))
+			i.setTitle("Toggle block (collapsible)").setIcon(iconName("chevron-right")).onClick(() => pick({ type: "toggle", folded: true }))
 		);
 		menu.showAtPosition(at ?? this.cursorPoint());
 	}
@@ -6154,7 +6150,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	 *  edited between the scan and the run is reported as it actually was. */
 	async escapeTagsInFile(file: TFile): Promise<number> {
 		let found = 0;
-		await this.app.vault.process(file, (cur) => {
+		await processNote(this.app, file, (cur) => {
 			found = findPlaceholderTags(cur).length;
 			return found ? escapePlaceholderTags(cur) : cur;
 		});
@@ -6187,7 +6183,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 		// the user may well be typing in it. Reading first would hand back
 		// whatever the file looked like a moment ago and drop the edit in between.
 		let converted = 0;
-		await this.app.vault.process(file, (data) => {
+		await processNote(this.app, file, (data) => {
 			const lines = data.split("\n");
 			const leads = findCalloutLeads(lines).filter((l) => bare || !l.bare);
 			converted = leads.length;
@@ -6197,7 +6193,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	}
 
 	private cursorPoint(): { x: number; y: number } {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = activeMarkdownView(this.app);
 		const cm = view ? this.cmOf(view) : null;
 		const c = cm?.coordsAtPos(cm.state.selection.main.head);
 		return c ? { x: c.left, y: c.bottom + 6 } : { x: window.innerWidth / 2 - 90, y: window.innerHeight / 3 };
@@ -6562,7 +6558,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 	}
 
 	private refreshStates() {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = activeMarkdownView(this.app);
 		if (!view) return;
 		const bar = this.bars.get(view);
 		if (!bar || !bar.el.isConnected) return;
@@ -6594,17 +6590,14 @@ export default class PatchworkEditorPlugin extends Plugin {
 		set("bold", marks.bold || this.inHtmlTag(line, cur.ch, ["strong", "b"]));
 		set("italic", marks.italic || this.inHtmlTag(line, cur.ch, ["em", "i"]));
 		set("highlight", marks.highlight);
-		set("strike", marks.strike);
+		set("strike", marks.strike || this.inHtmlTag(line, cur.ch, ["s", "del"]));
+		set("underline", this.inHtmlTag(line, cur.ch, ["u"]));
 		set("code", marks.code);
 		const kind = listKind(line);
 		set("bullet", kind === "bullet");
 		set("ordered", kind === "ordered");
 		set("task", kind === "task");
-		set("quote", isQuote(line));
-		const h = headingLevel(line);
-		const hlabel = h ? "H" + h : "¶";
-		bar.headingLabel.setText(hlabel);
-		this.bubbleHeadingLabel?.setText(hlabel);
+		set("toggle", /^\s*>\s*\[!toggle\]/i.test(line));
 	}
 
 	/** Inline-mark detection straight from CodeMirror's syntax tree, exact
@@ -7384,7 +7377,7 @@ class PatchworkEditorSettingTab extends PluginSettingTab {
 										extraButtons: g.help
 											? [
 													(b: ExtraButtonComponent) => {
-														b.setIcon("help-circle");
+														b.setIcon(iconName("help-circle"));
 														this.wireHelp(b.extraSettingsEl, g.help ?? "");
 													},
 												]
@@ -7996,7 +7989,7 @@ class PatchworkEditorSettingTab extends PluginSettingTab {
 							.onChange((v) => ((a.prompt = v), save()))
 					);
 					st.addExtraButton((b) =>
-						b.setIcon("trash-2").setTooltip("Remove").onClick(() => {
+						b.setIcon(iconName("trash-2")).setTooltip("Remove").onClick(() => {
 							s.aiActions.splice(idx, 1);
 							save();
 							this.refresh();
@@ -8190,7 +8183,7 @@ class PatchworkEditorSettingTab extends PluginSettingTab {
 			if (id === "|") {
 				row.addExtraButton((b) =>
 					b
-						.setIcon("trash-2")
+						.setIcon(iconName("trash-2"))
 						.setTooltip("Remove this divider")
 						.onClick(() => {
 							const next = order.slice();

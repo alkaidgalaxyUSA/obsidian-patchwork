@@ -1,4 +1,5 @@
-import { setIcon } from "obsidian";
+import { setIcon } from "../../utils/icons";
+
 import type { App } from "obsidian";
 import type { ZenEntry } from "./types";
 import { getWindow } from "./utils/dom";
@@ -56,7 +57,7 @@ export class ZenActions {
         expand.className = "claudian-extension-zen-expand";
         expand.setAttribute("aria-label", "Expand Zen mode");
         expand.setAttribute("aria-expanded", "false");
-        setIcon(expand, "triangle");
+        setIcon(expand, "code-header-toggle");
         expand.querySelector<HTMLElement>("svg")?.setAttribute("aria-hidden", "true");
         dock.append(expand);
 

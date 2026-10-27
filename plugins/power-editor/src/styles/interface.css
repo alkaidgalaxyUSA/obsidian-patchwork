@@ -107,6 +107,25 @@ button.ped-heading {
 	font-weight: 600;
 }
 
+.ped-heading-label {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 16px;
+	height: 16px;
+}
+
+button.ped-heading .ped-heading-label svg {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+}
+
+.pw-heading-preview {
+	display: block;
+	font-size: var(--font-text-size, 16px);
+}
+
 .ped-sep {
 	flex-shrink: 0;
 	width: 1px;

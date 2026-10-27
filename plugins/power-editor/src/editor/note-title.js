@@ -1,3 +1,4 @@
+import { markdownLeaves } from "../utils/markdown-views";
 class NoteTitle {
     constructor(plugin, api) {
         this.app = plugin.app;
@@ -34,7 +35,7 @@ class NoteTitle {
 
     refresh() {
         if (this.disposed) return;
-        const views = new Set(this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view));
+        const views = new Set(markdownLeaves(this.app).map((leaf) => leaf.view));
         for (const [view, entry] of this.entries) {
             if (views.has(view) && view.inlineTitleEl === entry.title) continue;
             entry.cleanup();

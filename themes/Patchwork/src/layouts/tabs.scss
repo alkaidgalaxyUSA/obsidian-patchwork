@@ -7,7 +7,7 @@
 
 /* Maple's default floating tabs are always enabled in Patchwork. */
 body .mod-root .workspace-tab-header-inner-icon .lucide-file-audio {
-  -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'><g fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'><path d='M9 18V5l12-2v13M9 9l12-2'/><circle cx='6' cy='18' r='3'/><circle cx='18' cy='16' r='3'/></g></svg>") no-repeat;
+  -webkit-mask: url("../../../../icons/tab-audio.svg") no-repeat;
   -webkit-mask-size: 100% 100%;
   background-color: currentColor;
 }
@@ -15,7 +15,7 @@ body .mod-root .workspace-tab-header-inner-icon .lucide-file-audio path {
   display: none;
 }
 body .mod-root .workspace-tab-header-inner-icon .lucide-file {
-  -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'><g fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'><rect width='18' height='18' x='3' y='3' rx='2'/><path d='M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18m0-13.5h4m-4 9h4'/></g></svg>") no-repeat;
+  -webkit-mask: url("../../../../icons/tab-video.svg") no-repeat;
   -webkit-mask-size: 100% 100%;
   background-color: currentColor;
 }
@@ -23,7 +23,7 @@ body .mod-root .workspace-tab-header-inner-icon .lucide-file path {
   display: none;
 }
 body .mod-root .workspace-tab-header-inner-icon .lucide-file-text {
-  -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'><path fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 5v16m8.001-2A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2a5 5 0 0 1 4-2z'/></svg>") no-repeat;
+  -webkit-mask: url("../../../../icons/tab-document.svg") no-repeat;
   -webkit-mask-size: 100% 100%;
   background-color: currentColor;
 }
@@ -31,7 +31,7 @@ body .mod-root .workspace-tab-header-inner-icon .lucide-file-text path {
   display: none;
 }
 body .mod-root .workspace-tab-header-inner-icon .lucide-table {
-  -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'><g fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M3 5v14a9 3 0 0 0 18 0V5'/><path d='M3 12a9 3 0 0 0 18 0'/></g></svg>") no-repeat;
+  -webkit-mask: url("../../../../icons/tab-database.svg") no-repeat;
   -webkit-mask-size: 100% 100%;
   background-color: currentColor;
 }
@@ -54,8 +54,10 @@ body {
 body.theme-light {
   --tab-active-shadow: var(--shadow-s);
 }
-body .is-sidedock-collapsed + .mod-root .sidebar-toggle-button.mod-left {
-  margin-right: var(--size-4-2);
+body .sidebar-toggle-button,
+body .workspace-tab-header-container .workspace-tab-header-tab-list,
+body .titlebar .workspace-tab-header-tab-list {
+  display: none;
 }
 body .mod-root .workspace-tab-header {
   padding-block: 0 !important;

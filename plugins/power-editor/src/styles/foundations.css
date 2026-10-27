@@ -2,7 +2,7 @@
  * Keep these rules as native CSS so they can also be previewed without Sass.
  * Scope the palette to Markdown leaves; application chrome and chat stay separate.
  */
-body .mod-root .workspace-leaf-content[data-type="markdown"] {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) {
   --patchwork-note-background: #ffffff;
   --patchwork-note-text: #262626;
   --patchwork-note-muted: #737373;
@@ -86,7 +86,7 @@ body .mod-root .workspace-leaf-content[data-type="markdown"] {
   --inline-code-background: var(--patchwork-note-surface);
 }
 
-body.theme-dark .mod-root .workspace-leaf-content[data-type="markdown"] {
+body.theme-dark .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) {
   --patchwork-note-background: #141414;
   --patchwork-note-text: #e2e2e2;
   --patchwork-note-muted: #a6a6a6;
@@ -97,50 +97,50 @@ body.theme-dark .mod-root .workspace-leaf-content[data-type="markdown"] {
   --patchwork-note-code-text: #d6deeb;
 }
 
-body .mod-root .workspace-leaf-content[data-type="markdown"] :is(.markdown-source-view, .markdown-preview-view) {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) :is(.markdown-source-view, .markdown-preview-view) {
   background-color: var(--patchwork-note-background);
   color: var(--patchwork-note-text);
 }
 
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-rendered :is(h1, h2, h3, h4, h5, h6) {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-rendered :is(h1, h2, h3, h4, h5, h6) {
   margin-block: 1.35em 0.68em;
   padding-bottom: 0;
   border-bottom: none;
 }
 
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-source-view.is-live-preview .cm-line.HyperMD-header {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-source-view.is-live-preview .cm-line.HyperMD-header {
   padding-block: 1em 0.4em;
 }
 
 /* Separate document blocks without adding blank lines to the Markdown source. */
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-source-view.is-live-preview .cm-line:not(.HyperMD-codeblock):not(.pw-note-code-line):not(.pw-note-code-trigger):not(.HyperMD-header) {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-source-view.is-live-preview .cm-line:not(.HyperMD-codeblock):not(.pw-note-code-line):not(.pw-note-code-trigger):not(.HyperMD-header) {
   padding-block: 4px;
   line-height: var(--pw-document-line-height, 1.8);
 }
 
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-source-view.is-live-preview :is(.cm-table-widget, .cm-embed-block) {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-source-view.is-live-preview :is(.cm-table-widget, .cm-embed-block) {
   margin-block: 12px;
 }
 
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-rendered :is(p, table, blockquote, ul, ol) {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-rendered :is(p, table, blockquote, ul, ol) {
   margin-block: 0.75em;
   line-height: var(--pw-document-line-height, 1.8);
 }
 
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-rendered :is(th, td) {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-rendered :is(th, td) {
   padding: 8px 12px;
 }
 
 /* Explicit Markdown table alignment still takes precedence. */
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-rendered th:not([align]):not([style*="text-align"]) {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-rendered th:not([align]):not([style*="text-align"]) {
   text-align: left;
 }
 
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-rendered tbody tr:nth-child(2n) {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-rendered tbody tr:nth-child(2n) {
   background-color: transparent;
 }
 
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-rendered hr {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-rendered hr {
   margin-block: 28px;
 }
 
@@ -148,7 +148,7 @@ body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-rendered 
 
 
 
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-rendered :not(pre) > code {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-rendered :not(pre) > code {
   color: var(--inline-code);
   background: var(--inline-code-background);
   padding: 2px 5px;
@@ -157,13 +157,13 @@ body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-rendered 
 
 
 
-body .mod-root .workspace-leaf-content[data-type="markdown"] .markdown-source-view.mod-cm6 .cm-line:not(.HyperMD-codeblock) .cm-inline-code:not(.cm-formatting) {
+body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-source-view.mod-cm6 .cm-line:not(.HyperMD-codeblock) .cm-inline-code:not(.cm-formatting) {
   color: var(--inline-code);
   background-color: var(--inline-code-background);
 }
 
 @media (max-width: 600px) {
-  body .mod-root .workspace-leaf-content[data-type="markdown"] {
+  body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) {
     --file-margins: 24px 16px 64px;
     --inline-title-size: 2em;
   }
