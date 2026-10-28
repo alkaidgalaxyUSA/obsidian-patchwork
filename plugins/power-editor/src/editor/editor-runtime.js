@@ -13,11 +13,22 @@ import { NoteNavigation } from "./note-navigation.js";
 import { WindowActions } from "./window-actions.js";
 import { installExplorerActions } from "./explorer-actions.js";
 import { installAboutTab } from "../settings/about-tab.js";
+import { installSettingsLifecycle } from "../settings/settings-lifecycle.js";
+import { installMenuStyles } from "../menu-styles/index.js";
+import { installReadingMode } from "./reading-mode.js";
+import { installEncryptedUnlock } from "./encrypted-unlock.js";
+import { installDocumentTabs } from "./document-tabs.js";
+import { installDocumentTabStrip } from "./document-tab-strip.js";
+import { installDocumentModeActions } from "./document-mode-actions.js";
+import { installEditorPreferences } from "../settings/editor-preferences.js";
+import { AttachmentManager } from "../attachments/attachment-manager.js";
 import { NoteOutline } from "./note-outline.js";
 import { installLiteralTextInput } from "./literal-text-input";
 
 // One plugin owns editor extensions, UI and cleanup. No secondary plugin or runtime loader.
 export function installEditorRuntime(plugin) {
+        installReadingMode(plugin);
+        installEncryptedUnlock(plugin);
         installLiteralTextInput(plugin);
         plugin.noteCodeEditor = new NoteCodeEditor(plugin, {
             EditorView, EditorState, EditorSelection, Decoration, ViewPlugin, StateField, StateEffect, ChangeSet, Prec, Text, Transaction, keymap,
@@ -36,7 +47,15 @@ export function installEditorRuntime(plugin) {
         plugin.windowActions = new WindowActions(plugin);
         plugin.register(() => plugin.windowActions.dispose());
         installAboutTab(plugin);
+        installSettingsLifecycle(plugin);
         installExplorerActions(plugin);
+        installDocumentTabs(plugin);
+        installDocumentTabStrip(plugin);
+        installDocumentModeActions(plugin);
+        const attachments = new AttachmentManager(plugin);
+        installEditorPreferences(plugin, attachments);
+        plugin.attachmentManager = attachments;
+        installMenuStyles(plugin);
         plugin.noteOutline = new NoteOutline(plugin, setIcon);
         plugin.register(() => plugin.noteOutline.dispose());
 

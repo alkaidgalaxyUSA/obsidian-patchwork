@@ -4,6 +4,7 @@ import { NoteInserter } from "./note-inserter";
 import { CodeActions } from "./code-actions";
 import { ComposerActions } from "./composer-actions";
 import { SidebarActions } from "./sidebar-actions";
+import { SidebarResize } from "./sidebar-resize";
 import { ZenActions } from "./zen-actions";
 import { SelectionActions } from "./selection-actions";
 
@@ -27,6 +28,8 @@ export default class ClaudianExtensionPlugin extends Plugin {
         this.register(() => this.composerActions.dispose());
         this.sidebarActions = new SidebarActions(this.app);
         this.register(() => this.sidebarActions.dispose());
+        const sidebarResize = new SidebarResize(this.app);
+        this.register(() => sidebarResize.dispose());
         this.zenActions = new ZenActions(this.app);
         this.register(() => this.zenActions.dispose());
         this.selectionActions = new SelectionActions(this.app);

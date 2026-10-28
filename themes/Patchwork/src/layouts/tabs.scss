@@ -5,7 +5,7 @@
  * License: ../../../../LICENSE
  */
 
-/* Maple's default floating tabs are always enabled in Patchwork. */
+/* Document tab appearance is owned by the editor's document-tab-strip module. */
 body .mod-root .workspace-tab-header-inner-icon .lucide-file-audio {
   -webkit-mask: url("../../../../icons/tab-audio.svg") no-repeat;
   -webkit-mask-size: 100% 100%;
@@ -55,7 +55,7 @@ body.theme-light {
   --tab-active-shadow: var(--shadow-s);
 }
 body .sidebar-toggle-button,
-body .workspace-tab-header-container .workspace-tab-header-tab-list,
+body :is(.mod-left-split, .mod-right-split) .workspace-tab-header-tab-list,
 body .titlebar .workspace-tab-header-tab-list {
   display: none;
 }
@@ -65,9 +65,6 @@ body .mod-root .workspace-tab-header {
   transition-property: color, width;
   --tab-curve: 0;
   --tab-radius-active: var(--radius-m);
-}
-body .mod-root .workspace-tab-header.is-active {
-  box-shadow: var(--tab-active-shadow);
 }
 body .mod-root .workspace-tab-header-container {
   padding-left: var(--size-4-1);
@@ -83,29 +80,6 @@ body .mod-root .workspace-tab-header-container-inner-close-button {
 body .mod-root .workspace-tab-header-container-inner-close-button:hover {
   background-color: var(--frame-bg);
 }
-body .mod-root .workspace-tabs:not(.mod-stacked):not(.mod-active) .workspace-tab-header.is-active {
-  --tab-background-active: hsla(var(--background-primary-hsl), 0.5);
-}
-
-/* Lift the selected document tab above the dark tab strip. */
-body.theme-dark .mod-root .workspace-tabs:not(.mod-stacked) .workspace-tab-header.is-active {
-  --tab-background-active: color-mix(in srgb, var(--background-secondary) 86%, white);
-  --tab-text-color-active: hsl(var(--base-accent-h), 15%, 94%);
-  --tab-text-color-focused-active: var(--tab-text-color-active);
-  --tab-text-color-focused-active-current: var(--tab-text-color-active);
-  background-color: var(--tab-background-active);
-  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.04), transparent);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 2px 5px rgba(0, 0, 0, 0.3);
-}
-
-body.theme-dark .mod-root .workspace-tabs:not(.mod-stacked) .workspace-tab-header.is-active .workspace-tab-header-inner-title {
-  color: var(--tab-text-color-active);
-  font-weight: 600;
-}
-
 body .mod-root .workspace-tab-header-new-tab {
   padding-top: var(--size-4-1);
 }

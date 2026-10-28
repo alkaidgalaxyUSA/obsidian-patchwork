@@ -582,26 +582,86 @@ body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) :is(.
 body .mod-root .workspace-leaf-content > .view-header.pw-document-header {
     display: none;
 }
-body .pw-note-navigation {
-    display: flex;
-    align-items: center;
-    align-self: stretch;
-    flex-shrink: 0;
-    gap: 4px;
-    padding-inline: 4px;
+body .workspace-leaf-content > .pw-document-mode-action {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    z-index: 6;
+    width: 28px;
+    height: 28px;
+    padding: 5px;
+    border: 0;
+    border-radius: 4px;
+    box-shadow: none;
+    appearance: none;
+    background: none !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    color: var(--text-muted);
+    opacity: 0;
+    --icon-size: 18px;
     -webkit-app-region: no-drag;
 }
-body .pw-note-navigation .view-action {
-    display: flex;
-    margin: 0;
-    color: var(--icon-color);
-    opacity: var(--icon-opacity);
+body .workspace-leaf-content > .pw-document-mode-action[hidden] { display: none; }
+body .workspace-leaf-content > .pw-document-mode-action:is(:hover, :focus-visible, .is-editing) { opacity: 1; }
+/* Source editing exposes its formatting toolbar in the first 43px row. */
+body .workspace-leaf-content:has(> .ped-toolbar:not(.ped-hidden)) > .pw-document-mode-action.is-editing {
+    top: 51px;
 }
-body .pw-note-navigation .view-action:hover {
-    color: var(--icon-color-hover);
-    opacity: var(--icon-opacity-hover);
+body .workspace-leaf-content > .pw-document-mode-action:is(:hover, :focus-visible) {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover) !important;
+}
+body .workspace-leaf-content > .pw-document-mode-action:disabled { cursor: wait; }
+body .pw-encrypted-unlock-host { position: relative; }
+body .pw-encrypted-unlock-host > :not(.pw-encrypted-unlock) { display: none !important; }
+body .pw-encrypted-unlock {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    overflow: auto;
+    background: var(--background-primary);
+    cursor: auto;
+}
+body .pw-encrypted-unlock-form {
+    width: min(440px, 100%);
+    margin: 0;
+}
+body .pw-encrypted-unlock-label {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--text-normal);
+    font-size: var(--font-ui-medium);
+}
+body .pw-encrypted-unlock-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+body .pw-encrypted-unlock-controls input {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+}
+body .pw-encrypted-unlock-controls button {
+    flex: 0 0 auto;
+    height: 36px;
+    margin: 0;
+}
+body .pw-encrypted-unlock-status {
+    margin-top: 10px;
+    color: var(--text-error);
+    font-size: var(--font-ui-small);
 }
 body.pw-window-actions-enabled { --ribbon-width: 0px; }
+body.pw-window-actions-enabled :is(.mod-root, .mod-right-split) .workspace-tabs.mod-top > .workspace-tab-header-container {
+    --header-height: var(--pw-document-header-height, 46px);
+    height: var(--header-height);
+    min-height: var(--header-height);
+}
 body.pw-window-actions-enabled .workspace-ribbon { display: none; }
 body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-split.mod-left-split > .workspace-sidedock-vault-profile {
     order: -1;
@@ -616,11 +676,12 @@ body .pw-window-actions {
     align-items: center;
     flex-shrink: 0;
     gap: 2px;
-    height: var(--header-height);
+    height: var(--pw-document-header-height, var(--header-height));
     padding-inline: 4px;
     pointer-events: auto;
     -webkit-app-region: no-drag;
 }
+body .pw-window-actions[hidden] { display: none; }
 body .pw-window-actions * { -webkit-app-region: no-drag; }
 body.pw-window-actions-enabled .workspace .mod-right-split .workspace-tab-header.pw-window-managed-tab { display: none; }
 body .pw-window-actions .side-dock-ribbon-action {
@@ -638,7 +699,7 @@ body .pw-window-actions .side-dock-ribbon-action svg { width: 18px; height: 18px
 body.pw-window-actions-enabled .workspace .mod-root .workspace-tabs.mod-top.mod-top-right-space > .workspace-tab-header-container {
     padding-right: var(--pw-window-tools-right-space, var(--frame-right-space));
 }
-body.pw-window-actions-enabled .workspace .mod-right-split .workspace-tabs.mod-top > .workspace-tab-header-container {
+body.pw-window-tools-visible .workspace .mod-right-split .workspace-tabs.mod-top > .workspace-tab-header-container {
     padding-left: calc(var(--pw-window-tools-width, 198px) + 8px);
 }
 body.pw-window-actions-enabled .workspace-sidedock-vault-profile .workspace-drawer-vault-switcher {
@@ -652,9 +713,9 @@ body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-spli
 }
 body.pw-window-actions-enabled .workspace-drawer-vault-actions { margin-inline-start: auto; }
 body.pw-file-explorer-pinned .mod-left-split .workspace-tabs > .workspace-tab-header-container { display: none; }
-body.pw-file-explorer-pinned .workspace-leaf-content[data-type="file-explorer"] .nav-action-button:has(svg.lucide-search) { display: none; }
+body.pw-file-explorer-pinned .workspace-leaf-content[data-type="file-explorer"] .nav-action-button:not(.pw-explorer-search):has(svg.lucide-search) { display: none; }
 body .pw-explorer-controls .nav-buttons-container > .nav-action-button:has(svg:is(.lucide-edit, .lucide-folder-plus, .lucide-sort-asc, .lucide-gallery-vertical)) { display: none; }
-body .pw-explorer-controls .nav-buttons-container { gap: 4px; align-items: center; }
+body .workspace-leaf-content.pw-explorer-controls[data-type="file-explorer"] .nav-buttons-container { gap: 4px; align-items: center; justify-content: flex-end; }
 body .pw-explorer-controls .nav-buttons-container > button.nav-action-button {
     height: 28px;
     width: 28px;
@@ -692,9 +753,13 @@ body .pw-explorer-menu-search { flex-shrink: 0; display: flex; gap: 8px; align-i
 body .pw-explorer-menu-search > span { display: flex; color: var(--text-muted); }
 body .pw-explorer-menu-search svg { width: 16px; height: 16px; }
 body .pw-explorer-menu-search input { width: 100%; min-width: 0; box-shadow: none; }
+body .pw-explorer-no-results { padding: 20px 12px; color: var(--text-muted); text-align: center; }
 body .pw-explorer-create-form { display: flex; flex-direction: column; gap: 12px; }
-body .pw-explorer-create-form small { color: var(--text-muted); overflow-wrap: anywhere; }
-body .pw-explorer-create-form > button { align-self: flex-end; }
+body .pw-explorer-create-form > input,
+body .pw-explorer-create-form > input:focus { width: 100%; border: 0; box-shadow: none; outline: none; }
+/* Keep the Settings title row roomy independently of the active theme. */
+body.is-popout-modal:has(> .mod-settings) { --titlebar-height: 43.2px !important; }
+body.is-popout-modal:has(> .mod-settings) .titlebar-button:is(.mod-minimize, .mod-maximize) { display: none; }
 body.pw-window-actions-enabled .workspace-drawer-vault-actions .clickable-icon:has(svg.help) { display: none; }
 body .workspace-leaf-content[data-type="image"] .image-container {
     display: flex;

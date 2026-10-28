@@ -49,6 +49,7 @@ export interface ClaudianView extends View {
 export type SidebarDock = WorkspaceSidedock & {
     containerEl: HTMLElement;
     size: number;
+    resizeHandleEl?: HTMLElement;
     setSize?: (width: number) => unknown;
 };
 

@@ -38,7 +38,7 @@ export function installAboutTab(plugin) {
     setting.addSettingTab(tab);
     plugin.register(() => {
         tab.navEl?.remove();
-        setting.removeSettingTab(tab);
+        plugin.app.setting.removeSettingTab(tab);
         tab.containerEl?.remove();
     });
 }

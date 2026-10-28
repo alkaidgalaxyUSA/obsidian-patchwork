@@ -1,3 +1,26 @@
+/* A compositor-only divider preview avoids reflowing chat on every pointer move. */
+body .claudian-extension-resize-preview {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--layer-cover, 99) + 1);
+    cursor: col-resize;
+    user-select: none;
+    touch-action: none;
+    -webkit-app-region: no-drag;
+}
+body .claudian-extension-resize-line {
+    position: absolute;
+    left: -1px;
+    width: 2px;
+    background: var(--interactive-accent);
+    pointer-events: none;
+    will-change: transform;
+}
+body.claudian-extension-resizing .workspace-split,
+body.claudian-extension-resizing .workspace-split > .workspace-tabs {
+    transition: none !important;
+}
+
 /* Keep the docked chat flush with the right sidebar and bottom edge. */
 body .workspace-split.mod-right-split .workspace-leaf-content[data-type="claudian-view"] .view-content.claudian-container {
     padding: 0;
@@ -293,7 +316,7 @@ body.theme-dark .claudian-container .claudian-message-user > .claudian-message-c
 
 /* Claudian 2.3.27 enters its session-sidebar layout at 600px. Stay below it. */
 body .workspace-split.mod-right-split:has(.workspace-leaf-content[data-type="claudian-view"]) {
-    max-width: 590px;
+    max-width: 531px;
 }
 
 /* Suppress the session pane while an already-wide view returns to compact mode. */

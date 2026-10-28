@@ -84,15 +84,9 @@ export class ComposerActions {
         if (entry.button.dataset.mode !== mode) {
             entry.button.dataset.mode = mode;
             entry.button.setAttribute("aria-label", running ? "Stop (Esc)" : "Send message");
-            setIcon(entry.button, running ? "square" : "arrow-up");
+            setIcon(entry.button, running ? "square" : "claudian-send");
             const svg = entry.button.querySelector<HTMLElement>("svg");
             svg?.setAttribute("aria-hidden", "true");
-            if (!running && svg) {
-                // Keep the native stroke style and arrowhead width, with a longer shaft.
-                const path = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path");
-                path.setAttribute("d", "M12 21V3 M5 10l7-7 7 7");
-                svg.replaceChildren(path);
-            }
         }
         if (entry.button.disabled !== disabled) entry.button.disabled = disabled;
     }

@@ -1,0 +1,178 @@
+/*!
+ * File explorer adapted from Maple Theme v1.5.14 by subframe7536.
+ * Copyright (c) 2022 subframe7536. MIT License.
+ * Source: https://github.com/subframe7536/obsidian-theme-maple
+ * License: ../../../../LICENSE
+ */
+
+/* Youdao note-list metrics, retaining Patchwork's custom file icons and tree. */
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] {
+    --nav-item-size: 13px;
+    --pw-nav-row-background: var(--background-modifier-hover);
+    --pw-nav-surface: var(--background-secondary);
+    --pw-nav-divider: var(--background-modifier-border);
+    --nav-item-padding: 4px 8px 4px 34px;
+    --nav-item-parent-padding: 4px 8px 4px 34px;
+    --nav-item-children-padding-start: 0px;
+    --nav-item-children-margin-start: 14px;
+    --nav-indentation-guide-width: 0px;
+    --nav-item-background-hover: var(--pw-nav-row-background);
+    --nav-item-background-active: var(--pw-nav-row-background);
+    --nav-item-background-selected: var(--pw-nav-row-background);
+    --nav-item-color-active: var(--nav-item-color);
+    background-color: var(--pw-nav-surface);
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-buttons-container {
+    justify-content: flex-start;
+    padding-left: var(--size-4-1);
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-files-container {
+    background-color: var(--pw-nav-surface);
+    border-top: 0;
+    padding-inline-start: 0;
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title) {
+    position: relative;
+    box-sizing: border-box;
+    height: 50px;
+    align-items: center;
+    border: 1px solid transparent;
+    border-top-color: var(--pw-nav-divider);
+    border-radius: 0;
+    margin-block: 0;
+    font-family: "PingFang SC", "Source Han Sans", "思源黑体", "Microsoft Yahei", "WenQuanYi Micro Hei", Arial, sans-serif;
+    font-size: var(--nav-item-size);
+    font-weight: 500;
+    line-height: 19.5px;
+    padding-block: 13px;
+    text-rendering: auto;
+    -webkit-font-smoothing: auto;
+    color: var(--nav-item-color) !important;
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title-content, .nav-folder-title-content) {
+    position: relative;
+    top: 0;
+    line-height: 19.5px;
+    padding-right: 8px;
+    /* Keep Git status coloring from changing the menu's text palette. */
+    color: inherit !important;
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):is(:hover, :focus-within, .has-focus, .is-active, .is-selected) {
+    background-color: var(--pw-nav-row-background);
+    border-top-color: var(--pw-nav-surface);
+    border-radius: 4px;
+}
+
+/* Use the row background for focus; retain the rename input's focus ring. */
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title).has-focus:not(.is-being-renamed) {
+    box-shadow: none !important;
+}
+
+/* Mask the next row's divider, including across expanded folder boundaries. */
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):is(:hover, :focus-within, .has-focus, .is-active, .is-selected)::after {
+    content: "";
+    position: absolute;
+    inset-inline: -1px;
+    bottom: -2px;
+    height: 1px;
+    z-index: 1;
+    background-color: var(--pw-nav-surface);
+    pointer-events: none;
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-files-container > div > .tree-item:nth-child(1 of .tree-item:not(.mod-root)) > .tree-item-self {
+    border-top-color: var(--pw-nav-surface);
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title).is-being-dragged {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title).is-being-renamed {
+    background-color: var(--nav-item-background-selected) !important;
+    --nav-item-color-active: var(--text-normal) !important;
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):is(.is-active, .is-selected) {
+    font-weight: 500;
+    color: var(--nav-item-color-active) !important;
+}
+
+/* Preserve the text and drag cursors during rename and drag operations. */
+body:not(.is-grabbing) .workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):not(.is-being-renamed):not(.is-being-dragged) {
+    --cursor: pointer;
+    cursor: pointer;
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .collapse-icon svg.svg-icon > * {
+    display: none;
+}
+
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder-title-content {
+    padding-left: var(--size-4-1);
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .nav-folder-children {
+    transition: border-color var(--animation-fast);
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .nav-folder-children:hover {
+    border-color: var(--background-modifier-hover);
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .collapse-icon {
+    margin-inline-start: calc(var(--size-2-1) - var(--size-4-5));
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .collapse-icon svg.svg-icon {
+    display: inline-block;
+    flex-shrink: 0;
+    background: url("../../../../icons/menu-folder.svg") center / contain no-repeat;
+    width: 21.6px;
+    height: 21.6px;
+    translate: 0 -1px;
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .collapse-icon.is-collapsed svg.svg-icon {
+    transform: none;
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title::before {
+    content: "";
+    position: absolute;
+    flex-shrink: 0;
+    translate: calc(var(--size-2-1) - var(--size-4-5) - 3.6px) -50%;
+    top: calc(50% - 1px);
+    --file-icon: url("../../../../icons/menu-default.svg");
+    background: var(--file-icon) center / contain no-repeat;
+    width: 21.6px;
+    height: 21.6px;
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title[data-path$=".md" i]:where(:not([data-path$="excalidraw.md" i], [data-path$=".smm.md" i]))::before {
+    --file-icon: url("../../../../icons/menu-markdown.svg");
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title[data-path$=".sql" i]::before {
+    --file-icon: url("../../../../icons/menu-sql.svg");
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title[data-path$=".mdenc" i]::before {
+    --file-icon: url("../../../../icons/menu-locked.svg");
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title:is([data-path$=".ps1" i], [data-path$=".cmd" i], [data-path$=".bat" i], [data-path$=".sh" i])::before {
+    --file-icon: url("../../../../icons/menu-shell.svg");
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title {
+    padding-inline-end: 0;
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title .nav-file-tag {
+    margin-right: var(--size-2-3);
+    background-color: var(--background-modifier-hover);
+    color: var(--text-accent);
+    line-height: unset;
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title.is-active:not(.is-selected) .nav-file-tag {
+    backdrop-filter: brightness(0.85);
+    color: var(--nav-item-color-active);
+}
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title-content {
+    padding-left: var(--size-4-1);
+}

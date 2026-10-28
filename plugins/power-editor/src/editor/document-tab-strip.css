@@ -1,0 +1,183 @@
+body .mod-root .pw-document-tab-strip {
+    isolation: isolate;
+    --pw-tab-text: rgb(255 255 255 / 85%);
+    --pw-tab-text-muted: rgb(255 255 255 / 50%);
+    --pw-tab-indicator: #3699ff;
+    --pw-tab-indicator-inactive: #777;
+}
+body.theme-light .mod-root .pw-document-tab-strip {
+    --pw-tab-text: var(--text-normal);
+    --pw-tab-text-muted: color-mix(in srgb, var(--text-normal) 50%, transparent);
+}
+body .mod-root .pw-document-tab-strip .workspace-tab-header-inner-icon,
+body .mod-root .pw-document-tab-strip > .workspace-tab-header-new-tab,
+body .mod-root .pw-document-tab-strip > .workspace-tab-header-spacer {
+    display: none;
+}
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip > .workspace-tab-header-container-inner {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    position: relative;
+    z-index: 0;
+    /* Extend one pixel over the native document separator. */
+    margin: 0 0 -1px;
+    padding: 0 6px 0 5px;
+}
+body .mod-root .pw-document-tab-strip > .workspace-tab-header-container-inner::-webkit-scrollbar { display: none; }
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header {
+    flex: 0 0 auto !important;
+    width: max-content !important;
+    container-type: normal;
+    min-width: 100px;
+    max-width: 280px;
+    transition: none;
+    padding-block: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    outline: none;
+}
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header-inner {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+body .mod-root .pw-document-tab-strip .workspace-tab-header::before,
+body .mod-root .pw-document-tab-strip .workspace-tab-header-inner::after {
+    display: none;
+}
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header::after {
+    content: none;
+    inset: auto 0 0;
+    height: 3px;
+    width: auto;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    clip-path: none;
+    pointer-events: none;
+    background: var(--pw-tab-indicator-inactive);
+}
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header.is-active::after {
+    content: "";
+}
+body.is-focused .mod-root .workspace-tabs.mod-active:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header.is-active::after {
+    background: var(--pw-tab-indicator);
+}
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header-inner-title {
+    width: auto;
+    min-width: 0;
+    font-weight: 400;
+    color: var(--pw-tab-text-muted);
+}
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header:is(.is-active, :hover) .workspace-tab-header-inner-title {
+    color: var(--pw-tab-text);
+}
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header-inner-close-button {
+    /* Native inactive-tab rules otherwise remove this slot from layout. */
+    display: flex !important;
+    justify-content: center;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    visibility: hidden;
+    pointer-events: none;
+    background: transparent;
+    box-shadow: none;
+    color: color-mix(in srgb, var(--pw-tab-text) 49%, transparent);
+    margin-inline-start: 4px;
+    border-radius: 50%;
+    --icon-size: 12.8px;
+    --icon-stroke: 1.5;
+}
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header:is(.is-active, :hover) .workspace-tab-header-inner-close-button {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header-inner-close-button:hover {
+    background: rgb(55 55 55 / 60%);
+}
+body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip.pw-tab-dragging .workspace-tab-header {
+    transform: translateX(var(--pw-tab-drag-x, 0px));
+    transition: transform 80ms ease-out;
+    will-change: transform;
+}
+body .mod-root .pw-document-tab-strip.pw-tab-dragging .pw-tab-drag-source { opacity: 0; }
+body.pw-tab-gap-preview > .workspace-drop-overlay {
+    display: none !important;
+}
+.pw-document-tab-strip.pw-tab-dragging > .workspace-tab-header-container-inner::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--pw-tab-gap-width);
+    transform: translateX(var(--pw-tab-gap-left));
+    background: #000;
+    pointer-events: none;
+}
+.pw-tab-drag-ghost {
+    position: fixed;
+    z-index: var(--layer-cover);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    background: color-mix(in srgb, var(--tab-container-background) 75%, white);
+    color: rgb(255 255 255 / 70%);
+    border: 1px solid rgb(0 0 0 / 25%);
+    border-radius: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+    body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip.pw-tab-dragging .workspace-tab-header { transition: none; }
+}
+body .mod-root .pw-document-tab-strip > .workspace-tab-header-tab-list {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+}
+body .mod-root .pw-document-tab-strip > .pw-tab-actions-spacer {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 15px;
+    width: 15px;
+    align-self: stretch;
+    /* Keep five solid pixels after the ten-pixel fade over scrolling tabs. */
+    margin-left: -10px;
+    pointer-events: none;
+    background: linear-gradient(to right, transparent 0, var(--tab-container-background, var(--background-secondary)) 10px);
+}
+body .mod-root .pw-document-tab-strip > .pw-tab-overflow {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 28px;
+    align-self: center;
+    width: 28px;
+    height: 28px;
+    padding: 5px;
+    margin: 0 3px 0 0;
+    border: none;
+    box-shadow: none;
+    background: var(--tab-container-background, var(--background-secondary));
+    -webkit-app-region: no-drag;
+}
+body .mod-root .pw-document-tab-strip > .pw-tab-overflow[hidden] { display: none; }
+body .mod-root .pw-document-tab-strip > .pw-tab-overflow:hover,
+body .mod-root .pw-document-tab-strip > .pw-tab-overflow:focus-visible {
+    background-image: linear-gradient(var(--background-modifier-hover), var(--background-modifier-hover));
+}
+.pw-open-tabs-menu .menu-scroll { max-height: min(60vh, 480px); overflow-y: auto; }
+.tooltip.pw-tab-path-tooltip {
+    white-space: nowrap;
+    width: max-content;
+    max-width: none;
+    overflow-wrap: normal;
+    word-break: normal;
+}

@@ -1,17 +1,27 @@
-import { Notice, TFolder } from "obsidian";
+import { Notice, TFile, TFolder } from "obsidian";
 import { setIcon } from "../../../utils/icons";
 import { createDocumentMenu, createExplorerMenu, showCreateDialog } from "./explorer-menus.js";
+import { installExplorerSearch } from "./explorer-search.js";
 
 /** Own only the file-list controls; keep native tree and sorting implementations. */
 export function installExplorerActions(plugin) {
     const workspace = plugin.app.workspace;
     const doc = workspace.containerEl.ownerDocument;
     const entries = new Map();
+    const searchReturns = new Map();
     const dialogs = new Set();
     let disposed = false;
     let pending = false;
+    let restoringExplorer = false;
+    let restoreFailed = false;
     let menu;
     let menuAnchor;
+    let selectedFolder;
+    const creationFolder = () => {
+        if (selectedFolder && plugin.app.vault.getAbstractFileByPath(selectedFolder.path) === selectedFolder) return selectedFolder;
+        const file = workspace.getActiveFile() ?? workspace.getMostRecentLeaf()?.view.file;
+        return file?.parent ?? plugin.app.vault.getRoot();
+    };
     const button = (label, icon, action) => {
         const el = doc.createElement("button");
         el.type = "button";
@@ -31,6 +41,13 @@ export function installExplorerActions(plugin) {
     };
     const toggleCollapsed = () => {
         closeMenu();
+        if (plugin.settings.explorerCollapsed) {
+            for (const { view } of entries.values()) {
+                // Force a traversal even if the native all-collapsed flag is stale.
+                view.tree.isAllCollapsed = false;
+                view.tree.setCollapseAll(true);
+            }
+        }
         update("explorerCollapsed", !plugin.settings.explorerCollapsed);
     };
     const rail = doc.createElement("div");
@@ -51,6 +68,9 @@ export function installExplorerActions(plugin) {
         next.showAtPosition({ x: bounds.left, y: bounds.bottom + 4 });
     };
     const restore = (entry) => {
+        entry.disposeSearch();
+        entry.view.containerEl.removeEventListener("click", entry.selectFolder, true);
+        entry.view.containerEl.ownerDocument.removeEventListener("pointerover", entry.suppressTooltip, true);
         entry.controls.forEach((el) => el.remove());
         entry.view.containerEl.classList.remove("pw-explorer-controls");
         if (entry.view.getSortedFolderItems === entry.sorted) entry.view.getSortedFolderItems = entry.originalSort;
@@ -59,18 +79,42 @@ export function installExplorerActions(plugin) {
     const attach = (leaf, host) => {
         const view = leaf.view;
         const entry = { view, host, controls: [], originalSort: view.getSortedFolderItems };
+        entry.selectFolder = (event) => {
+            const row = event.target.closest?.(".nav-folder-title[data-path], .nav-file-title[data-path]");
+            if (!row) return;
+            const file = plugin.app.vault.getAbstractFileByPath(row.dataset.path);
+            selectedFolder = file instanceof TFolder ? file : file?.parent;
+        };
+        view.containerEl.addEventListener("click", entry.selectFolder, true);
+        entry.suppressTooltip = (event) => {
+            const row = event.target.closest?.(".nav-file-title, .nav-folder-title");
+            if (!row || !view.containerEl.contains(row) || event.pointerType === "touch") return;
+            // Skip native date/count tooltips, while retaining modifier-key link previews.
+            event.stopPropagation();
+            if (event.relatedTarget && row.contains(event.relatedTarget)) return;
+            const file = plugin.app.vault.getAbstractFileByPath(row.dataset.path);
+            if (file instanceof TFile) workspace.trigger("hover-link", {
+                event, source: "file-explorer", hoverParent: view, targetEl: row, linktext: file.path,
+            });
+        };
+        view.containerEl.ownerDocument.addEventListener("pointerover", entry.suppressTooltip, true);
         entry.sorted = function (folder) {
-            const sorted = entry.originalSort.call(this, folder);
+            const sorted = entry.originalSort.call(this, folder).filter((item) => !plugin.settings.hideAttachmentFolders
+                || !(item.file instanceof TFolder) || item.file.name !== "assets");
             if (!plugin.settings.explorerFilesFirst) return sorted;
             return [...sorted.filter((item) => !(item.file instanceof TFolder)), ...sorted.filter((item) => item.file instanceof TFolder)];
         };
         view.getSortedFolderItems = entry.sorted;
         view.containerEl.classList.add("pw-explorer-controls");
-        const create = button("New", "explorer-create", () => openMenu(create, () => createDocumentMenu(plugin.app, view, (ext, label) => {
-            const dialog = showCreateDialog(plugin.app, view, ext, label);
-            dialogs.add(dialog);
-            dialog.onClose = () => { dialogs.delete(dialog); dialog.contentEl.empty(); };
-        })));
+        const create = button("New", "explorer-create", () => openMenu(create, () => {
+            const folder = creationFolder();
+            return createDocumentMenu(plugin.app, view, (ext, label) => {
+                if (ext === "md") return view.createAbstractFile("file", folder, "tab");
+                const dialog = showCreateDialog(plugin.app, view, ext, label, folder);
+                dialogs.add(dialog);
+                dialog.onClose = () => { dialogs.delete(dialog); dialog.contentEl.empty(); };
+            }, folder);
+        }));
         create.classList.add("pw-explorer-create");
         const divider = doc.createElement("span");
         divider.className = "pw-explorer-divider";
@@ -79,21 +123,63 @@ export function installExplorerActions(plugin) {
             const file = workspace.getActiveFile() ?? workspace.getMostRecentLeaf()?.view.file;
             if (file) view.revealInFolder(file);
         });
+        const search = button("Search files", "search", () => {
+            view.search.toggle();
+            search.setAttribute("aria-expanded", String(view.search.isShowing));
+            search.classList.toggle("is-active", view.search.isShowing);
+        });
+        search.classList.add("pw-explorer-search");
+        search.setAttribute("aria-expanded", "false");
+        view.search.hide();
+        entry.disposeSearch = installExplorerSearch(plugin, view);
         const more = button("More options", "ellipsis-vertical", () => openMenu(more, () => createExplorerMenu(plugin, view, update)));
         more.classList.add("pw-explorer-more");
         const minimize = button("Hide files", "explorer-minimize", toggleCollapsed);
         minimize.classList.add("pw-explorer-minimize");
         // Keep the native collapse/expand action, including its changing icon and label.
         host.prepend(create, divider, select);
-        host.append(more, minimize);
-        entry.controls.push(create, divider, select, more, minimize);
+        host.append(search, more, minimize);
+        entry.controls.push(create, divider, select, search, more, minimize);
         entries.set(leaf, entry);
         view.sort();
     };
     const sync = () => {
         if (disposed) return;
-        const leaves = workspace.getLeavesOfType("file-explorer")
+        const explorers = workspace.getLeavesOfType("file-explorer");
+        // Pinning existing tabs is not enough: a restored layout or native tab
+        // close can leave only Search in the sidebar. Restore Files via Obsidian,
+        // keeping the existing Search leaf and its native implementation intact.
+        if (!explorers.length && workspace.layoutReady && plugin.app.internalPlugins.plugins["file-explorer"]?.enabled
+            && !restoringExplorer && !restoreFailed) {
+            restoringExplorer = true;
+            void workspace.ensureSideLeaf("file-explorer", "left", { reveal: false }).catch(() => {
+                restoreFailed = true;
+                if (!disposed) new Notice("Could not restore Files. Use the Open files command to retry.");
+            }).finally(() => {
+                restoringExplorer = false;
+                if (!workspace.getLeavesOfType("file-explorer").length) restoreFailed = true;
+                schedule();
+            });
+        }
+        if (explorers.length) restoreFailed = false;
+        const leaves = explorers
             .filter((leaf) => workspace.leftSplit.containerEl.contains(leaf.view.containerEl));
+        const searchLeaves = workspace.getLeavesOfType("search")
+            .filter((leaf) => workspace.leftSplit.containerEl.contains(leaf.view.containerEl));
+        for (const [leaf, back] of searchReturns) {
+            if (searchLeaves.includes(leaf) && back.isConnected) continue;
+            back.remove();
+            searchReturns.delete(leaf);
+        }
+        for (const leaf of searchLeaves) {
+            if (searchReturns.has(leaf)) continue;
+            const row = leaf.view.containerEl.querySelector(".search-row");
+            if (!row) continue;
+            const back = button("Back to files", "folder", () => plugin.app.commands.executeCommandById("file-explorer:open"));
+            back.classList.add("pw-search-back-to-files");
+            row.prepend(back);
+            searchReturns.set(leaf, back);
+        }
         const collapsed = leaves.length > 0 && !!plugin.settings.explorerCollapsed;
         doc.body.classList.toggle("pw-file-explorer-pinned", leaves.length > 0);
         doc.body.classList.toggle("pw-file-explorer-collapsed", collapsed);
@@ -109,9 +195,11 @@ export function installExplorerActions(plugin) {
             else workspace.leftSplit.expand();
         }
         for (const leaf of leaves) {
+            // Select Files when attaching/restoring it, not on every layout event:
+            // otherwise the native global-search command is immediately overridden.
+            if (entries.has(leaf)) continue;
             const tabs = leaf.parent;
             if (tabs.children[tabs.currentTab] !== leaf) tabs.selectTab(leaf);
-            if (entries.has(leaf)) continue;
             const host = leaf.view.containerEl.querySelector(".nav-buttons-container");
             if (host) attach(leaf, host);
         }
@@ -123,6 +211,7 @@ export function installExplorerActions(plugin) {
     };
     plugin.registerEvent(workspace.on("layout-change", schedule));
     plugin.registerEvent(workspace.on("active-leaf-change", schedule));
+    plugin.registerEvent(workspace.on("file-open", () => { selectedFolder = undefined; }));
     workspace.onLayoutReady(schedule);
     plugin.register(() => {
         disposed = true;
@@ -130,6 +219,8 @@ export function installExplorerActions(plugin) {
         for (const dialog of dialogs) dialog.close();
         for (const entry of entries.values()) restore(entry);
         entries.clear();
+        for (const back of searchReturns.values()) back.remove();
+        searchReturns.clear();
         rail.remove();
         doc.body.classList.remove("pw-file-explorer-pinned", "pw-file-explorer-collapsed", "pw-file-explorer-compact");
         if (plugin.settings.explorerCollapsed) workspace.leftSplit.expand();

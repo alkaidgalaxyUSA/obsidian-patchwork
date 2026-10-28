@@ -15,10 +15,11 @@ const PANELS = new Map([
 class WindowActions {
     constructor(plugin) {
         this.app = plugin.app;
+        this.noteNavigation = plugin.noteNavigation;
         this.entries = new Map();
         this.managedTabs = new Set();
         this.pendingPanels = new Set();
-        for (const event of ["layout-change", "active-leaf-change"]) {
+        for (const event of ["layout-change", "active-leaf-change", "file-open"]) {
             plugin.registerEvent(this.app.workspace.on(event, () => this.schedule()));
         }
         this.app.workspace.onLayoutReady(() => this.schedule());
@@ -41,22 +42,24 @@ class WindowActions {
         if (!this.toolbar.isConnected) doc.body.append(this.toolbar);
         const items = new Map(ribbon.items.map((item) => [item.id, item]));
         for (const [id, entry] of this.entries) {
-            if (items.get(id)?.buttonEl === entry.button && entry.button.isConnected) continue;
+            // Native ribbon refreshes may temporarily detach our relocated nodes.
+            if (items.get(id)?.buttonEl === entry.button) continue;
             this.restore(entry, false);
             this.entries.delete(id);
         }
         for (const id of ACTIONS) {
             const button = items.get(id)?.buttonEl;
-            if (!button?.isConnected) continue;
+            if (!button) continue;
             if (!this.entries.has(id)) {
                 const marker = doc.createComment("Patchwork ribbon action");
                 button.before(marker);
-                const attributes = new Map(["data-tooltip-position", "role", "tabindex"].map((name) => [name, button.getAttribute(name)]));
+                const attributes = new Map(["data-tooltip-position", "role", "tabindex", "aria-label"].map((name) => [name, button.getAttribute(name)]));
                 button.setAttribute("data-tooltip-position", "bottom");
                 button.setAttribute("role", "button");
                 button.tabIndex = 0;
                 this.entries.set(id, { button, marker, attributes });
             }
+            if (id === "meld-encrypt:Lock and close all open encrypted notes") button.setAttribute("aria-label", "Close encrypted notes");
         }
         const buttons = ACTIONS.map((id) => this.entries.get(id)?.button).filter(Boolean);
         buttons.forEach((button, index) => {
@@ -77,16 +80,31 @@ class WindowActions {
     }
 
     position() {
+        const profile = this.doc.querySelector('.mod-left-split > .workspace-sidedock-vault-profile');
+        const profileHeight = profile?.getBoundingClientRect().height;
+        if (profileHeight > 0) this.doc.body.style.setProperty("--pw-document-header-height", `${profileHeight}px`);
         const dock = this.app.workspace.rightSplit;
-        if (!dock.collapsed && dock.size > 100) this.dockWidth = dock.size;
-        this.dockWidth ??= dock.size || 480;
+        const header = dock.containerEl.querySelector('.workspace-tabs.mod-top > .workspace-tab-header-container');
+        const headerBounds = header?.getBoundingClientRect();
+        const documentLeaf = this.noteNavigation.findLeaf(this.doc);
+        const imageOpen = documentLeaf?.view.getViewType() === "image" || !!this.doc.querySelector('.lightbox, .mod-image-lightbox');
+        const visible = !dock.collapsed && headerBounds?.width > 0 && !imageOpen;
+        this.toolbar.hidden = !visible;
+        this.doc.body.classList.toggle("pw-window-tools-visible", visible);
         const win = this.doc.defaultView;
         const controls = this.doc.querySelector(".titlebar-button-container.mod-right")?.getBoundingClientRect();
+        if (!visible) {
+            this.doc.body.style.setProperty("--pw-window-tools-width", "0px");
+            // Themes can make native window controls wider than --frame-right-space.
+            const rightSpace = controls?.width ? `${Math.ceil(win.innerWidth - controls.left) + 4}px` : "var(--frame-right-space)";
+            this.doc.body.style.setProperty("--pw-window-tools-right-space", rightSpace);
+            return;
+        }
         const width = Math.ceil(this.toolbar.getBoundingClientRect().width);
         const right = controls?.width ? controls.left : win.innerWidth;
-        const left = Math.max(8, Math.min(win.innerWidth - this.dockWidth + 8, right - width - 8));
+        const left = Math.max(headerBounds.left, Math.min(headerBounds.left + 8, right - width - 8));
         this.toolbar.style.left = `${left}px`;
-        this.toolbar.style.top = `${controls?.top ?? 0}px`;
+        this.toolbar.style.top = `${headerBounds.top}px`;
         for (const [name, value] of [["--pw-window-tools-width", `${width}px`], ["--pw-window-tools-right-space", `${win.innerWidth - left + 8}px`]]) {
             if (this.doc.body.style.getPropertyValue(name) !== value) this.doc.body.style.setProperty(name, value);
         }
@@ -102,13 +120,19 @@ class WindowActions {
         this.previousWidthPriority = doc.body.style.getPropertyPriority("--pw-window-tools-width");
         this.previousRightSpace = doc.body.style.getPropertyValue("--pw-window-tools-right-space");
         this.previousRightPriority = doc.body.style.getPropertyPriority("--pw-window-tools-right-space");
+        this.previousHeaderHeight = doc.body.style.getPropertyValue("--pw-document-header-height");
         this.observer = new doc.defaultView.MutationObserver(() => this.schedule());
         this.observer.observe(ribbon.ribbonItemsEl, { childList: true });
         this.observer.observe(this.toolbar, { childList: true });
+        this.observer.observe(doc.body, { childList: true });
         this.resize = new doc.defaultView.ResizeObserver(() => this.position());
         this.resize.observe(this.toolbar);
         this.resize.observe(this.app.workspace.rightSplit.containerEl);
         this.resize.observe(this.app.workspace.containerEl);
+        const controls = doc.querySelector(".titlebar-button-container.mod-right");
+        if (controls) this.resize.observe(controls);
+        const profile = doc.querySelector('.mod-left-split > .workspace-sidedock-vault-profile');
+        if (profile) this.resize.observe(profile);
         this.toolbar.addEventListener("keydown", (event) => {
             if (event.key !== "Enter" && event.key !== " ") return;
             const button = event.target.closest(".side-dock-ribbon-action");
@@ -137,7 +161,10 @@ class WindowActions {
     }
 
     restore(entry, restoreButton) {
-        if (restoreButton && entry.marker.parentNode && entry.button.parentElement === this.toolbar) entry.marker.replaceWith(entry.button);
+        if (restoreButton && entry.button.parentElement === this.toolbar) {
+            if (entry.marker.parentNode) entry.marker.replaceWith(entry.button);
+            else this.app.workspace.leftRibbon.ribbonItemsEl.append(entry.button);
+        }
         else {
             entry.marker.remove();
             if (entry.button.parentElement === this.toolbar) entry.button.remove();
@@ -158,8 +185,10 @@ class WindowActions {
         for (const tab of this.managedTabs) tab.classList.remove("pw-window-managed-tab");
         this.managedTabs.clear();
         this.toolbar?.remove();
-        this.doc?.body.classList.remove("pw-window-actions-enabled");
+        this.doc?.body.classList.remove("pw-window-actions-enabled", "pw-window-tools-visible");
         if (!this.doc) return;
+        if (this.previousHeaderHeight) this.doc.body.style.setProperty("--pw-document-header-height", this.previousHeaderHeight);
+        else this.doc.body.style.removeProperty("--pw-document-header-height");
         if (this.previousWidth) this.doc.body.style.setProperty("--pw-window-tools-width", this.previousWidth, this.previousWidthPriority);
         else this.doc.body.style.removeProperty("--pw-window-tools-width");
         if (this.previousRightSpace) this.doc.body.style.setProperty("--pw-window-tools-right-space", this.previousRightSpace, this.previousRightPriority);

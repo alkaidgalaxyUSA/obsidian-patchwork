@@ -35,5 +35,5 @@
 @use "features/underline-headings.scss";
 
 // Scoped Patchwork component customizations.
-@use "app/file-explorer.scss";
+// File-list appearance is owned by the editor's menu-styles component.
 // Document appearance is owned by Patchwork Editor.

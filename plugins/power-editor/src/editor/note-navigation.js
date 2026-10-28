@@ -1,5 +1,3 @@
-import { Menu } from "obsidian";
-
 class NoteNavigation {
     constructor(plugin) {
         this.app = plugin.app;
@@ -44,34 +42,7 @@ class NoteNavigation {
         for (const doc of documents) {
             if (doc.defaultView.closed) continue;
             const entry = this.documents.get(doc) || this.attach(doc);
-            const leaf = this.findLeaf(doc);
-            const collapse = doc.querySelector(".sidebar-toggle-button.mod-right");
-            const host = collapse?.parentElement || doc.querySelector(".mod-root .workspace-tab-header-container");
-            this.refreshHeaders(doc, entry, !!host);
-            // Keep only the native menu; mode and encryption actions remain in menus/commands.
-            const buttons = [leaf?.view.moreOptionsButtonEl].filter(Boolean);
-            if (!host || !buttons.length) {
-                this.restore(entry);
-                entry.toolbar.remove();
-                doc.body.classList.remove("pw-note-navigation-enabled");
-                continue;
-            }
-            if (entry.leaf !== leaf || buttons.some((button, index) => entry.slots[index]?.button !== button)) {
-                this.restore(entry);
-                entry.leaf = leaf;
-                entry.slots = buttons.map((button) => {
-                    const marker = doc.createComment("Patchwork note action");
-                    button.before(marker);
-                    const parent = button.parentElement;
-                    entry.toolbar.append(button);
-                    return { button, marker, parent };
-                });
-                entry.observer.observe(leaf.view.headerEl, { childList: true, subtree: true });
-            }
-            if (entry.toolbar.parentElement !== host || (collapse && entry.toolbar.nextSibling !== collapse)) {
-                host.insertBefore(entry.toolbar, collapse || null);
-            }
-            doc.body.classList.add("pw-note-navigation-enabled");
+            this.refreshHeaders(doc, entry, true);
         }
     }
 
@@ -80,7 +51,7 @@ class NoteNavigation {
         if (enabled) {
             this.app.workspace.iterateAllLeaves((leaf) => {
                 const view = leaf.view;
-                if (view.file && view.headerEl && view.containerEl.ownerDocument === doc
+                if ((view.file || view.getViewType() === "empty") && view.headerEl && view.containerEl.ownerDocument === doc
                     && view.containerEl.closest(".mod-root")) headers.add(view.headerEl);
             });
         }
@@ -92,75 +63,12 @@ class NoteNavigation {
     }
 
     attach(doc) {
-        const toolbar = doc.createElement("div");
-        toolbar.className = "pw-note-navigation";
-        toolbar.setAttribute("role", "toolbar");
-        toolbar.setAttribute("aria-label", "Document actions");
-        const entry = { toolbar, slots: [], headers: new Set(), observer: new doc.defaultView.MutationObserver(() => this.schedule()) };
-        const activate = () => {
-            if (entry.leaf) this.app.workspace.setActiveLeaf(entry.leaf, { focus: false });
-        };
         const keydown = (event) => this.navigate(doc, event);
-        const enter = (event) => {
-            if (event.pointerType === "touch") return;
-            activate();
-            this.openMore(entry);
-        };
-        const leave = (event) => this.scheduleMoreClose(entry, event.relatedTarget);
-        const click = (event) => {
-            if (!entry.slots.some((slot) => slot.button.contains(event.target))) return;
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            activate();
-            this.openMore(entry);
-        };
-        toolbar.addEventListener("pointerdown", activate, true);
-        toolbar.addEventListener("focusin", activate);
-        toolbar.addEventListener("pointerenter", enter);
-        toolbar.addEventListener("pointerleave", leave);
-        toolbar.addEventListener("click", click, true);
         doc.defaultView.addEventListener("keydown", keydown, true);
-        entry.cleanup = () => {
-            toolbar.removeEventListener("pointerdown", activate, true);
-            toolbar.removeEventListener("focusin", activate);
-            toolbar.removeEventListener("pointerenter", enter);
-            toolbar.removeEventListener("pointerleave", leave);
-            toolbar.removeEventListener("click", click, true);
-            doc.defaultView.removeEventListener("keydown", keydown, true);
-        };
+        const entry = { headers: new Set(), cleanup: () => doc.defaultView.removeEventListener("keydown", keydown, true) };
         this.documents.set(doc, entry);
         return entry;
     }
-
-    openMore(entry) {
-        const doc = entry.toolbar.ownerDocument;
-        doc.defaultView.clearTimeout(entry.moreCloseTimer);
-        if (entry.menu?.dom.isConnected || !entry.leaf) return;
-        const menu = new Menu();
-        entry.leaf.view.onPaneMenu(menu, "more-options");
-        menu.setParentElement(entry.toolbar);
-        menu.dom.classList.add("pw-code-hover-submenu");
-        entry.menu = menu;
-        const events = new doc.defaultView.AbortController();
-        const options = { signal: events.signal };
-        doc.addEventListener("pointerover", (event) => this.scheduleMoreClose(entry, event.target), options);
-        menu.dom.addEventListener("pointerleave", (event) => this.scheduleMoreClose(entry, event.relatedTarget), options);
-        menu.onHide(() => {
-            events.abort();
-            doc.defaultView.clearTimeout(entry.moreCloseTimer);
-            if (entry.menu === menu) entry.menu = undefined;
-        });
-        const bounds = entry.toolbar.getBoundingClientRect();
-        menu.showAtPosition({ x: bounds.left, y: bounds.bottom + 4 });
-    }
-
-    scheduleMoreClose(entry, target) {
-        const win = entry.toolbar.ownerDocument.defaultView;
-        win.clearTimeout(entry.moreCloseTimer);
-        if (!entry.menu || target?.nodeType && (entry.toolbar.contains(target) || entry.menu.isInside(target))) return;
-        entry.moreCloseTimer = win.setTimeout(() => entry.menu?.hide(), 120);
-    }
-
     navigate(doc, event) {
         if (event.defaultPrevented || event.isComposing || !event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
         if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -175,25 +83,10 @@ class NoteNavigation {
         event.stopImmediatePropagation();
     }
 
-    restore(entry) {
-        entry.toolbar.ownerDocument.defaultView.clearTimeout(entry.moreCloseTimer);
-        entry.menu?.hide();
-        entry.observer.disconnect();
-        for (const { button, marker, parent } of entry.slots) {
-            if (marker.parentNode) marker.replaceWith(button);
-            else parent?.append(button);
-        }
-        entry.slots = [];
-        entry.leaf = undefined;
-    }
-
     detach(doc, entry) {
-        this.restore(entry);
         for (const header of entry.headers) header.classList.remove("pw-document-header");
         entry.headers.clear();
         entry.cleanup();
-        entry.toolbar.remove();
-        doc.body.classList.remove("pw-note-navigation-enabled");
     }
 
     dispose() {

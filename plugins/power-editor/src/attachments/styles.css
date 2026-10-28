@@ -1,0 +1,10 @@
+.pw-attachment-review { width: min(760px, 92vw); }
+.pw-attachment-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 14px; }
+.pw-attachment-warnings { color: var(--text-warning); margin-block: 10px; }
+.pw-attachment-warnings li { overflow-wrap: anywhere; }
+.pw-attachment-list { max-height: 50vh; overflow: auto; margin-top: 12px; }
+.pw-attachment-list h3 { font-size: var(--font-ui-small); overflow-wrap: anywhere; color: var(--text-muted); }
+.pw-attachment-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--background-modifier-border); }
+.pw-attachment-thumbnail { width: 64px; height: 48px; object-fit: contain; flex-shrink: 0; }
+.pw-attachment-path { font-size: var(--font-ui-smaller); color: var(--text-muted); overflow-wrap: anywhere; }
+.pw-explorer-search-status { margin-top: 5px; padding-inline: 4px; color: var(--text-muted); font-size: var(--font-ui-smaller); }

@@ -531,6 +531,9 @@ interface PatchworkEditorSettings {
     explorerCollapsed?: boolean;
     explorerFilesFirst?: boolean;
     explorerCompact?: boolean;
+    explorerAppearance?: string;
+    explorerOpenInNewTab?: boolean;
+    hideAttachmentFolders?: boolean;
 	showToolbar: boolean;
 	showOnMobile: boolean;
 	showBubble: boolean;
@@ -611,6 +614,9 @@ const DEFAULT_SETTINGS: PatchworkEditorSettings = {
 	explorerCollapsed: false,
 	explorerFilesFirst: false,
 	explorerCompact: false,
+	explorerAppearance: "patchwork",
+	explorerOpenInNewTab: true,
+	hideAttachmentFolders: true,
 	showToolbar: true,
 	showOnMobile: false,
 	showBubble: true,

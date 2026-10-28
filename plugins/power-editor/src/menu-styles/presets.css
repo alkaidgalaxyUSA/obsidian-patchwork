@@ -1,0 +1,107 @@
+/* File-list adaptations of GitHub Theme (krios2146), Border (Akifyss), and
+ * Maple (subframe7536). Upstream themes are MIT licensed; see root LICENSE.
+ * These are curated presets, not global theme imports. */
+body .workspace-leaf-content[data-pw-menu-style="github"] {
+    --pw-menu-folder-icon: url("../../../../icons/action-chevron-down.svg");
+    --pw-menu-file-icon-content: none;
+    --pw-menu-guide-width: 0px;
+    --pw-menu-radius: 6px; --pw-menu-row: 30px; --pw-menu-indent: 14px;
+}
+body .workspace-leaf-content[data-pw-menu-style="border"] {
+    --pw-menu-radius: 8px; --pw-menu-row: 32px; --pw-menu-indent: 16px;
+}
+body .workspace-leaf-content[data-pw-menu-style="maple"] {
+    --pw-menu-folder: #d0a31b;
+    --pw-menu-radius: 4px; --pw-menu-row: 32px; --pw-menu-indent: 16px;
+}
+body.theme-dark .workspace-leaf-content[data-pw-menu-style="maple"] {
+    --pw-menu-folder: #dcb747;
+}
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) {
+    /* Palette belongs to the application theme, not the menu preset. */
+    --pw-menu-surface: var(--background-secondary);
+    --pw-menu-text: var(--text-muted);
+    --pw-menu-hover: var(--background-modifier-hover);
+    --pw-menu-active: var(--background-modifier-hover);
+    --pw-menu-active-text: var(--text-normal);
+    --nav-item-size: 14px;
+    --nav-item-padding: 4px 8px 4px 30px;
+    --nav-item-parent-padding: 4px 8px 4px 30px;
+    --nav-item-children-margin-start: var(--pw-menu-indent);
+    --nav-item-children-padding-start: 0px;
+    --nav-item-background-hover: var(--pw-menu-hover);
+    --nav-item-background-active: var(--pw-menu-active);
+    --nav-item-background-selected: var(--pw-menu-active);
+    --nav-item-color: var(--pw-menu-text);
+    --nav-item-color-hover: var(--pw-menu-text);
+    --nav-item-color-active: var(--pw-menu-active-text);
+    --nav-item-color-selected: var(--pw-menu-active-text);
+    --icon-color: var(--pw-menu-text);
+    --nav-indentation-guide-width: var(--pw-menu-guide-width, 1px);
+    --nav-indentation-guide-color: var(--pw-menu-hover);
+    background: var(--pw-menu-surface) !important;
+    color: var(--pw-menu-text);
+}
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-files-container {
+    padding: 4px 6px !important;
+    background: var(--pw-menu-surface) !important;
+}
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) :is(.nav-file-title, .nav-folder-title) {
+    position: relative;
+    box-sizing: border-box;
+    height: var(--pw-menu-row) !important;
+    min-height: var(--pw-menu-row);
+    margin-block: 2px !important;
+    padding-block: 4px !important;
+    border: 0 !important;
+    border-radius: var(--pw-menu-radius) !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    color: var(--pw-menu-text) !important;
+    font-family: var(--font-interface);
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    line-height: 22px !important;
+    align-items: center;
+}
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) :is(.nav-file-title, .nav-folder-title):is(:hover, .has-focus) {
+    background: var(--pw-menu-hover) !important;
+}
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) :is(.nav-file-title, .nav-folder-title):is(.is-active, .is-selected) {
+    background: var(--pw-menu-active) !important;
+    color: var(--pw-menu-active-text) !important;
+    font-weight: 500 !important;
+}
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) :is(.nav-file-title-content, .nav-folder-title-content) {
+    color: inherit !important;
+    padding-left: 0 !important;
+    line-height: inherit !important;
+    top: 0;
+}
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) :is(.nav-file-title, .nav-folder-title)::after { content: none !important; }
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-file-title::before {
+    content: var(--pw-menu-file-icon-content, "") !important;
+    position: absolute;
+    top: 50%;
+    translate: -22px -50%;
+    width: 16px; height: 16px;
+    background: currentColor !important;
+    mask: url("../../../../icons/action-file.svg") center / contain no-repeat;
+    opacity: .85;
+}
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-folder .collapse-icon {
+    display: flex !important;
+    margin-inline-start: -22px !important;
+    color: var(--pw-menu-folder, var(--pw-menu-text)) !important;
+}
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-folder .collapse-icon svg {
+    width: 16px !important; height: 16px !important;
+    transform: none !important;
+    translate: none !important;
+    background: currentColor !important;
+    mask: var(--pw-menu-folder-icon, url("../../../../icons/action-folder.svg")) center / contain no-repeat;
+}
+body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-folder .collapse-icon svg > * { display: none !important; }
+body .workspace-leaf-content[data-pw-menu-style="github"] .nav-folder .collapse-icon.is-collapsed svg {
+    transform: rotate(-90deg) !important;
+}
