@@ -30,17 +30,22 @@ body .workspace-split.mod-right-split .claudian-container:not(.claudian-zen) {
     --patchwork-claudian-input-min-height: min(112px, 17.5vh);
 }
 
+/* Narrow only the conversation transcript scrollbar. */
+body .claudian-container .claudian-messages::-webkit-scrollbar {
+    width: 10px;
+}
+
 body .workspace-split.mod-right-split .claudian-container:not(.claudian-zen) .claudian-input-footer {
     width: 95%;
     margin-top: auto;
     margin-inline: auto;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     padding-bottom: 0;
 }
 
-/* Hide the linked-content label and its otherwise empty row without changing context. */
+/* Hide linked-content labels and rows containing only those labels without changing context. */
 body .claudian-container .claudian-input-info-linked,
-body .claudian-container .claudian-input-info-row:has(> .claudian-input-info-linked:only-child) {
+body .claudian-container .claudian-input-info-row:not(:has(> :not(.claudian-input-info-linked))) {
     display: none;
 }
 
@@ -444,10 +449,20 @@ body button.claudian-extension-collapse svg {
 }
 
 /* Reserve a separate icon column outside the Zen input's border. */
+body .claudian-container.claudian-extension-zen {
+    --claudian-extension-zen-action-width: 34px;
+}
+
 body .claudian-zen .claudian-extension-zen-composer {
     position: relative;
     box-sizing: border-box;
-    padding-inline-end: 34px;
+    padding-inline-end: var(--claudian-extension-zen-action-width);
+}
+
+/* Center the history drawer over the input, excluding the external action column. */
+body .claudian-container.claudian-extension-zen > .claudian-zen-drawer {
+    width: calc((100% - var(--claudian-extension-zen-action-width)) * 0.9);
+    margin-inline-end: var(--claudian-extension-zen-action-width);
 }
 
 body .claudian-zen button.claudian-extension-zen-toggle {

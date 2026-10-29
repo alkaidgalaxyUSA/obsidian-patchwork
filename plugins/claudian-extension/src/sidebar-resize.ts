@@ -45,8 +45,10 @@ export class SidebarResize {
         overlay.setAttribute("aria-hidden", "true");
         const line = this.doc.createElement("div");
         line.className = "claudian-extension-resize-line";
-        line.style.top = `${workspace.top}px`;
-        line.style.height = `${workspace.height}px`;
+        const content = dock.containerEl.querySelector<HTMLElement>(".workspace-tabs.mod-top > .workspace-tab-container");
+        const contentTop = content?.getBoundingClientRect().top ?? handle.getBoundingClientRect().top;
+        line.style.top = `${contentTop}px`;
+        line.style.height = `${Math.max(0, bounds.bottom - contentTop)}px`;
         overlay.append(line);
         this.doc.body.append(overlay);
         this.doc.body.classList.add("claudian-extension-resizing");

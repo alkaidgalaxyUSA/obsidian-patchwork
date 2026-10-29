@@ -143,6 +143,20 @@ body .mod-root .pw-document-tab-strip > .workspace-tab-header-tab-list {
     flex: 0 0 auto;
     align-items: center;
 }
+body .mod-root .pw-document-tab-strip.pw-tab-actions-offset { z-index: 3; }
+body .mod-root .pw-document-tab-strip > .pw-tab-action-slot {
+    flex: 0 0 auto;
+    pointer-events: none;
+}
+body .mod-root .pw-document-tab-strip > .pw-tab-action-slot[hidden] { display: none; }
+body .mod-root .pw-document-tab-strip.pw-tab-actions-offset > .pw-tab-action-positioned {
+    position: fixed;
+    left: var(--pw-tab-action-left);
+    top: var(--pw-tab-action-top);
+    height: var(--pw-tab-action-height);
+    margin: 0;
+    -webkit-app-region: no-drag;
+}
 body .mod-root .pw-document-tab-strip > .pw-tab-actions-spacer {
     position: relative;
     z-index: 2;
