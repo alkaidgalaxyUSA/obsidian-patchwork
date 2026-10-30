@@ -1,7 +1,8 @@
 import { Notice, TFile, TFolder } from "obsidian";
 import { setIcon } from "../../../utils/icons";
-import { createDocumentMenu, createExplorerMenu, showCreateDialog } from "./explorer-menus.js";
+import { createDocumentMenu, createExplorerMenu, createMarkdown, showCreateDialog } from "./explorer-menus.js";
 import { installExplorerSearch } from "./explorer-search.js";
+import { expandExplorerSelection, installExplorerSelection } from "./explorer-selection.js";
 
 /** Own only the file-list controls; keep native tree and sorting implementations. */
 export function installExplorerActions(plugin) {
@@ -14,6 +15,8 @@ export function installExplorerActions(plugin) {
     let pending = false;
     let restoringExplorer = false;
     let restoreFailed = false;
+    let restoredCollapsed = false;
+    let wasCollapsed = false;
     let menu;
     let menuAnchor;
     let selectedFolder;
@@ -41,14 +44,9 @@ export function installExplorerActions(plugin) {
     };
     const toggleCollapsed = () => {
         closeMenu();
-        if (plugin.settings.explorerCollapsed) {
-            for (const { view } of entries.values()) {
-                // Force a traversal even if the native all-collapsed flag is stale.
-                view.tree.isAllCollapsed = false;
-                view.tree.setCollapseAll(true);
-            }
-        }
-        update("explorerCollapsed", !plugin.settings.explorerCollapsed);
+        if (workspace.leftSplit.collapsed) workspace.leftSplit.expand();
+        else workspace.leftSplit.collapse();
+        update("explorerCollapsed", workspace.leftSplit.collapsed);
     };
     const rail = doc.createElement("div");
     rail.className = "pw-explorer-rail";
@@ -69,6 +67,7 @@ export function installExplorerActions(plugin) {
     };
     const restore = (entry) => {
         entry.disposeSearch();
+        entry.disposeSelection();
         entry.view.containerEl.removeEventListener("click", entry.selectFolder, true);
         entry.view.containerEl.ownerDocument.removeEventListener("pointerover", entry.suppressTooltip, true);
         entry.controls.forEach((el) => el.remove());
@@ -86,6 +85,7 @@ export function installExplorerActions(plugin) {
             selectedFolder = file instanceof TFolder ? file : file?.parent;
         };
         view.containerEl.addEventListener("click", entry.selectFolder, true);
+        entry.disposeSelection = installExplorerSelection(view);
         entry.suppressTooltip = (event) => {
             const row = event.target.closest?.(".nav-file-title, .nav-folder-title");
             if (!row || !view.containerEl.contains(row) || event.pointerType === "touch") return;
@@ -109,7 +109,7 @@ export function installExplorerActions(plugin) {
         const create = button("New", "explorer-create", () => openMenu(create, () => {
             const folder = creationFolder();
             return createDocumentMenu(plugin.app, view, (ext, label) => {
-                if (ext === "md") return view.createAbstractFile("file", folder, "tab");
+                if (ext === "md") return createMarkdown(plugin.app, folder);
                 const dialog = showCreateDialog(plugin.app, view, ext, label, folder);
                 dialogs.add(dialog);
                 dialog.onClose = () => { dialogs.delete(dialog); dialog.contentEl.empty(); };
@@ -123,23 +123,21 @@ export function installExplorerActions(plugin) {
             const file = workspace.getActiveFile() ?? workspace.getMostRecentLeaf()?.view.file;
             if (file) view.revealInFolder(file);
         });
-        const search = button("Search files", "search", () => {
-            view.search.toggle();
-            search.setAttribute("aria-expanded", String(view.search.isShowing));
-            search.classList.toggle("is-active", view.search.isShowing);
+        const expand = button("Expand Select", "chevrons-up-down", () => {
+            void expandExplorerSelection(view).catch(error => new Notice(`Could not expand selection: ${error.message}`));
         });
-        search.classList.add("pw-explorer-search");
-        search.setAttribute("aria-expanded", "false");
         view.search.hide();
         entry.disposeSearch = installExplorerSearch(plugin, view);
-        const more = button("More options", "ellipsis-vertical", () => openMenu(more, () => createExplorerMenu(plugin, view, update)));
+        const more = button("More options", "explorer-more", () => openMenu(more, () => createExplorerMenu(plugin, view, update)));
         more.classList.add("pw-explorer-more");
         const minimize = button("Hide files", "explorer-minimize", toggleCollapsed);
         minimize.classList.add("pw-explorer-minimize");
         // Keep the native collapse/expand action, including its changing icon and label.
         host.prepend(create, divider, select);
-        host.append(search, more, minimize);
-        entry.controls.push(create, divider, select, search, more, minimize);
+        host.append(more, minimize);
+        const collapse = host.querySelector(".nav-action-button:has(.lucide-chevrons-down-up, .lucide-chevrons-up-down)");
+        host.insertBefore(expand, collapse ?? more);
+        entry.controls.push(create, divider, select, expand, more, minimize);
         entries.set(leaf, entry);
         view.sort();
     };
@@ -180,7 +178,23 @@ export function installExplorerActions(plugin) {
             row.prepend(back);
             searchReturns.set(leaf, back);
         }
-        const collapsed = leaves.length > 0 && !!plugin.settings.explorerCollapsed;
+        if (leaves.length && !restoredCollapsed) {
+            restoredCollapsed = true;
+            if (plugin.settings.explorerCollapsed) workspace.leftSplit.collapse();
+        }
+        const collapsed = leaves.length > 0 && workspace.leftSplit.collapsed;
+        if (collapsed && !wasCollapsed) {
+            for (const { view } of leaves) {
+                // Reset on every close, including Project and native sidebar controls.
+                view.tree.isAllCollapsed = false;
+                view.tree.setCollapseAll(true);
+            }
+        }
+        wasCollapsed = collapsed;
+        if (leaves.length && !!plugin.settings.explorerCollapsed !== collapsed) {
+            plugin.settings.explorerCollapsed = collapsed;
+            save();
+        }
         doc.body.classList.toggle("pw-file-explorer-pinned", leaves.length > 0);
         doc.body.classList.toggle("pw-file-explorer-collapsed", collapsed);
         doc.body.classList.toggle("pw-file-explorer-compact", !!plugin.settings.explorerCompact);
@@ -189,10 +203,6 @@ export function installExplorerActions(plugin) {
             if (leaves.includes(leaf) && entry.host.isConnected) continue;
             restore(entry);
             entries.delete(leaf);
-        }
-        if (leaves.length && workspace.leftSplit.collapsed !== collapsed) {
-            if (collapsed) workspace.leftSplit.collapse();
-            else workspace.leftSplit.expand();
         }
         for (const leaf of leaves) {
             // Select Files when attaching/restoring it, not on every layout event:
@@ -212,9 +222,12 @@ export function installExplorerActions(plugin) {
     plugin.registerEvent(workspace.on("layout-change", schedule));
     plugin.registerEvent(workspace.on("active-leaf-change", schedule));
     plugin.registerEvent(workspace.on("file-open", () => { selectedFolder = undefined; }));
+    const dockObserver = new doc.defaultView.MutationObserver(schedule);
+    dockObserver.observe(workspace.leftSplit.containerEl, { attributes: true, attributeFilter: ["class", "style"] });
     workspace.onLayoutReady(schedule);
     plugin.register(() => {
         disposed = true;
+        dockObserver.disconnect();
         closeMenu();
         for (const dialog of dialogs) dialog.close();
         for (const entry of entries.values()) restore(entry);

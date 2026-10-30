@@ -73,6 +73,17 @@ function initialContent(extension) {
     return "";
 }
 
+export async function createMarkdown(app, folder) {
+    try {
+        const file = await app.fileManager.createNewMarkdownFile(folder, "untitled");
+        const leaf = app.workspace.getLeaf("tab");
+        await leaf.openFile(file, { active: true, state: { mode: "source" } });
+        // Existing notes default to reading mode; a newly created note is editable.
+        await leaf.view.setState({ ...leaf.view.getState(), mode: "source" }, { history: false });
+        leaf.view.editor?.focus();
+    } catch (error) { new Notice(`Could not create Markdown: ${error.message}`); }
+}
+
 export function showCreateDialog(app, view, extension, label, folder) {
     const modal = new Modal(app);
     modal.setTitle("New File");

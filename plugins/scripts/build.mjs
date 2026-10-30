@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const projectRoot = resolve(root, "..");
 const iconRoot = resolve(root, "../icons");
 const iconAssets = {};
 for (const file of (await readdir(iconRoot)).sort()) {
@@ -43,12 +44,12 @@ const run = (script, args = []) => {
   if (result.status !== 0) throw new Error(`Command failed: ${script}`);
 };
 
-run(join(root, "node_modules/typescript/bin/tsc"), ["--project", join(root, "tsconfig.json")]);
+run(join(projectRoot, "node_modules/typescript/bin/tsc"), ["--project", join(root, "tsconfig.json")]);
 for (const name of targets) {
   const source = join(root, name);
   const definition = config.plugins[name];
   const manifest = { ...definition.manifest, version };
-  const output = join(root, "dist", manifest.id);
+  const output = join(projectRoot, "dist", "plugins", manifest.id);
   await mkdir(output, { recursive: true });
   await build({
     absWorkingDir: root,

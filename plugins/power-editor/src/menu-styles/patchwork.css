@@ -7,16 +7,16 @@
 
 /* Youdao note-list metrics, retaining Patchwork's custom file icons and tree. */
 .workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] {
-    --nav-item-size: 13px;
-    --pw-nav-row-background: var(--background-modifier-hover);
-    --pw-nav-surface: var(--background-secondary);
+    --nav-item-size: 11px;
+    --pw-nav-row-background: var(--pw-explorer-selection-background, var(--background-modifier-hover));
+    --pw-nav-surface: var(--pw-left-panel-surface, var(--background-secondary));
     --pw-nav-divider: var(--background-modifier-border);
-    --nav-item-padding: 4px 8px 4px 34px;
-    --nav-item-parent-padding: 4px 8px 4px 34px;
+    --nav-item-padding: 0 8px 0 34px;
+    --nav-item-parent-padding: 0 8px 0 34px;
     --nav-item-children-padding-start: 0px;
     --nav-item-children-margin-start: 14px;
     --nav-indentation-guide-width: 0px;
-    --nav-item-background-hover: var(--pw-nav-row-background);
+    --nav-item-background-hover: transparent;
     --nav-item-background-active: var(--pw-nav-row-background);
     --nav-item-background-selected: var(--pw-nav-row-background);
     --nav-item-color-active: var(--nav-item-color);
@@ -47,7 +47,7 @@
     font-size: var(--nav-item-size);
     font-weight: 500;
     line-height: 19.5px;
-    padding-block: 13px;
+    padding-block: 0;
     text-rendering: auto;
     -webkit-font-smoothing: auto;
     color: var(--nav-item-color) !important;
@@ -62,7 +62,7 @@
     color: inherit !important;
 }
 
-.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):is(:hover, :focus-within, .has-focus, .is-active, .is-selected) {
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):is(:focus-within, .has-focus, .is-active, .is-selected) {
     background-color: var(--pw-nav-row-background);
     border-top-color: var(--pw-nav-surface);
     border-radius: 4px;
@@ -74,7 +74,7 @@
 }
 
 /* Mask the next row's divider, including across expanded folder boundaries. */
-.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):is(:hover, :focus-within, .has-focus, .is-active, .is-selected)::after {
+.workspace-leaf-content[data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):is(:focus-within, .has-focus, .is-active, .is-selected)::after {
     content: "";
     position: absolute;
     inset-inline: -1px;

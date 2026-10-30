@@ -28,8 +28,8 @@ LICENSE                     Consolidated MIT attributions
 Each plugin directory owns its entry point, runtime modules, and styles.
 `plugins/manifest.json` owns all plugin metadata, stylesheet entries, and the
 shared runtime file list. `plugins/package.json` provides the single plugin
-version; update that version and its lockfile metadata together. Builds generate
-an Obsidian-compatible manifest for each plugin in `plugins/dist/<id>/`, using
+version. Builds generate
+an Obsidian-compatible manifest for each plugin in `dist/plugins/<id>/`, using
 the shared version. Per-plugin source manifests, `package.psd1`, `versions.json`,
 and the legacy deployment guard are no longer used. The theme retains its own
 manifest and packaging metadata. No plugin imports a sibling plugin.
@@ -40,8 +40,8 @@ CSS variables, with optional Patchwork values and native fallbacks.
 Claudian is a separately installed upstream plugin. This repository maintains
 its companion without patching the upstream installation. Patchwork Editor is
 an independent Power Editor fork incorporating the former code-block plugin.
-Code Editor handles standalone code files. These three plugins share the npm
-project under `plugins/` but have independent installed entry points.
+Code Editor handles standalone code files. All plugins share the root npm
+dependencies but have independent installed entry points.
 
 | Source directory | Installed plugin ID | Ownership |
 | --- | --- | --- |
@@ -114,7 +114,6 @@ Obsidian vault. Install declared dependencies explicitly when setting up:
 
 ```powershell
 npm ci --ignore-scripts
-npm --prefix ./plugins ci --ignore-scripts
 ```
 
 Run the single script from any working directory:
@@ -166,7 +165,8 @@ dist/obsidian-patchwork/
   plugins/<plugin-id>/{manifest.json,main.js,styles.css,LICENSE,.patchwork-files.json}
 ```
 
-`plugins/dist` holds intermediate plugin bundles. All selected artifacts and
+`dist/plugins` holds intermediate plugin bundles. Installation reads only from
+`dist/obsidian-patchwork` at the repository root. All selected artifacts and
 destinations are validated before any running plugin is disabled. Copied files
 are verified with SHA-256; obsolete owned runtime files are removed. Settings,
 unknown user files and unselected packages are preserved. Selected plugins are
@@ -209,7 +209,9 @@ retained in the generated CSS. Third-party dependency licenses inside ignored
 
 ## Unified plugin project
 
-Dependencies and TypeScript configuration are shared under `plugins/`.
-Nested plugin `package.json` and lockfiles are no longer used. All plugins use
-the version in `plugins/package.json`; the root npm project provides the combined
-build-and-install command and the theme's Sass dependency.
+All dependencies and the single lockfile are managed at the repository root;
+run dependency installation there to populate the root `node_modules` directory.
+TypeScript configuration remains in `plugins/tsconfig.json`. All plugins use
+the version in `plugins/package.json`, which contains only metadata and command
+entry points. The root npm project provides plugin and theme dependencies, the
+combined build-and-install command, and `npm run typecheck`.

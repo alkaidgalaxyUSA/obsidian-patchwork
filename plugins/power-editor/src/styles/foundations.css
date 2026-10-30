@@ -91,7 +91,7 @@ body.theme-dark .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw
   --patchwork-note-text: #e2e2e2;
   --patchwork-note-muted: #a6a6a6;
   --patchwork-note-heading: #3b82ce;
-  --patchwork-note-border: #303030;
+  --patchwork-note-border: #000;
   --patchwork-note-surface: #202020;
   --patchwork-note-code: #001628;
   --patchwork-note-code-text: #d6deeb;

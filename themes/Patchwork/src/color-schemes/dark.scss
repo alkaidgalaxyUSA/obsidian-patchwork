@@ -5,6 +5,17 @@
  * License: ../../../../LICENSE
  */
 
+/* Keep structural outlines consistent across workspace panels and popups. */
+body.theme-dark {
+  --background-modifier-border: #000;
+  --divider-color: #000;
+  --tab-outline-color: #000;
+  --titlebar-border-color: #000;
+  --modal-border-color: #000;
+  --prompt-border-color: #000;
+  --status-bar-border-color: #000;
+}
+
 .theme-dark {
   --color-red-rgb: 209.304, 137.496, 137.496;
   --color-red: rgba(var(--color-red-rgb), var(--color-opacity));

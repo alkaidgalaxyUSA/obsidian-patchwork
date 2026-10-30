@@ -21,7 +21,7 @@ export function documentTabsToClose(leaf, direction) {
         && (direction === "all" || direction === "left" && position < index || direction === "right" && position > index));
 }
 
-/** Plain explorer clicks open or focus a document tab; modified clicks stay native. */
+/** Explorer double-clicks open or focus a document tab; single clicks only select. */
 export function installDocumentTabs(plugin) {
     const { app } = plugin;
     const docs = new Map();
@@ -44,7 +44,7 @@ export function installDocumentTabs(plugin) {
         } finally { closing.delete(group); }
     };
     const attach = (doc) => {
-        const click = (event) => {
+        const doubleClick = (event) => {
             if (!plugin.settings.explorerOpenInNewTab || event.defaultPrevented || event.button !== 0
                 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
             const row = event.target.closest?.('.workspace-leaf-content[data-type="file-explorer"] .nav-file-title[data-path]');
@@ -88,10 +88,10 @@ export function installDocumentTabs(plugin) {
             if (leaf.canPin()) menu.addItem((item) => item.setTitle(leaf.pinned ? "Unpin" : "Pin").onClick(() => leaf.togglePinned()));
             menu.showAtMouseEvent(event);
         };
-        doc.addEventListener("click", click, true);
+        doc.addEventListener("dblclick", doubleClick, true);
         doc.addEventListener("contextmenu", context, true);
         docs.set(doc, () => {
-            doc.removeEventListener("click", click, true);
+            doc.removeEventListener("dblclick", doubleClick, true);
             doc.removeEventListener("contextmenu", context, true);
         });
     };

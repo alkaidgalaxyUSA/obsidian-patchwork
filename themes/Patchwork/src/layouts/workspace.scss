@@ -31,7 +31,7 @@ body {
 }
 
 /* Keep the sidebar divider inside the panel, below the window header. */
-body .workspace-split.mod-right-split > .workspace-leaf-resize-handle {
+body .workspace-split:is(.mod-left-split, .mod-right-split) > .workspace-leaf-resize-handle {
     top: var(--pw-document-header-height, var(--header-height));
     bottom: 0;
     height: auto;

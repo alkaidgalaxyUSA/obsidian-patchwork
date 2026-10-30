@@ -13,6 +13,6 @@
     "checkJs": false,
     "noEmit": true
   },
-  "include": ["power-editor/src/**/*", "code-editor/src/**/*", "claudian-extension/src/**/*", "utils/**/*"],
+  "include": ["power-editor/src/**/*", "code-editor/src/**/*", "claudian-extension/src/**/*", "git/src/**/*", "utils/**/*"],
   "exclude": ["node_modules", "dist"]
 }

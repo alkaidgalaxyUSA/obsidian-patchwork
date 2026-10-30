@@ -1,6 +1,6 @@
 body {
     /* File navigator */
-    --nav-item-size: var(--font-ui-small);
+    --nav-item-size: calc(var(--font-ui-small) - 1px);
     --nav-item-color: var(--text-muted);
     --nav-item-color-hover: var(--text-normal);
     --nav-item-color-active: var(--text-normal);

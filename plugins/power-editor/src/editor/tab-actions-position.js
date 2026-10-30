@@ -3,6 +3,7 @@ export class TabActionsPosition {
     constructor(doc) {
         this.doc = doc;
         this.entries = [];
+        this.previousActionsLeft = doc.body.style.getPropertyValue("--pw-titlebar-actions-left");
     }
 
     sync() {
@@ -47,17 +48,27 @@ export class TabActionsPosition {
         }
         const controls = this.doc.querySelector(".titlebar-button-container.mod-right");
         const settings = this.doc.querySelector(".pw-window-settings");
-        const limit = (settings ?? controls)?.getBoundingClientRect().left ?? win.innerWidth;
+        const shortcuts = this.doc.querySelector(".pw-titlebar-shortcuts:not(:empty)");
+        const limit = (shortcuts ?? settings ?? controls)?.getBoundingClientRect().left ?? win.innerWidth;
         const unit = Number.parseFloat(win.getComputedStyle(this.doc.body).getPropertyValue("--pw-window-control-width")) || 44;
-        const last = this.entries.at(-1).slot.getBoundingClientRect();
-        const shift = Math.max(0, Math.min(5 * unit, limit - last.right - 8));
-        for (const { button, slot } of this.entries) {
-            if (button.hidden) continue;
-            const bounds = slot.getBoundingClientRect();
-            button.style.setProperty("--pw-tab-action-left", `${bounds.left + shift}px`);
-            button.style.setProperty("--pw-tab-action-top", `${bounds.top}px`);
-            button.style.setProperty("--pw-tab-action-height", `${bounds.height}px`);
+        const style = win.getComputedStyle(this.doc.body);
+        const gap = Number.parseFloat(style.getPropertyValue("--pw-tab-actions-gap")) || 11;
+        const height = Number.parseFloat(style.getPropertyValue("--pw-header-action-size")) || 28;
+        const offset = Number.parseFloat(style.getPropertyValue("--pw-header-action-offset")) || 0;
+        const visible = this.entries.filter(({ button }) => !button.hidden);
+        const width = visible.reduce((total, { slot }) => total + slot.getBoundingClientRect().width, 0) + Math.max(0, visible.length - 1) * gap;
+        const start = visible[0]?.slot.getBoundingClientRect().left ?? limit;
+        const shift = Math.max(0, Math.min(5 * unit, limit - start - width - 8));
+        const header = this.container.getBoundingClientRect();
+        const actionsLeft = Math.max(0, Math.min(start + shift, limit - width - 8));
+        let left = actionsLeft;
+        for (const { button, slot } of visible) {
+            button.style.setProperty("--pw-tab-action-left", `${left}px`);
+            button.style.setProperty("--pw-tab-action-top", `${header.top + (header.height - height) / 2 + offset}px`);
+            button.style.setProperty("--pw-tab-action-height", `${height}px`);
+            left += slot.getBoundingClientRect().width + gap;
         }
+        this.doc.body.style.setProperty("--pw-titlebar-actions-left", `${Math.min(limit, actionsLeft)}px`);
     }
 
     dispose() {
@@ -71,5 +82,7 @@ export class TabActionsPosition {
         this.entries = [];
         this.container?.classList.remove("pw-tab-actions-offset");
         this.container = undefined;
+        if (this.previousActionsLeft) this.doc.body.style.setProperty("--pw-titlebar-actions-left", this.previousActionsLeft);
+        else this.doc.body.style.removeProperty("--pw-titlebar-actions-left");
     }
 }

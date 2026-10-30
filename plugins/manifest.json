@@ -1,6 +1,17 @@
 {
   "runtimeFiles": ["main.js", "styles.css", "manifest.json", "LICENSE"],
   "plugins": {
+    "git": {
+      "styles": "styles.css",
+      "manifest": {
+        "id": "patchwork-git",
+        "name": "Patchwork Git",
+        "minAppVersion": "1.8.7",
+        "description": "IDEA-style commit tools, file actions and native Git integration.",
+        "author": "Patchwork contributors",
+        "isDesktopOnly": true
+      }
+    },
     "power-editor": {
       "styles": "src/styles/index.css",
       "manifest": {

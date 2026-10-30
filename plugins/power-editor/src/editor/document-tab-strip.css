@@ -1,7 +1,7 @@
 body .mod-root .pw-document-tab-strip {
     isolation: isolate;
-    --pw-tab-text: rgb(255 255 255 / 85%);
-    --pw-tab-text-muted: rgb(255 255 255 / 50%);
+    --pw-tab-text: rgb(255 255 255 / 93.5%);
+    --pw-tab-text-muted: rgb(255 255 255 / 55%);
     --pw-tab-indicator: #3699ff;
     --pw-tab-indicator-inactive: #777;
 }
@@ -27,6 +27,9 @@ body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip > .wor
     padding: 0 6px 0 5px;
 }
 body .mod-root .pw-document-tab-strip > .workspace-tab-header-container-inner::-webkit-scrollbar { display: none; }
+body.pw-window-actions-enabled .mod-root .workspace-tabs.mod-top:not(.mod-stacked) > .pw-document-tab-strip > .workspace-tab-header-container-inner {
+    margin-left: var(--pw-vault-tabs-space, 50px);
+}
 body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-tab-strip .workspace-tab-header {
     flex: 0 0 auto !important;
     width: max-content !important;
@@ -155,6 +158,9 @@ body .mod-root .pw-document-tab-strip.pw-tab-actions-offset > .pw-tab-action-pos
     top: var(--pw-tab-action-top);
     height: var(--pw-tab-action-height);
     margin: 0;
+    padding: 5px;
+    align-items: center;
+    justify-content: center;
     -webkit-app-region: no-drag;
 }
 body .mod-root .pw-document-tab-strip > .pw-tab-actions-spacer {

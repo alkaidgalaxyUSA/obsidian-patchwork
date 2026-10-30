@@ -56,7 +56,7 @@ function Get-PatchworkPluginPackages {
     $manifest.version = $project.version
     $source = Get-PatchworkChildPath -Parent $parent -RelativePath $name
     if (-not (Test-Path -LiteralPath $source -PathType Container)) { throw "Plugin source missing: $source" }
-    $output = Get-PatchworkChildPath -Parent $parent -RelativePath "dist/$id"
+    $output = Get-PatchworkChildPath -Parent $ProjectRoot -RelativePath "dist/plugins/$id"
     $files = @($config.runtimeFiles)
     foreach ($required in @('main.js', 'manifest.json', 'styles.css', 'LICENSE')) {
       if ($required -notin $files) { throw "Plugin runtime file missing from shared configuration: $required" }
