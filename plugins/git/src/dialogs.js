@@ -1,4 +1,17 @@
-import { Modal } from "obsidian";
+import { Modal, SuggestModal } from "obsidian";
+
+export function choose(app, title, choices) {
+    return new Promise(resolve => {
+        const modal = new SuggestModal(app);
+        modal.setPlaceholder(title);
+        modal.getSuggestions = query => choices.filter(choice => choice.name.toLowerCase().includes(query.toLowerCase()));
+        modal.renderSuggestion = (choice, element) => element.setText(choice.name);
+        modal.onChooseSuggestion = choice => resolve(choice);
+        const onClose = modal.onClose.bind(modal);
+        modal.onClose = () => { onClose(); queueMicrotask(() => resolve(undefined)); };
+        modal.open();
+    });
+}
 
 export function prompt(app, title, label, initial = "") {
     return new Promise(resolve => {

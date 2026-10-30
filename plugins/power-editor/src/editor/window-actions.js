@@ -3,13 +3,16 @@ import { PanelFocus } from "../../../utils/panel-focus";
 import { TabActionsPosition } from "./tab-actions-position";
 import { VaultHeader } from "./vault-header";
 
-const TITLEBAR_ACTIONS = [
+const LEFT_RIBBON_ACTIONS = [
     "switcher:Open quick switcher",
     "command-palette:Open command palette",
+];
+const TITLEBAR_ACTIONS = [
     "meld-encrypt:Lock and close all open encrypted notes",
     "obsidian-excalidraw-plugin:New drawing",
 ];
 const ACTIONS = [
+    ...LEFT_RIBBON_ACTIONS,
     ...TITLEBAR_ACTIONS,
     "realclaudian:Open Claudian",
 ];
@@ -50,6 +53,7 @@ class WindowActions {
         if (!this.toolbar) this.attach(doc, ribbon);
         if (this.toolbar.parentElement !== this.rightRibbon) this.rightRibbon.append(this.toolbar);
         if (this.leftToggle.parentElement !== ribbon.containerEl) ribbon.containerEl.prepend(this.leftToggle);
+        if (this.leftToolbar.parentElement !== ribbon.containerEl) ribbon.containerEl.append(this.leftToolbar);
         this.syncSettings();
         this.vaultHeader.sync();
         const items = new Map(ribbon.items.map((item) => [item.id, item]));
@@ -66,14 +70,14 @@ class WindowActions {
                 const marker = doc.createComment("Patchwork ribbon action");
                 button.before(marker);
                 const attributes = new Map(["data-tooltip-position", "role", "tabindex", "aria-label", "aria-pressed"].map((name) => [name, button.getAttribute(name)]));
-                button.setAttribute("data-tooltip-position", TITLEBAR_ACTIONS.includes(id) ? "bottom" : "left");
+                button.setAttribute("data-tooltip-position", LEFT_RIBBON_ACTIONS.includes(id) ? "right" : TITLEBAR_ACTIONS.includes(id) ? "bottom" : "left");
                 button.setAttribute("role", "button");
                 button.tabIndex = 0;
                 this.entries.set(id, { button, marker, attributes });
             }
             if (id === "meld-encrypt:Lock and close all open encrypted notes") button.setAttribute("aria-label", "Close encrypted notes");
         }
-        for (const [host, ids] of [[this.titleToolbar, TITLEBAR_ACTIONS], [this.toolbar, ACTIONS.filter(id => !TITLEBAR_ACTIONS.includes(id))]]) {
+        for (const [host, ids] of [[this.leftToolbar, LEFT_RIBBON_ACTIONS], [this.titleToolbar, TITLEBAR_ACTIONS], [this.toolbar, [...PANELS.keys()]]]) {
             const buttons = ids.map(id => this.entries.get(id)?.button).filter(Boolean);
             buttons.forEach((button, index) => {
                 if (host.children[index] !== button) host.insertBefore(button, host.children[index] ?? null);
@@ -132,6 +136,12 @@ class WindowActions {
             const marker = this.doc.createComment("Patchwork settings action");
             button.before(marker);
             const attributes = new Map(["role", "tabindex", "aria-label", "data-tooltip-position"].map((name) => [name, button.getAttribute(name)]));
+            // The Settings lifecycle replaces app.setting after closing the window.
+            const click = (event) => {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                this.app.setting.open();
+            };
             const keydown = (event) => {
                 if (event.key !== "Enter" && event.key !== " ") return;
                 event.preventDefault();
@@ -143,8 +153,9 @@ class WindowActions {
             button.setAttribute("aria-label", "Settings");
             button.setAttribute("data-tooltip-position", "bottom");
             button.tabIndex = 0;
+            button.addEventListener("click", click, true);
             button.addEventListener("keydown", keydown);
-            this.settings = { button, marker, attributes, keydown, controls };
+            this.settings = { button, marker, attributes, click, keydown, controls };
         }
         if (button.nextElementSibling !== minimize) controls.insertBefore(button, minimize);
         if (this.titleToolbar.nextElementSibling !== button) controls.insertBefore(this.titleToolbar, button);
@@ -152,10 +163,11 @@ class WindowActions {
 
     restoreSettings() {
         if (!this.settings) return;
-        const { button, marker, attributes, keydown, controls } = this.settings;
+        const { button, marker, attributes, click, keydown, controls } = this.settings;
         if (button.parentElement === controls && marker.parentNode) marker.replaceWith(button);
         else marker.remove();
         button.classList.remove("pw-window-settings");
+        button.removeEventListener("click", click, true);
         button.removeEventListener("keydown", keydown);
         for (const [name, value] of attributes) {
             if (value === null) button.removeAttribute(name);
@@ -175,6 +187,12 @@ class WindowActions {
 
     attach(doc, ribbon) {
         this.doc = doc;
+        // Electron combines drag regions in DOM order. Keep the titlebar's
+        // clickable regions after the workspace headers underneath them.
+        this.titlebar = doc.querySelector(".titlebar");
+        this.titlebarMarker = doc.createComment("Patchwork titlebar position");
+        this.titlebar.before(this.titlebarMarker);
+        doc.body.append(this.titlebar);
         this.tabActions = new TabActionsPosition(doc);
         this.vaultHeader = new VaultHeader(this.app, doc);
         this.rightRibbon = this.app.workspace.rightRibbon.containerEl;
@@ -188,6 +206,11 @@ class WindowActions {
         this.titleToolbar.setAttribute("role", "toolbar");
         this.titleToolbar.setAttribute("aria-label", "Titlebar shortcuts");
         this.titleToolbar.setAttribute("aria-orientation", "horizontal");
+        this.leftToolbar = doc.createElement("div");
+        this.leftToolbar.className = "pw-left-ribbon-shortcuts";
+        this.leftToolbar.setAttribute("role", "toolbar");
+        this.leftToolbar.setAttribute("aria-label", "Search and commands");
+        this.leftToolbar.setAttribute("aria-orientation", "vertical");
         this.leftToggle = doc.createElement("button");
         this.leftToggle.type = "button";
         this.leftToggle.className = "clickable-icon pw-left-sidebar-toggle";
@@ -208,6 +231,7 @@ class WindowActions {
         this.observer.observe(ribbon.ribbonItemsEl, { childList: true });
         this.observer.observe(this.toolbar, { childList: true });
         this.observer.observe(this.titleToolbar, { childList: true });
+        this.observer.observe(this.leftToolbar, { childList: true });
         this.observer.observe(ribbon.containerEl, { childList: true });
         this.observer.observe(this.rightRibbon, { childList: true });
         this.observer.observe(this.app.workspace.leftSplit.containerEl, { attributes: true, attributeFilter: ["class", "style"] });
@@ -241,6 +265,7 @@ class WindowActions {
         };
         this.toolbar.addEventListener("keydown", activateShortcut);
         this.titleToolbar.addEventListener("keydown", activateShortcut);
+        this.leftToolbar.addEventListener("keydown", activateShortcut);
         this.toolbar.addEventListener("click", async (event) => {
             const id = [...PANELS.keys()].find((id) => this.entries.get(id)?.button.contains(event.target));
             if (!id) return;
@@ -264,7 +289,7 @@ class WindowActions {
     }
 
     restore(entry, restoreButton) {
-        const relocated = entry.button.parentElement === this.toolbar || entry.button.parentElement === this.titleToolbar;
+        const relocated = [this.toolbar, this.titleToolbar, this.leftToolbar].includes(entry.button.parentElement);
         if (restoreButton && relocated) {
             if (entry.marker.parentNode) entry.marker.replaceWith(entry.button);
             else this.app.workspace.leftRibbon.ribbonItemsEl.append(entry.button);
@@ -295,6 +320,8 @@ class WindowActions {
         this.vaultHeader?.dispose();
         this.toolbar?.remove();
         this.titleToolbar?.remove();
+        this.leftToolbar?.remove();
+        if (this.titlebarMarker?.parentNode) this.titlebarMarker.replaceWith(this.titlebar);
         this.leftToggle?.remove();
         this.doc?.body.classList.remove("pw-window-actions-enabled");
         if (!this.doc) return;

@@ -14,11 +14,12 @@ body {
     --file-header-border: var(--border-width) solid transparent;
     --file-header-justify: center;
     /* View header */
-    --header-height: 40px;
+    --header-height: 44px;
     /* Sidebar */
     --sidebar-markdown-font-size: calc(var(--font-text-size) * 0.9);
     --sidebar-tab-text-display: none;
     /* Window frame */
+    --titlebar-height: 44px;
     --titlebar-background: var(--background-secondary);
     --titlebar-background-focused: var(--background-secondary-alt);
     --titlebar-border-width: 0px;

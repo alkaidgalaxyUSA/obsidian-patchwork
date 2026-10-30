@@ -20,6 +20,8 @@ import { installEncryptedUnlock } from "./encrypted-unlock.js";
 import { installDocumentTabs } from "./document-tabs.js";
 import { installDocumentTabStrip } from "./document-tab-strip.js";
 import { installDocumentModeActions } from "./document-mode-actions.js";
+import { installDocumentStatusBar } from "./document-status-bar.js";
+import { installBottomTools } from "./tools/bottom-tools.js";
 import { installEditorPreferences } from "../settings/editor-preferences.js";
 import { AttachmentManager } from "../attachments/attachment-manager.js";
 import { NoteOutline } from "./note-outline.js";
@@ -52,6 +54,8 @@ export function installEditorRuntime(plugin) {
         installDocumentTabs(plugin);
         installDocumentTabStrip(plugin);
         installDocumentModeActions(plugin);
+        installDocumentStatusBar(plugin);
+        installBottomTools(plugin);
         const attachments = new AttachmentManager(plugin);
         installEditorPreferences(plugin, attachments);
         plugin.attachmentManager = attachments;

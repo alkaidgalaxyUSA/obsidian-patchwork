@@ -665,7 +665,8 @@ body.pw-window-actions-enabled {
     --pw-left-ribbon-width: 45.98px;
     --pw-left-action-size: 31px;
     --pw-vault-tabs-space: 50px;
-    --pw-titlebar-height: 41.01px;
+    --pw-titlebar-height: 44px;
+    --titlebar-height: var(--pw-titlebar-height);
     --vault-profile-font-size: calc(var(--font-ui-small) - 1px);
 }
 /* The transparent titlebar must not cancel the drag regions beneath it. */
@@ -706,7 +707,11 @@ body.pw-window-actions-enabled .workspace-ribbon.mod-secondary {
     border-left: 1px solid var(--divider-color);
     border-right: 0;
 }
-body.pw-window-actions-enabled .workspace-ribbon.mod-primary > :not(.pw-left-sidebar-toggle):not(.pw-git-ribbon-action),
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-split:is(.mod-left-split, .mod-right-split) > .workspace-leaf-resize-handle {
+    top: var(--pw-document-header-height, var(--pw-titlebar-height, 44px));
+    height: calc(100% - var(--pw-document-header-height, var(--pw-titlebar-height, 44px)));
+}
+body.pw-window-actions-enabled .workspace-ribbon.mod-primary > :not(.pw-left-sidebar-toggle):not(.pw-git-ribbon-action):not(.pw-left-ribbon-shortcuts):not(.pw-bottom-tool-actions),
 body.pw-window-actions-enabled .workspace-ribbon.mod-secondary > :not(.pw-window-actions) { display: none; }
 body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-split.mod-left-split > .workspace-sidedock-vault-profile {
     order: -1;
@@ -726,6 +731,34 @@ body .pw-window-actions {
     -webkit-app-region: no-drag;
 }
 body .pw-window-actions[hidden] { display: none; }
+body .pw-left-ribbon-shortcuts {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 10px;
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--background-modifier-border);
+    -webkit-app-region: no-drag;
+}
+body .pw-left-ribbon-shortcuts:empty { display: none; }
+body .pw-left-ribbon-shortcuts .side-dock-ribbon-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 var(--pw-left-action-size, 31px);
+    width: var(--pw-left-action-size, 31px);
+    height: var(--pw-left-action-size, 31px);
+    margin: 0;
+    padding: 4.5px;
+    border-radius: 4px;
+    --icon-color: color-mix(in srgb, var(--text-muted) 85%, var(--color-base-100));
+}
+body .pw-left-ribbon-shortcuts .side-dock-ribbon-action svg { width: 20px; height: 20px; }
+body .pw-left-ribbon-shortcuts .side-dock-ribbon-action:hover { background-color: var(--background-modifier-hover); color: var(--icon-color-hover); }
+body.pw-window-actions-enabled .workspace-tab-header-container > .sidebar-toggle-button { display: none; }
 body .pw-window-actions * { -webkit-app-region: no-drag; }
 body.pw-window-actions-enabled .workspace .mod-right-split .workspace-tab-header.pw-window-managed-tab { display: none; }
 body .pw-window-actions .side-dock-ribbon-action,
@@ -794,8 +827,10 @@ body .titlebar-button-container > .pw-window-settings {
     margin-left: calc((var(--pw-window-control-width, 44px) - var(--pw-header-action-size, 28px)) / 2);
     padding: 0;
     border-radius: var(--radius-s);
+    pointer-events: auto;
     -webkit-app-region: no-drag;
 }
+body .pw-window-settings * { -webkit-app-region: no-drag; }
 body .titlebar-button-container > .pw-window-settings svg { width: 20px; height: 20px; }
 body .titlebar-button-container > .pw-window-settings:focus-visible {
     outline: 2px solid var(--interactive-accent);
@@ -895,7 +930,8 @@ body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-spli
     z-index: 11;
     gap: 0;
     margin-left: calc(55px - var(--pw-left-ribbon-width));
-    height: var(--pw-titlebar-height, 41.01px);
+    width: calc(100% - (55px - var(--pw-left-ribbon-width)));
+    height: var(--pw-titlebar-height, 44px);
     padding-block: 0;
     padding-inline: 0 4px;
 }
@@ -910,6 +946,7 @@ body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-spli
     pointer-events: none;
 }
 body.pw-window-actions-enabled .menu {
+    --text-normal: #D4D4D4;
     border-color: color-mix(in srgb, var(--background-modifier-border) 75%, black);
 }
 body .pw-vault-git {
@@ -957,7 +994,7 @@ body.pw-window-actions-enabled:has(:is(.workspace-drawer-vault-switcher, .pw-vau
 }
 .pw-git-popup.menu {
     font-family: var(--font-interface);
-    font-size: var(--font-ui-small);
+    font-size: calc(var(--font-ui-small) - 1px);
     position: fixed;
     width: min(376px, calc(100vw - 16px));
     max-width: calc(100vw - 16px);
@@ -973,6 +1010,13 @@ body.pw-window-actions-enabled:has(:is(.workspace-drawer-vault-switcher, .pw-vau
 .pw-git-search-box { display: flex; align-items: center; flex: 1; min-width: 0; padding-left: 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; }
 .pw-git-search-box > span { display: flex; color: var(--text-muted); }
 .pw-git-popup-header svg { width: 14px; height: 14px; }
+.pw-git-popup-header .clickable-icon svg { width: 15px; height: 15px; }
+body .pw-git-submenu, body .pw-git-submenu .menu-item { font-size: calc(var(--font-ui-small) - 1px); }
+body .pw-explorer-more-menu, body .pw-explorer-more-menu .menu-item {
+    font-family: var(--pw-explorer-menu-font, var(--font-interface));
+    font-size: calc(var(--font-ui-small) - 1px);
+    color: var(--pw-explorer-menu-color, var(--text-normal));
+}
 .pw-git-search-box input[type="search"] { width: 100%; height: 28px; padding: 4px 6px; border: 0; box-shadow: none; background: transparent; font: inherit; }
 body .pw-git-popup .pw-git-search-box input[type="search"]:is(:focus, :focus-visible) { border: 0; outline: none; box-shadow: none; background: transparent; }
 .pw-git-search-box:focus-within { border-color: var(--interactive-accent); }
@@ -993,10 +1037,13 @@ body .pw-git-row:hover, body .pw-git-row:focus-visible { background: var(--backg
 .pw-git-separator { height: 1px; margin: 14px 0; background: var(--background-modifier-border); }
 body .pw-git-group { margin-top: 2px; }
 body .pw-git-branch { padding-left: 48px; }
-body .pw-git-branch.is-current { background: color-mix(in srgb, #3574f0 35%, var(--background-secondary)); }
+body .pw-git-remote-folder { padding-left: 24px; }
+body .pw-git-remote-branch { padding-left: 72px; }
+.pw-git-local-branch .pw-git-row-icon svg { transform: scaleX(-1); }
 .pw-git-branch.is-current .pw-git-row-icon { color: #f2c55c; }
 .pw-git-branch-more { display: flex; margin-left: auto; color: var(--text-muted); }
 .pw-git-row-detail + .pw-git-branch-more { margin-left: 0; }
+.pw-git-local-branch :is(.pw-git-row-detail, .pw-git-branch-more) { color: #B8BDC7; }
 .pw-git-status { padding: 6px 8px; color: var(--text-muted); font-size: inherit; }
 body.pw-file-explorer-pinned .mod-left-split .workspace-tabs > .workspace-tab-header-container { display: none; }
 body.theme-dark {
@@ -1010,7 +1057,7 @@ body.theme-dark .workspace-ribbon.mod-primary {
 }
 body .workspace-leaf-content[data-type="file-explorer"] {
     --pw-explorer-selection-background: color-mix(in srgb, color-mix(in srgb, var(--background-secondary-alt) 65%, var(--color-base-100)) 16%, transparent);
-    --pw-explorer-text-color: rgb(from var(--text-normal) calc(r * 0.72) calc(g * 0.72) calc(b * 0.72) / 1);
+    --pw-explorer-text-color: #D4D4D4;
     --nav-item-background-active: var(--pw-explorer-selection-background);
     --nav-item-background-selected: var(--pw-explorer-selection-background);
     --nav-item-size: calc(var(--font-ui-small) - 2px);
@@ -1036,6 +1083,8 @@ body .workspace-leaf-content.pw-explorer-single-selection[data-type="file-explor
 body .workspace-leaf-content.pw-explorer-single-selection[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title).pw-explorer-selected {
     background: var(--pw-explorer-selection-background) !important;
 }
+body .workspace-leaf-content.pw-explorer-single-selection[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title).pw-explorer-selected.pw-selection-join-before { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
+body .workspace-leaf-content.pw-explorer-single-selection[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title).pw-explorer-selected.pw-selection-join-after { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }
 body .workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title, .nav-folder-title, .nav-file-title-content, .nav-folder-title-content, .collapse-icon) { opacity: 1; }
 body.pw-file-explorer-pinned .workspace-leaf-content[data-type="file-explorer"] .nav-action-button:has(svg.lucide-search) { display: none; }
 body .pw-explorer-controls .nav-buttons-container > .nav-action-button:has(svg:is(.lucide-edit, .lucide-folder-plus, .lucide-sort-asc, .lucide-gallery-vertical)) { display: none; }
@@ -1108,7 +1157,7 @@ body .pw-explorer-create-form { display: flex; flex-direction: column; gap: 12px
 body .pw-explorer-create-form > input,
 body .pw-explorer-create-form > input:focus { width: 100%; border: 0; box-shadow: none; outline: none; }
 /* Keep the Settings title row roomy independently of the active theme. */
-body.is-popout-modal:has(> .mod-settings) { --titlebar-height: 43.2px !important; }
+body.is-popout-modal:has(> .mod-settings) { --titlebar-height: 44px !important; }
 body.is-popout-modal:has(> .mod-settings) .titlebar-button:is(.mod-minimize, .mod-maximize) { display: none; }
 body.pw-window-actions-enabled .workspace-drawer-vault-actions .clickable-icon:has(svg.help) { display: none; }
 body .workspace-leaf-content[data-type="image"] .image-container {

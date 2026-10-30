@@ -3,12 +3,12 @@
 # Dot-sourcing loads helpers without changing files or running a build.
 [CmdletBinding()]
 param(
-  [string]$VaultPath = 'D:\my-notes',
+  [string]$VaultPath = (Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'Deployment.psd1')).VaultPath,
   [string[]]$Plugin,
   [switch]$PluginsOnly,
   [switch]$ThemeOnly,
   [switch]$SkipReload,
-  [string]$ObsidianCliPath
+  [string]$ObsidianCliPath = (Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'Deployment.psd1')).ObsidianCliPath
 )
 
 function Get-PatchworkPackages {
@@ -37,6 +37,12 @@ function Get-PatchworkPackages {
   }
 }
 
+function Assert-PatchworkManagedPlugin {
+  param([string]$Id)
+  $managedIds = @('patchwork-git', 'patchwork-power-editor', 'code-editor', 'claudian-extension')
+  if ($Id -cnotin $managedIds) { throw "Plugin is outside the managed installation scope: $Id" }
+}
+
 function Get-PatchworkPluginPackages {
   param([string]$ProjectRoot)
   $parent = Join-Path $ProjectRoot 'plugins'
@@ -48,6 +54,7 @@ function Get-PatchworkPluginPackages {
     $definition = $config.plugins[$name]
     $manifest = $definition.manifest
     $id = $manifest.id
+    Assert-PatchworkManagedPlugin -Id $id
     if ($name -cnotmatch '^[a-z0-9-]+$' -or $id -cnotmatch '^[a-z0-9-]+$' -or $id -in $ids) {
       throw "Invalid or duplicate plugin target: $name"
     }
@@ -65,7 +72,7 @@ function Get-PatchworkPluginPackages {
       Id = $id; Kind = 'plugins'; SourceRoot = $output; SourceDirectory = $source
       Manifest = [pscustomobject]$manifest; Files = $files
       StyleEntry = $null; StyleOutput = 'styles.css'
-      ObsoleteFiles = @(); UpstreamPlugins = @(); Bundled = $true
+      ObsoleteFiles = @(); Bundled = $true
     }
   }
 }
@@ -250,6 +257,19 @@ function Invoke-ObsidianCli {
   }
 }
 
+function Restart-ClaudianPlugin {
+  param([hashtable]$Cli, [string]$PluginId)
+
+  $idJson = ConvertTo-Json -InputObject $PluginId -Compress
+  $code = '(async () => { const id = ' + $idJson + '; const plugin = app.plugins.plugins[id]; if (plugin && [...plugin.sessionRuntimes.records.values()].some(record => record.status?.isWorking)) return "claudian-identity-deferred"; if (plugin) await app.plugins.unloadPlugin(id); if (app.plugins.enabledPlugins.has(id)) { await app.plugins.loadPlugin(id); if (!app.plugins.plugins[id]) throw new Error("Claudian did not reload: " + id); } return "claudian-identity-ready"; })()'
+  $result = Invoke-ObsidianCli -Cli $Cli -Command 'eval' -Parameters @("code=$code") -ExpectedPattern '(?m)^=> claudian-identity-(ready|deferred)$'
+  if ($result -match '(?m)^=> claudian-identity-deferred$') {
+    Write-Warning 'Claudian has active work; its reload was skipped. Selected packages were installed. After the work finishes, restart Obsidian or run Repair-ClaudianCodexIdentity.ps1 -Reload to apply the checked identity to new connections.'
+    return
+  }
+  Write-Host 'Claudian reloaded. Existing Codex connections were discarded.'
+}
+
 function Get-ObsidianEnabledPlugins {
   param([hashtable]$Cli)
 
@@ -308,6 +328,19 @@ function Remove-PatchworkObsoleteFiles {
     if (-not (Get-ChildItem -LiteralPath $_.FullName -Force | Select-Object -First 1)) {
       $safe = Get-PatchworkChildPath -Parent $Destination -RelativePath ([IO.Path]::GetRelativePath($Destination, $_.FullName))
       Remove-Item -LiteralPath $safe -Force
+    }
+  }
+}
+
+function Clear-PatchworkPluginRuntime {
+  param([string]$Id, [string]$Destination, [string[]]$Files)
+  Assert-PatchworkManagedPlugin -Id $Id
+  if ((Split-Path -Path $Destination -Leaf) -cne $Id) { throw "Unexpected plugin cleanup directory: $Destination" }
+  foreach ($file in @($Files + '.patchwork-files.json') | Select-Object -Unique) {
+    if ($file -eq 'data.json') { throw 'Plugin settings cannot be removed as runtime files.' }
+    $path = Get-PatchworkChildPath -Parent $Destination -RelativePath $file
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+      Remove-Item -LiteralPath $path -Force
     }
   }
 }
@@ -472,10 +505,32 @@ foreach ($package in $packages) {
 
 $cli = if ($SkipReload) { $null } else { Get-PatchworkCli -VaultRoot $vaultRoot -CliPath $ObsidianCliPath }
 $enabled = if ($cli) { @(Get-ObsidianEnabledPlugins -Cli $cli) } else { @() }
-foreach ($package in $packages | Where-Object Kind -eq 'plugins') {
-  if ($cli -and $package.Id -in $enabled) {
-    Invoke-ObsidianCli -Cli $cli -Command 'plugin:disable' -Parameters @("id=$($package.Id)", 'filter=community') -ExpectedPattern "(?m)^Disabled: $([regex]::Escape($package.Id))$" | Out-Null
+$pluginCleanup = @(
+  foreach ($package in $packages | Where-Object Kind -eq 'plugins') {
+    $id = $package.Id
+    Assert-PatchworkManagedPlugin -Id $id
+    $destination = Get-PatchworkChildPath -Parent $obsidianRoot -RelativePath "plugins/$id"
+    $files = @($package.Files + $package.ObsoleteFiles)
+    foreach ($file in $files) {
+      if ($file -eq 'data.json') { throw 'Plugin settings cannot be removed as runtime files.' }
+      Get-PatchworkChildPath -Parent $destination -RelativePath $file | Out-Null
+    }
+    [pscustomobject]@{ Id = $id; Destination = $destination; Files = $files }
   }
+)
+foreach ($cleanup in $pluginCleanup) {
+  if ($cli -and $cleanup.Id -in $enabled) {
+    Invoke-ObsidianCli -Cli $cli -Command 'plugin:disable' -Parameters @("id=$($cleanup.Id)", 'filter=community') -ExpectedPattern "(?m)^Disabled: $([regex]::Escape($cleanup.Id))$" | Out-Null
+  }
+  if ($cli) {
+    $idJson = ConvertTo-Json -InputObject $cleanup.Id -Compress
+    $code = '(async () => { const id = ' + $idJson + '; if (app.plugins.plugins[id]) await app.plugins.unloadPlugin(id); if (app.plugins.plugins[id]) throw new Error("Plugin is still loaded: " + id); return "plugin-unloaded"; })()'
+    Invoke-ObsidianCli -Cli $cli -Command 'eval' -Parameters @("code=$code") -ExpectedPattern '(?m)^=> plugin-unloaded$' | Out-Null
+  }
+}
+foreach ($cleanup in $pluginCleanup) {
+  Clear-PatchworkPluginRuntime -Id $cleanup.Id -Destination $cleanup.Destination -Files $cleanup.Files
+  Write-Host "Cleaned plugin runtime: $($cleanup.Id)"
 }
 foreach ($package in $packages) {
   $destination = Get-PatchworkChildPath -Parent $obsidianRoot -RelativePath "$($package.Kind)/$($package.Id)"
@@ -496,6 +551,16 @@ if ($cli -and @($packages | Where-Object Kind -eq 'plugins').Count) {
     Write-Host "Enabled: $($package.Id)"
   }
 }
+
+$identityResult = & (Join-Path $PSScriptRoot 'Repair-ClaudianCodexIdentity.ps1') -VaultPath $vaultRoot
+if ($identityResult) {
+  if ($cli) {
+    Restart-ClaudianPlugin -Cli $cli -PluginId $identityResult.PluginId
+  } else {
+    Write-Warning 'Claudian identity was checked on disk. Restart Obsidian before retrying Codex; existing processes may still use the old identity.'
+  }
+}
+
 if ($SkipReload) { Write-Host 'Automatic reload skipped. Enable the selected plugins manually.' }
-Write-Host 'Build and installation complete. Unselected plugins, settings and notes were preserved.'
+Write-Host 'Build and installation complete. Unrelated plugins, settings and notes were preserved.'
 

@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { access, copyFile, mkdtemp, open, readFile, rename, rm } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { access, appendFile, copyFile, mkdir, mkdtemp, open, readFile, rename, rm } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { Shelves } from "./shelves.js";
 
 /** Native Git backend; paths are literal and commands never pass through a shell. */
@@ -79,11 +79,57 @@ export class Repository {
         return entries;
     }
 
+    async ignored() {
+        const raw = await this.run(["ls-files", "--others", "--ignored", "--exclude-standard", "-z"]);
+        return raw.split("\0").filter(Boolean).map(path => ({ path, ignored: true }));
+    }
+
+    async ignore(paths, target) {
+        if (![".gitignore", ".git/info/exclude"].includes(target)) throw new Error("Unsupported ignore target.");
+        const entries = (await this.status()).filter(entry => paths.includes(entry.path));
+        if (entries.some(entry => !entry.untracked)) throw new Error("Only unversioned files can be ignored here.");
+        if (entries.some(entry => /[\r\n]/.test(entry.path))) throw new Error("Ignore rules cannot represent filenames containing line breaks.");
+        if (!entries.length) return 0;
+        const destination = target === ".gitignore" ? join(this.root, ".gitignore")
+            : resolve(this.root, (await this.run(["rev-parse", "--git-path", "info/exclude"])).trim());
+        let content = "";
+        try { content = await readFile(destination, "utf8"); }
+        catch (error) { if (error.code !== "ENOENT") throw error; }
+        const existing = new Set(content.split(/\r?\n/));
+        const patterns = [...new Set(entries.map(entry => "/" + entry.path.replace(/[\\*?[\] ]/g, "\\$&")))].filter(pattern => !existing.has(pattern));
+        if (!patterns.length) return 0;
+        const newline = content.includes("\r\n") ? "\r\n" : "\n";
+        const separator = content && !content.endsWith("\n") ? newline : "";
+        await mkdir(dirname(destination), { recursive: true });
+        await appendFile(destination, separator + patterns.join(newline) + newline, "utf8");
+        return patterns.length;
+    }
+
+    async patch(paths) {
+        if (!paths.length) throw new Error("Select files to create a patch.");
+        const entries = (await this.status()).filter(entry => paths.includes(entry.path));
+        if (entries.some(entry => entry.conflict)) throw new Error("Resolve conflicts before creating a patch.");
+        const head = await this.head();
+        const flags = ["--binary", "--full-index", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", "--src-prefix=a/", "--dst-prefix=b/"];
+        const output = [];
+        const tracked = entries.filter(entry => !entry.untracked);
+        if (head && tracked.length) {
+            const files = [...new Set(tracked.flatMap(entry => [entry.path, entry.original].filter(Boolean)))];
+            output.push(await this.run(["diff", ...flags, "HEAD", "--", ...files], { encoding: "buffer" }));
+        }
+        for (const entry of entries.filter(entry => entry.untracked || !head)) {
+            if (entry.code.includes("D")) continue;
+            output.push(await this.run(["diff", "--no-index", ...flags, "--", "/dev/null", entry.path], { encoding: "buffer", allowedExitCodes: [1] }));
+        }
+        return Buffer.concat(output);
+    }
+
     async snapshot() {
-        const [local, current, remote, log, tags] = await Promise.all([
+        const [local, current, remote, log, tags, remotes] = await Promise.all([
             this.run(["for-each-ref", "--format=%(refname:short)%09%(upstream:short)", "refs/heads"]),
-            this.branch(), this.run(["for-each-ref", "--format=%(refname:short)", "refs/remotes"]),
+            this.branch(), this.run(["for-each-ref", "--format=%(refname)%09%(symref)", "refs/remotes"]),
             this.run(["reflog", "--format=%gs", "-n", "40"]).catch(() => ""), this.run(["tag", "--list"]),
+            this.run(["remote"]),
         ]);
         const upstreams = new Map(local.trim().split(/\r?\n/).filter(Boolean).map(line => line.split("\t")));
         const branches = [...upstreams.keys()];
@@ -93,7 +139,9 @@ export class Repository {
         });
         return { current, upstreams, local: branches,
             recent: [...new Set([current, ...visited])].filter(ref => branches.includes(ref)).slice(0, 8),
-            remote: remote.trim().split(/\r?\n/).filter(ref => ref && !ref.endsWith("/HEAD")),
+            remote: remote.split(/\r?\n/).filter(Boolean).map(line => line.split("\t"))
+                .filter(([ref, symbolic]) => !symbolic && !ref.endsWith("/HEAD")).map(([ref]) => ref.replace(/^refs\/remotes\//, "")),
+            remotes: remotes.trim().split(/\r?\n/).filter(Boolean),
             tags: tags.trim().split(/\r?\n/).filter(Boolean), remoteError: false, tagsError: false };
     }
 

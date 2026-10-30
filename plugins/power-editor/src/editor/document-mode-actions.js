@@ -25,7 +25,7 @@ export function installDocumentModeActions(plugin) {
         if (entry.editing !== editing) {
             entry.editing = editing;
             button.classList.toggle("is-editing", editing);
-            setIcon(button, editing ? "save" : "pencil");
+            setIcon(button, editing ? "save" : "pen-line");
         }
         if (button.getAttribute("aria-label") !== label) setTooltip(button, label, { placement: "left" });
         button.disabled = entry.busy;

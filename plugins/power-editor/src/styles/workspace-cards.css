@@ -1,0 +1,151 @@
+/* Keep window controls on a plain canvas and docked content in separate cards. */
+body.pw-window-actions-enabled:not(.is-mobile) {
+    --pw-workspace-canvas: var(--background-secondary);
+    --pw-workspace-card: var(--background-primary);
+    --pw-workspace-card-gap: 5px;
+    --pw-workspace-card-radius: 12px;
+    --titlebar-background: var(--pw-workspace-canvas);
+    --titlebar-background-focused: var(--pw-workspace-canvas);
+    --divider-color: transparent;
+    --divider-color-hover: transparent;
+    --tab-outline-color: transparent;
+    background: var(--pw-workspace-canvas);
+}
+
+/* Use the same deeper black for dark-mode cards while keeping the canvas separate. */
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) {
+    --pw-workspace-card: #191A1C;
+    --pw-left-panel-surface: var(--pw-workspace-card);
+}
+
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) .workspace-tab-container .workspace-leaf-content {
+    --background-primary: var(--pw-workspace-card);
+    background-color: var(--pw-workspace-card);
+}
+
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) {
+    --patchwork-note-background: var(--pw-workspace-card);
+}
+
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) .workspace-leaf-content[data-type="claudian-view"] {
+    --background-secondary: var(--pw-workspace-card);
+    --background-primary-alt: var(--pw-workspace-card);
+    --background-secondary-alt: var(--pw-workspace-card);
+}
+
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) .workspace-leaf-content[data-type="claudian-view"] :is(
+    .claudian-container,
+    .claudian-chat-panel,
+    .claudian-messages,
+    .claudian-extension-top-toolbar
+) {
+    background-color: var(--pw-workspace-card);
+}
+
+/* Structural containers remain clear; their children own the card surfaces. */
+body.pw-window-actions-enabled:not(.is-mobile) :is(
+    .app-container,
+    .horizontal-main-container,
+    .workspace,
+    .workspace-split,
+    .workspace-split .workspace-tabs
+) {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+body.pw-window-actions-enabled:not(.is-mobile) :is(
+    .workspace-ribbon,
+    .workspace-ribbon.mod-primary,
+    .workspace-ribbon.mod-secondary,
+    .titlebar,
+    .workspace-sidedock-vault-profile,
+    .status-bar,
+    .pw-left-ribbon-shortcuts,
+    .pw-document-titlebar-space
+) {
+    background: var(--pw-workspace-canvas);
+    border: 0;
+    box-shadow: none;
+}
+
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-split.mod-left-split > .workspace-sidedock-vault-profile,
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-split.mod-left-split > .workspace-sidedock-vault-profile::before {
+    border: 0;
+    background: var(--pw-workspace-canvas);
+}
+
+/* Native top rows share the canvas, including the reserved window drag area. */
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-tabs > .workspace-tab-header-container {
+    background: var(--pw-workspace-canvas);
+    border: 0;
+    box-shadow: none;
+}
+
+/* Half a gutter on each side keeps adjacent cards evenly spaced. */
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-tabs > .workspace-tab-container {
+    margin: var(--pw-workspace-card-gap) calc(var(--pw-workspace-card-gap) / 2);
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    border: 0;
+    border-radius: var(--pw-workspace-card-radius);
+    background: var(--pw-workspace-card);
+    box-shadow: none;
+    overflow: hidden;
+}
+
+/* The document tab strip and its content form one continuous card. */
+body.pw-window-actions-enabled:not(.is-mobile) .mod-root .workspace-tabs > .pw-document-top-area {
+    margin: var(--pw-workspace-card-gap) calc(var(--pw-workspace-card-gap) / 2) 0;
+    border: 0;
+    border-radius: var(--pw-workspace-card-radius) var(--pw-workspace-card-radius) 0 0;
+    background: var(--pw-workspace-card);
+    overflow: hidden;
+}
+
+body.pw-window-actions-enabled:not(.is-mobile) .mod-root .workspace-tabs > .pw-document-top-area > .pw-document-tab-strip {
+    --tab-container-background: var(--pw-workspace-card);
+    background: var(--pw-workspace-card);
+}
+
+body.pw-window-actions-enabled:not(.is-mobile) .mod-root .workspace-tabs > .pw-document-top-area + .workspace-tab-container {
+    margin-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+/* Preserve view-specific backgrounds and every view's existing inner layout. */
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-tabs > .workspace-tab-container > .workspace-leaf,
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-tabs > .workspace-tab-container > .workspace-leaf > .workspace-leaf-content {
+    border: 0;
+    box-shadow: none;
+}
+
+/* Transparent resize handles retain their native hit areas in the gutters. */
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-leaf-resize-handle {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+/* Inset the existing bottom tool host without changing its measured width. */
+body.pw-window-actions-enabled:not(.is-mobile) .pw-bottom-tools {
+    box-sizing: border-box;
+    margin: 0 calc(var(--pw-workspace-card-gap) / 2) var(--pw-workspace-card-gap);
+    height: calc(var(--pw-tool-height) - var(--pw-workspace-card-gap));
+    border: 0;
+    border-radius: var(--pw-workspace-card-radius);
+    background: transparent;
+}
+
+body.pw-window-actions-enabled:not(.is-mobile) .pw-bottom-tools > .pw-tool-window {
+    border-radius: inherit;
+    background: var(--pw-workspace-card);
+}
+
+/* The grip stays outside the clipped tool content so resizing remains usable. */
+body.pw-window-actions-enabled:not(.is-mobile) .pw-bottom-tools > .pw-bottom-tool-resize {
+    background: transparent;
+}

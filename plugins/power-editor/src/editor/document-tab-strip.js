@@ -3,10 +3,12 @@ import { setIcon } from "../../../utils/icons";
 import { useManualMenuScroll } from "../../../utils/menu-scroll";
 import { activateDocumentTab } from "./document-tabs";
 import { installDocumentTabDrag } from "./document-tab-drag";
+import { DocumentTabMenu } from "./document-tab-menu";
 
 /** Native tab groups and drag ordering, with non-shrinking tabs and an overflow picker. */
 export function installDocumentTabStrip(plugin) {
     const { app } = plugin;
+    const tabMenu = new DocumentTabMenu(plugin);
     const entries = new Map();
     let disposed = false;
     let scheduled = false;
@@ -25,12 +27,23 @@ export function installDocumentTabStrip(plugin) {
         entry.container.removeEventListener("pointerover", entry.tooltip, true);
         entry.win.cancelAnimationFrame(entry.frame);
         entry.menu?.hide();
+        tabMenu.close(entry.tabs);
+        entry.more.removeEventListener("click", entry.openOptions, true);
+        entry.more.removeEventListener("keydown", entry.optionsKeydown);
         entry.overflow.remove();
         entry.spacer.remove();
+        entry.contentHeader.before(entry.container);
+        entry.contentHeader.remove();
+        entry.titlebarSpace.remove();
         entry.container.classList.remove("pw-document-tab-strip");
         entry.more.replaceChildren(...entry.moreChildren);
+        entry.more.parentElement.hidden = entry.moreHidden;
         if (entry.moreLabel === null) entry.more.removeAttribute("aria-label");
         else entry.more.setAttribute("aria-label", entry.moreLabel);
+        for (const [name, value] of entry.moreAttributes) {
+            if (value === null) entry.more.removeAttribute(name);
+            else entry.more.setAttribute(name, value);
+        }
         for (const leaf of entry.tabs.children) leaf.updateHeader();
     };
     const attach = (tabs) => {
@@ -53,10 +66,35 @@ export function installDocumentTabStrip(plugin) {
         spacer.setAttribute("aria-hidden", "true");
         more.parentElement.before(spacer, overflow);
         const entry = { tabs, container, inner, more, overflow, spacer, win, frame: 0,
-            moreChildren: [...more.childNodes], moreLabel: more.getAttribute("aria-label") };
+            moreChildren: [...more.childNodes], moreLabel: more.getAttribute("aria-label"), moreHidden: more.parentElement.hidden };
         setIcon(more, "ellipsis-vertical");
-        more.setAttribute("aria-label", "Tab options");
+        more.setAttribute("aria-label", "Recent files, Tab Actions, and More");
+        more.parentElement.hidden = !tabs.children.some(leaf => leaf.view.file);
+        entry.moreAttributes = new Map(["role", "tabindex", "aria-haspopup", "aria-expanded"].map(name => [name, more.getAttribute(name)]));
+        more.setAttribute("role", "button");
+        more.tabIndex = 0;
+        more.setAttribute("aria-haspopup", "menu");
+        more.setAttribute("aria-expanded", "false");
+        entry.openOptions = event => {
+            event.preventDefault(); event.stopImmediatePropagation();
+            if (!tabs.children.some(leaf => leaf.view.file)) return;
+            entry.menu?.hide();
+            tabMenu.show(tabs, more);
+        };
+        entry.optionsKeydown = event => {
+            if (event.key === "Enter" || event.key === " ") entry.openOptions(event);
+        };
+        more.addEventListener("click", entry.openOptions, true);
+        more.addEventListener("keydown", entry.optionsKeydown);
         container.classList.add("pw-document-tab-strip");
+        entry.contentHeader = doc.createElement("div");
+        entry.contentHeader.className = "pw-document-top-area";
+        entry.titlebarSpace = doc.createElement("div");
+        entry.titlebarSpace.className = "pw-document-titlebar-space";
+        entry.titlebarSpace.setAttribute("aria-hidden", "true");
+        container.before(entry.titlebarSpace);
+        container.after(entry.contentHeader);
+        entry.contentHeader.append(container);
         entry.disposeDrag = installDocumentTabDrag(app, tabs);
         entry.tooltip = (event) => {
             const header = event.target.closest?.(".workspace-tab-header");
@@ -67,6 +105,15 @@ export function installDocumentTabStrip(plugin) {
         const measure = () => {
             entry.frame = 0;
             if (disposed || !container.isConnected) return;
+            const hasFile = tabs.children.some(leaf => leaf.view.file);
+            more.parentElement.hidden = !hasFile;
+            spacer.hidden = !hasFile;
+            if (!hasFile) {
+                overflow.hidden = true;
+                entry.menu?.hide();
+                tabMenu.close(tabs);
+                return;
+            }
             if (container.classList.contains("pw-tab-dragging")) return;
             for (const leaf of tabs.children) updateTooltip(leaf);
             const style = win.getComputedStyle(inner);

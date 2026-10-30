@@ -532,6 +532,7 @@ interface PatchworkEditorSettings {
     explorerFilesFirst?: boolean;
     explorerCompact?: boolean;
     explorerAppearance?: string;
+    gitPopupOptions?: { showActions: boolean; groupByPrefix: boolean; showRecent: boolean; showTags: boolean };
     explorerOpenInNewTab?: boolean;
     hideAttachmentFolders?: boolean;
 	showToolbar: boolean;
@@ -615,6 +616,7 @@ const DEFAULT_SETTINGS: PatchworkEditorSettings = {
 	explorerFilesFirst: false,
 	explorerCompact: false,
 	explorerAppearance: "patchwork",
+	gitPopupOptions: { showActions: true, groupByPrefix: false, showRecent: true, showTags: false },
 	explorerOpenInNewTab: true,
 	hideAttachmentFolders: true,
 	showToolbar: true,
@@ -3493,7 +3495,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 				btn.oncontextmenu = (e) => {
 					e.preventDefault();
 					const m = new EditorMenu(this.app);
-					m.addItem((it) => it.setTitle("Rename tab").setIcon(iconName("pencil")).onClick(() => renameTab(btn, i)));
+					m.addItem((it) => it.setTitle("Rename tab").setIcon(iconName("pen-line")).onClick(() => renameTab(btn, i)));
 					if (panes.length > 1)
 						m.addItem((it) =>
 							it.setTitle("Delete tab").setIcon(iconName("trash-2")).onClick(() => {
@@ -3662,7 +3664,7 @@ export default class PatchworkEditorPlugin extends Plugin {
 				btn.oncontextmenu = (e) => {
 					e.preventDefault();
 					const m = new EditorMenu(this.app);
-					m.addItem((it) => it.setTitle("Rename tab").setIcon(iconName("pencil")).onClick(() => renameTab(btn, i)));
+					m.addItem((it) => it.setTitle("Rename tab").setIcon(iconName("pen-line")).onClick(() => renameTab(btn, i)));
 					if (panes.length > 1)
 						m.addItem((it) =>
 							it.setTitle("Delete tab").setIcon(iconName("trash-2")).onClick(() => {
@@ -6890,7 +6892,7 @@ class SlashSuggest extends EditorSuggest<SlashItem> {
 			{ title: "Code block language", icon: "code-square", action: (ed, plugin) => plugin.setCodeBlockLanguage(ed) },
 			{ title: "PDF or file attachment", icon: "paperclip", action: (ed, plugin) => plugin.insertFile(ed) },
 			snippet("Table", "table", "|     |     |     |\n| --- | --- | --- |\n|     |     |     |", 2, 2),
-			snippet("Tabs (Notion-style)", "panels-top-left", "```tabs\n--- Tab 1\n\n--- Tab 2\n\n```", 3, 0),
+			snippet("Tabs (Notion-style)", "layout", "```tabs\n--- Tab 1\n\n--- Tab 2\n\n```", 3, 0),
 			{ title: "Columns (Notion-style)", icon: "columns-2", action: (ed, plugin) => plugin.insertColumnsMenu(ed) },
 			{ title: "Add cover (Notion-style)", icon: "image", action: (_ed, plugin) => plugin.openCoverMenu() },
 			{ title: "Page options (width, font)", icon: "layout", action: (_ed, plugin) => plugin.openPageOptions() },

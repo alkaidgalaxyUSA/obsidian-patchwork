@@ -116,14 +116,20 @@ Obsidian vault. Install declared dependencies explicitly when setting up:
 npm ci --ignore-scripts
 ```
 
-Run the single script from any working directory:
+Set `VaultPath` in `scripts/Deployment.psd1` to the absolute Obsidian vault path
+on this computer. Both the installer and the standalone Claudian identity
+checker read this shared configuration relative to their script directory.
+Set `ObsidianCliPath` in the same file to the installed `Obsidian.com` path.
+When moving to another computer, update this one file.
+
+Run the script from the repository root:
 
 ```powershell
-& 'D:\ideaProjects\obsidian-patchwork\scripts\Build-Install.ps1'
+& .\scripts\Build-Install.ps1
 ```
 
 It compiles all configured plugins and themes, packages them, installs them into
-`D:\my-notes`, and reloads the plugins. No separate installation command is needed.
+the configured vault, and reloads the plugins. No separate installation command is needed.
 The npm entry point performs the same workflow:
 
 ```powershell
@@ -133,8 +139,8 @@ npm run build
 # From the plugins directory: build and install every plugin, without themes.
 npm run build
 
-# Choose a target vault.
-npm run build -- -VaultPath D:/my-notes
+# Temporarily override the shared vault path for this invocation.
+npm run build -- -VaultPath 'E:/Notes'
 
 # Install only one plugin or a selected batch after compilation.
 npm run build -- -Plugin power-editor
@@ -144,12 +150,14 @@ npm run build -- -Plugin power-editor,code-editor
 npm run build -- -ThemeOnly
 ```
 
-The root `scripts` directory contains only `Build-Install.ps1`. Old build-only
+The root `scripts` directory contains `Build-Install.ps1` and the standalone
+`Repair-ClaudianCodexIdentity.ps1` identity checker. Old build-only
 and install-only scripts, npm deployment commands, compatibility wrappers,
 migration and removal scripts, and the common directory have been removed.
 `plugins/scripts/build.mjs` and its two check helpers remain internal compiler
 implementation details. Targets are registered in `plugins/manifest.json`;
-no hard-coded plugin list needs updating in the PowerShell script.
+the installer also checks an explicit allowlist in `Assert-PatchworkManagedPlugin`
+to prevent changes to third-party plugins.
 
 With `-Plugin`, compilation checks all configured plugins but only selected
 plugins are packaged and installed. Both source directory names and installed
@@ -168,15 +176,51 @@ dist/obsidian-patchwork/
 `dist/plugins` holds intermediate plugin bundles. Installation reads only from
 `dist/obsidian-patchwork` at the repository root. All selected artifacts and
 destinations are validated before any running plugin is disabled. Copied files
-are verified with SHA-256; obsolete owned runtime files are removed. Settings,
-unknown user files and unselected packages are preserved. Selected plugins are
+are verified with SHA-256. Selected plugins are unloaded and their current and
+previously owned runtime files are removed before copying the new files. Plugin
+installation and cleanup are restricted to `patchwork-git`,
+`patchwork-power-editor`, `code-editor`, and `claudian-extension`. Claudian
+(`realclaudian` or `claudian`) and other third-party plugins are never cleanup
+targets. Settings,
+unknown user files and unrelated packages are preserved. Selected plugins are
 enabled even if previously disabled. A failed build stops before installation.
 
 Keep the target vault open and enable **Settings > General > Advanced > Command
 line interface**. The script verifies the connected vault before copying files.
 Use `-ObsidianCliPath` for a custom CLI path. For manual reload, disable affected
-plugins first, pass `-SkipReload`, then enable them afterwards. Theme CSS reloads
+plugins first, pass `-SkipReload`, then enable only the
+new plugins afterwards. Theme CSS reloads
 through Obsidian's file watcher; installation never changes the active theme.
+
+After deployment, the installer runs `Repair-ClaudianCodexIdentity.ps1`. This
+checks only Claudian's Codex initialization client name and launch environment,
+setting both `clientInfo.name` and `CODEX_INTERNAL_ORIGINATOR_OVERRIDE` to
+`codex_cli_rs`. It does not uninstall Claudian or change its account settings.
+The checker backs up `main.js` before changes, skips an absent plugin, does
+nothing when both values match, and fails without editing if the bundle layout
+cannot be located uniquely. This is a local compatibility override; acceptance
+by the configured third-party endpoint still requires a real request.
+
+After every identity check, the installer attempts to unload the current Claudian
+instance and reload it if enabled, even when the file already matches. An
+existing Codex process can retain the previous identity after a disk-only patch.
+When Claudian has active work, its reload is deferred with a warning and package
+installation still completes. After the work finishes, restart Obsidian or run
+`Repair-ClaudianCodexIdentity.ps1 -Reload` to reload Claudian without rebuilding.
+With `-SkipReload`, restart Obsidian manually. To repair after a Claudian update
+without compiling or installing project plugins, run:
+
+```powershell
+& .\scripts\Repair-ClaudianCodexIdentity.ps1 -Reload
+```
+
+The standalone repair requires PowerShell 7. With `-Reload`, it reuses the
+installer's CLI helpers without compiling or installing project packages.
+Without `-Reload`, restart Obsidian manually, even if the file was already correct.
+The file check and reload do not establish upstream access; verify with a real
+Claudian message. They never send an AI request automatically.
+The checker also accepts `-ClientName codex_vscode` when that identity is
+required by your endpoint; the installer uses the default `codex_cli_rs`.
 
 Installation is sequential rather than transactional. If copying or reloading
 fails, correct the error and rerun the command before enabling a partially copied
@@ -184,8 +228,9 @@ plugin. No dependencies are installed automatically.
 
 ## Migration to the unified editor
 
-Build and deploy `patchwork-power-editor`, and disable the old `powereditor`,
-`patchwork-code-blocks`, Awesome Format Bar and its style companion. Do not enable
+Deploy `patchwork-power-editor`, and manually disable the old `powereditor`,
+`patchwork-code-blocks`, Awesome Format Bar and its style companion. The installer
+does not clean these legacy plugins. Do not enable
 the old editors alongside the fusion. The former `note-code-blocks` source is
 now part of `plugins/power-editor/src/editor`, not a second plugin.
 

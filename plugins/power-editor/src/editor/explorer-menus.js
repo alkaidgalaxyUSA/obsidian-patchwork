@@ -158,7 +158,7 @@ export function createDocumentMenu(app, view, onCreate, folder) {
     const addFormat = ([ext, label, icon, color]) => add(`New ${label} (.${ext})`, icon, color, () => onCreate(ext, label));
     formats.filter(([ext]) => ext === "md").forEach(addFormat);
     for (const [id, label, icon, color] of [
-        ["obsidian-excalidraw-plugin:excalidraw-autocreate-newtab", "New Excalidraw drawing", "pencil", "#bf9aff"],
+        ["obsidian-excalidraw-plugin:excalidraw-autocreate-newtab", "New Excalidraw drawing", "pen-line", "#bf9aff"],
         ["meld-encrypt:create-new-note", "New encrypted note (.mdenc)", "lock", "#e7b65d"],
     ]) {
         if (app.commands.commands[id]) add(label, icon, color, async () => {
@@ -194,9 +194,18 @@ export function createDocumentMenu(app, view, onCreate, folder) {
 
 export function createExplorerMenu(plugin, view, update) {
     const menu = new Menu();
+    const row = view.containerEl.querySelector(".nav-file-title-content, .nav-folder-title-content");
+    const style = view.containerEl.ownerDocument.defaultView.getComputedStyle(row ?? view.containerEl);
+    const styleMenu = target => {
+        target.dom.classList.add("pw-explorer-more-menu");
+        target.dom.style.setProperty("--pw-explorer-menu-font", style.fontFamily);
+        target.dom.style.setProperty("--pw-explorer-menu-color", style.color);
+    };
+    styleMenu(menu);
     menu.addItem((item) => {
         item.setTitle("Sort order").setIcon("arrow-up-down");
         const submenu = item.setSubmenu();
+        styleMenu(submenu);
         for (const [order, title] of [["alphabetical", "Name (A–Z)"], ["alphabeticalReverse", "Name (Z–A)"], ["byModifiedTime", "Modified (newest first)"], ["byModifiedTimeReverse", "Modified (oldest first)"], ["byCreatedTime", "Created (newest first)"], ["byCreatedTimeReverse", "Created (oldest first)"]]) {
             submenu.addItem((option) => option.setTitle(title).setChecked(view.sortOrder === order).onClick(() => view.setSortOrder(order)));
         }
@@ -204,6 +213,7 @@ export function createExplorerMenu(plugin, view, update) {
     menu.addItem((item) => {
         item.setTitle("Grouping").setIcon("folders");
         const submenu = item.setSubmenu();
+        styleMenu(submenu);
         for (const [value, title] of [[false, "Folders first"], [true, "Files first"]]) submenu.addItem((option) => option.setTitle(title).setChecked(!!plugin.settings.explorerFilesFirst === value).onClick(() => update("explorerFilesFirst", value)));
     });
     menu.addSeparator();

@@ -1,25 +1,30 @@
-import { Notice } from "obsidian";
-import { join } from "node:path";
+import { Notice, normalizePath } from "obsidian";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { iconName } from "../../utils/icons";
 import { PanelFocus } from "../../utils/panel-focus";
 import { Repository } from "./repository";
 import { COMMIT_VIEW, CommitView } from "./commit-view";
 import { addGitMenu } from "./context-menu";
-import { confirm, prompt, showOutput } from "./dialogs";
+import { choose, confirm, prompt, showOutput } from "./dialogs";
 import { GitSettings } from "./settings";
 import { ExplorerStatus } from "./explorer-status";
+import { Changelists } from "./changelists";
+import { DIFF_VIEW, DiffView } from "./diff-view";
+import { BranchActions } from "./branch-actions";
 
 export class GitController {
     constructor(plugin, vaultPath, data) {
         this.plugin = plugin;
         this.app = plugin.app;
         this.repository = new Repository(vaultPath);
+        this.branchActions = new BranchActions(this);
         this.explorerStatus = new ExplorerStatus(this.app, this.repository);
         this.views = new Set();
         this.entries = [];
         this.selected = new Set();
         this.known = new Set();
         this.collapsed = new Set();
+        this.changelists = new Changelists(data?.changelists);
         this.draft = { message: typeof data?.message === "string" ? data.message : "", amend: !!data?.amend };
         this.busy = false;
         this.ready = false;
@@ -29,6 +34,7 @@ export class GitController {
     install() {
         const plugin = this.plugin;
         plugin.registerView(COMMIT_VIEW, leaf => new CommitView(leaf, this));
+        plugin.registerView(DIFF_VIEW, leaf => new DiffView(leaf));
         this.ribbon = plugin.addRibbonIcon(iconName("git-commit"), "Commit", () => void this.open(true));
         this.ribbon.classList.add("pw-git-ribbon-action");
         this.ribbon.setAttribute("data-tooltip-position", "right");
@@ -125,6 +131,95 @@ export class GitController {
         await this.refresh();
         this.selected = new Set(this.entries.filter(entry => paths.some(path => path === "." || entry.path === path || entry.path.startsWith(`${path}/`))).map(entry => entry.path));
         await this.open(); this.render();
+        for (const view of this.views) view.message.focus();
+    }
+
+    async newChangelist() {
+        const name = await prompt(this.app, "New Changelist", "Changelist name");
+        if (!name || this.disposed) return;
+        try {
+            this.changelists.create(name);
+            this.saveDraft(); this.render();
+        } catch (error) { new Notice(error.message); }
+    }
+
+    async editChangelist(id) {
+        const list = this.changelists.lists.find(list => list.id === id);
+        if (!list) return;
+        const name = await prompt(this.app, "Edit Changelist", "Changelist name", list.name);
+        if (!name || this.disposed) return;
+        try {
+            this.changelists.rename(id, name);
+            this.saveDraft(); this.render();
+        } catch (error) { new Notice(error.message); }
+    }
+
+    async moveToChangelist(paths) {
+        if (!paths.length) return;
+        const list = await choose(this.app, "Move to Another Changelist", this.changelists.lists);
+        if (!list || this.disposed) return;
+        try {
+            this.changelists.move(paths, list.id);
+            this.collapsed.delete(list.id);
+            this.saveDraft(); this.render();
+        } catch (error) { new Notice(error.message); }
+    }
+
+    sourceFile(path) {
+        if (!path) return undefined;
+        const vaultPath = relative(this.repository.vaultPath, resolve(this.repository.root, path)).replaceAll("\\", "/");
+        if (isAbsolute(vaultPath) || vaultPath === ".." || vaultPath.startsWith("../")) return undefined;
+        return this.app.vault.getFileByPath(vaultPath) ?? undefined;
+    }
+
+    async jumpToSource(paths) {
+        const file = this.sourceFile(paths[0]);
+        if (!file) { new Notice("The source file is unavailable in this vault."); return; }
+        try { await this.app.workspace.getLeaf(false).openFile(file); }
+        catch (error) { new Notice(error.message); }
+    }
+
+    async deleteFiles(paths) {
+        if (!paths.length || this.busy) return;
+        const files = paths.map(path => this.sourceFile(path));
+        if (files.some(file => !file)) { new Notice("Only existing files inside this vault can be deleted here."); return; }
+        if (!await confirm(this.app, "Delete files", `Move ${files.length} selected file(s) to trash? Git will detect tracked files as deleted.`, "Delete")) return;
+        await this.act(async () => {
+            for (const file of files) await this.app.fileManager.trashFile(file);
+        });
+    }
+
+    ignoreFiles(paths, target) {
+        if (!paths.length) return;
+        return this.act(async () => {
+            const count = await this.repository.ignore(paths, target);
+            new Notice(count ? `Added ${count} ignore rule(s) to ${target}.` : "The selected files are already ignored or no longer unversioned.");
+        });
+    }
+
+    async exportPatch(paths) {
+        const destination = await prompt(this.app, "Create Patch from Local Changes", "Patch path relative to the vault (existing files are not overwritten)", "changes.patch");
+        if (!destination || this.disposed) return;
+        await this.act(async () => {
+            if (isAbsolute(destination) || destination.replaceAll("\\", "/").split("/").includes("..") || !destination.endsWith(".patch")) {
+                throw new Error("Enter a vault-relative path ending in .patch without parent directory segments.");
+            }
+            const patch = await this.repository.patch(paths);
+            if (!patch.length) throw new Error("No changes to export.");
+            await this.app.vault.createBinary(normalizePath(destination), patch.buffer.slice(patch.byteOffset, patch.byteOffset + patch.byteLength));
+            new Notice(`Patch saved: ${destination}`);
+        });
+    }
+
+    copyPatch(paths) {
+        return this.act(async () => {
+            const patch = await this.repository.patch(paths);
+            if (!patch.length) throw new Error("No changes to copy.");
+            const text = patch.toString("utf8");
+            if (!Buffer.from(text, "utf8").equals(patch)) throw new Error("This patch contains non-UTF-8 text. Export it to a patch file to preserve its bytes.");
+            await this.app.workspace.containerEl.ownerDocument.defaultView.navigator.clipboard.writeText(text);
+            new Notice("Patch copied to clipboard.");
+        });
     }
 
     scheduleRefresh() {
@@ -142,7 +237,7 @@ export class GitController {
     async readStatus() {
         try {
             if (!this.ready) await this.repository.discover();
-            const [entries, branch] = await Promise.all([this.repository.status(), this.repository.branch()]);
+            const [entries, branch, ignored] = await Promise.all([this.repository.status(), this.repository.branch(), this.repository.ignored()]);
             if (this.disposed) return;
             const changed = JSON.stringify(entries) !== JSON.stringify(this.entries) || this.error || !this.ready;
             for (const entry of entries) if (!this.known.has(entry.path) && !entry.untracked) this.selected.add(entry.path);
@@ -150,7 +245,7 @@ export class GitController {
             for (const path of this.selected) if (!paths.has(path)) this.selected.delete(path);
             this.known = paths;
             this.entries = entries; this.error = ""; this.ready = true;
-            if (changed) this.explorerStatus.update(entries);
+            this.explorerStatus.update(entries, ignored);
             if (this.branch !== branch || changed) {
                 this.branch = branch;
                 this.app.workspace.trigger("patchwork-git:refreshed");
@@ -247,10 +342,12 @@ export class GitController {
         });
     }
 
-    shelve(paths) {
+    async shelve(paths, askTitle = false) {
         if (!paths.length) return;
+        const message = askTitle ? await prompt(this.app, "Shelve Changes", "Shelf name", this.draft.message.trim().split(/\r?\n/)[0] || "Local changes") : this.draft.message;
+        if (askTitle && !message) return;
         return this.act(async () => {
-            const shelf = await this.repository.shelves.create(paths, this.draft.message);
+            const shelf = await this.repository.shelves.create(paths, message);
             new Notice(`Shelved ${shelf.paths.length} files. Restore them from View Options → Shelved Changes.`);
         });
     }
@@ -263,7 +360,7 @@ export class GitController {
         });
     }
 
-    showDiff(paths) {
+    showDiff(paths, newTab = false) {
         if (!paths.length) return;
         return this.act(async () => {
             const head = await this.repository.head();
@@ -274,7 +371,11 @@ export class GitController {
             for (const entry of untracked) {
                 output.push(await this.repository.run(["diff", "--no-index", "--no-ext-diff", "--no-textconv", "--no-color", "--", "/dev/null", join(this.repository.root, entry.path)], { allowedExitCodes: [1] }));
             }
-            showOutput(this.app, "Diff with Working Tree", output.filter(Boolean).join("\n"));
+            const text = output.filter(Boolean).join("\n");
+            if (!newTab) { showOutput(this.app, "Diff with Working Tree", text); return; }
+            const leaf = this.app.workspace.getLeaf("tab");
+            await leaf.setViewState({ type: DIFF_VIEW, active: true, state: { title: paths.length === 1 ? `Diff: ${paths[0]}` : "Git Diff", text } });
+            await this.app.workspace.revealLeaf(leaf);
         });
     }
 
@@ -287,17 +388,18 @@ export class GitController {
 
     saveDraft() {
         clearTimeout(this.draftTimer);
-        this.draftTimer = setTimeout(() => { void this.plugin.saveData({ ...this.draft }).catch(error => new Notice(`Could not save commit draft: ${error.message}`)); }, 300);
+        this.draftTimer = setTimeout(() => { void this.plugin.saveData({ ...this.draft, changelists: this.changelists.serialize() }).catch(error => new Notice(`Could not save commit draft: ${error.message}`)); }, 300);
     }
 
     dispose() {
         this.disposed = true;
         this.app.workspace.containerEl.ownerDocument.defaultView.cancelAnimationFrame(this.ribbonFrame);
         clearTimeout(this.refreshTimer); clearTimeout(this.draftTimer);
-        void this.plugin.saveData({ ...this.draft }).catch(() => {});
+        void this.plugin.saveData({ ...this.draft, changelists: this.changelists.serialize() }).catch(() => {});
         this.repository.dispose();
         this.explorerStatus.dispose();
         this.app.workspace.detachLeavesOfType(COMMIT_VIEW);
+        this.app.workspace.detachLeavesOfType(DIFF_VIEW);
         this.ribbon.remove();
         this.views.clear();
         this.ready = false;

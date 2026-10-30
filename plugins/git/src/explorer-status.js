@@ -1,3 +1,5 @@
+import { fileStatus } from "./utils/file-status.js";
+
 /** Keep Project filenames in sync with the same status snapshot as Commit. */
 export class ExplorerStatus {
     constructor(app, repository) {
@@ -9,8 +11,8 @@ export class ExplorerStatus {
 
     key(path) { return process.platform === "win32" ? path.toLowerCase() : path; }
 
-    update(entries) {
-        this.status = new Map(entries.map(entry => [this.key(entry.path), entry.conflict ? "conflict" : entry.untracked ? "unversioned" : entry.staged ? "staged" : "modified"]));
+    update(entries, ignored = []) {
+        this.status = new Map([...ignored, ...entries].map(entry => [this.key(entry.path), fileStatus(entry)]));
         this.sync();
     }
 

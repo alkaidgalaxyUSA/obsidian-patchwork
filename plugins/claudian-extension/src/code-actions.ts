@@ -152,7 +152,7 @@ export class CodeActions {
         this.menu?.hide();
         const menu = new Menu();
         this.menu = menu;
-        menu.addItem((item) => item.setTitle("Insert raw text (without code fences)").setIcon(iconName("text"))
+        menu.addItem((item) => item.setTitle("Insert raw text (without code fences)").setIcon(iconName("align-left"))
             .onClick(() => this.inserter.insert(block, "raw")));
         menu.addItem((item) => item.setTitle("Insert code block (preserve language)").setIcon(iconName("code-2"))
             .onClick(() => this.inserter.insert(block, "fenced")));

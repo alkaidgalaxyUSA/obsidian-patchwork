@@ -1,7 +1,8 @@
 import { ItemView, Menu, Notice } from "obsidian";
 import { setIcon } from "../../utils/icons";
-import { addGitMenu } from "./context-menu";
+import { addCommitMenu } from "./commit-context-menu";
 import { CommitSplitter } from "./commit-splitter";
+import { fileStatus } from "./utils/file-status.js";
 
 export const COMMIT_VIEW = "patchwork-git-commit";
 
@@ -27,10 +28,11 @@ export class CommitView extends ItemView {
         toolbar.createSpan({ cls: "pw-git-toolbar-separator", attr: { "aria-hidden": "true" } });
         this.tool(toolbar, "Select Opened File in Change View", "select-opened-file", () => this.selectOpenedFile());
         this.tool(toolbar, "Expand All", "git-expand-all", () => { this.controller.collapsed.clear(); this.controller.render(); });
-        this.tool(toolbar, "Collapse All", "git-collapse-all", () => { this.controller.collapsed = new Set(["Changes", "Unversioned Files"]); this.controller.render(); });
+        this.tool(toolbar, "Collapse All", "git-collapse-all", () => { this.controller.collapsed = new Set([...this.controller.changelists.lists.map(list => list.id), "Unversioned Files"]); this.controller.render(); });
         this.status = this.contentEl.createDiv({ cls: "pw-git-panel-status", attr: { role: "status", "aria-live": "polite" } });
         const body = this.contentEl.createDiv({ cls: "pw-git-commit-body" });
         this.files = body.createDiv({ cls: "pw-git-change-list" });
+        this.files.oncontextmenu = event => this.openContextMenu(event, this.selectedPaths());
         const separator = body.createDiv({ cls: "pw-git-commit-splitter" });
         this.splitter = new CommitSplitter(body, separator);
         const footer = body.createDiv({ cls: "pw-git-commit-footer" });
@@ -90,16 +92,21 @@ export class CommitView extends ItemView {
             const key = entry => this.sortByPath ? entry.path : entry.path.split("/").pop();
             return key(a).localeCompare(key(b)) || a.path.localeCompare(b.path);
         });
-        this.group("Changes", entries.filter(entry => !entry.untracked), true);
-        this.group("Unversioned Files", entries.filter(entry => entry.untracked), false);
+        for (const list of this.controller.changelists.lists) {
+            this.group(list.name, entries.filter(entry => !entry.untracked && this.controller.changelists.forPath(entry.path) === list.id), true, list.id);
+        }
+        const unversioned = entries.filter(entry => entry.untracked);
+        if (unversioned.length) this.group("Unversioned Files", unversioned, false);
         if (!entries.length && !this.controller.error) this.files.createDiv({ cls: "pw-git-panel-empty", text: this.controller.ready ? "No changes" : "Loading repository…" });
         this.updateButtons();
     }
 
-    group(name, entries, bold) {
+    group(name, entries, bold, changelistId) {
+        const groupId = changelistId ?? name;
         const section = this.files.createDiv({ cls: "pw-git-change-group" });
         const header = section.createDiv({ cls: "pw-git-change-heading" });
-        const toggle = header.createEl("button", { cls: "clickable-icon", attr: { "aria-label": name, "aria-expanded": String(!this.controller.collapsed.has(name)) } });
+        header.oncontextmenu = event => this.openContextMenu(event, entries.map(entry => entry.path), changelistId);
+        const toggle = header.createEl("button", { cls: "clickable-icon", attr: { "aria-label": name, "aria-expanded": String(!this.controller.collapsed.has(groupId)) } });
         const content = header.createDiv({ cls: "pw-git-change-content" });
         const checkbox = content.createEl("input", { type: "checkbox", attr: { "aria-label": `Include ${name}` } });
         content.createEl(bold ? "strong" : "span", { text: name });
@@ -115,10 +122,10 @@ export class CommitView extends ItemView {
             }
             this.controller.render();
         };
-        const collapsed = this.controller.collapsed.has(name);
+        const collapsed = this.controller.collapsed.has(groupId);
         setIcon(toggle, collapsed ? "chevron-right" : "chevron-down");
         toggle.onclick = () => {
-            if (collapsed) this.controller.collapsed.delete(name); else this.controller.collapsed.add(name);
+            if (collapsed) this.controller.collapsed.delete(groupId); else this.controller.collapsed.add(groupId);
             this.render();
         };
         if (collapsed) return;
@@ -129,7 +136,7 @@ export class CommitView extends ItemView {
         const row = section.createDiv({ cls: "pw-git-change-file" });
         row.dataset.path = entry.path;
         row.tabIndex = -1;
-        row.classList.add(entry.conflict ? "is-conflict" : entry.untracked ? "is-unversioned" : entry.staged ? "is-staged" : "is-modified");
+        row.classList.add(`is-${fileStatus(entry)}`);
         const content = row.createDiv({ cls: "pw-git-change-content" });
         const checkbox = content.createEl("input", { type: "checkbox", attr: { "aria-label": `Include ${entry.path}` } });
         checkbox.checked = this.controller.selected.has(entry.path);
@@ -139,17 +146,27 @@ export class CommitView extends ItemView {
             this.controller.render();
         };
         const parts = entry.path.split("/");
-        setIcon(content.createSpan({ cls: "pw-git-file-icon", attr: { "aria-hidden": "true" } }), "file");
+        setIcon(content.createSpan({ cls: "pw-git-file-icon", attr: { "aria-hidden": "true" } }), "document");
         content.createSpan({ cls: "pw-git-file-name", text: parts.pop() });
         const path = parts.join("\\");
         if (this.showPaths) content.createSpan({ cls: "pw-git-file-path", text: path });
-        row.setAttribute("aria-label", `${entry.path}: ${entry.code}`);
-        row.setAttribute("title", `${entry.original ? `${entry.original} → ` : ""}${entry.path} (${entry.code})`);
+        row.setAttribute("aria-label", `${entry.original ? `${entry.original} → ` : ""}${entry.path} (${entry.code})`);
         row.ondblclick = event => { if (event.target !== checkbox) void this.controller.showDiff([entry.path]); };
-        row.oncontextmenu = event => {
-            event.preventDefault();
-            const menu = new Menu(); addGitMenu(menu, this.controller, [entry.path]); menu.showAtMouseEvent(event);
-        };
+        row.oncontextmenu = event => this.openContextMenu(event, [entry.path], entry.untracked ? undefined : this.controller.changelists.forPath(entry.path));
+    }
+
+    openContextMenu(event, paths, changelistId) {
+        event.preventDefault(); event.stopPropagation();
+        if (!changelistId) {
+            const lists = new Set(this.controller.entries.filter(entry => !entry.untracked && paths.includes(entry.path)).map(entry => this.controller.changelists.forPath(entry.path)));
+            if (lists.size === 1) changelistId = [...lists][0];
+        }
+        this.menu?.hide();
+        const menu = new Menu();
+        this.menu = menu;
+        addCommitMenu(menu, this.controller, paths, changelistId);
+        menu.onHide(() => { if (this.menu === menu) this.menu = undefined; });
+        menu.showAtMouseEvent(event);
     }
 
     updateButtons() {
@@ -214,7 +231,7 @@ export class CommitView extends ItemView {
         catch (error) { new Notice(error.message); return; }
         const entry = this.controller.entries.find(entry => entry.path === path);
         if (!entry) { new Notice("The opened file has no Git changes."); return; }
-        this.controller.collapsed.delete(entry.untracked ? "Unversioned Files" : "Changes");
+        this.controller.collapsed.delete(entry.untracked ? "Unversioned Files" : this.controller.changelists.forPath(entry.path));
         this.render();
         const row = [...this.files.querySelectorAll(".pw-git-change-file")].find(row => row.dataset.path === path);
         row?.focus({ preventScroll: true });

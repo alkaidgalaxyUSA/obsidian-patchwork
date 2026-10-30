@@ -9,7 +9,14 @@
     "plugins/power-editor/src/main.ts"
   ],
   "action-align-left.svg": [
-    "plugins/power-editor/src/main.ts"
+    "plugins/claudian-extension/src/code-actions.ts",
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/editor/note-code-editor.js",
+    "plugins/power-editor/src/editor/utils/block-formats.js",
+    "plugins/power-editor/src/editor/utils/document-blocks.js",
+    "plugins/power-editor/src/format.ts",
+    "plugins/power-editor/src/main.ts",
+    "plugins/power-editor/src/tasks.ts"
   ],
   "action-align-right.svg": [
     "plugins/power-editor/src/main.ts"
@@ -35,7 +42,8 @@
     "plugins/power-editor/src/main.ts"
   ],
   "action-badge-check.svg": [
-    "plugins/power-editor/src/main.ts"
+    "plugins/power-editor/src/main.ts",
+    "plugins/power-editor/src/page.ts"
   ],
   "action-badge-x.svg": [
     "plugins/power-editor/src/main.ts"
@@ -124,6 +132,7 @@
     "plugins/claudian-extension/src/code-actions.ts"
   ],
   "action-code-square.svg": [
+    "plugins/power-editor/src/editor/utils/block-formats.js",
     "plugins/power-editor/src/main.ts"
   ],
   "action-code.svg": [
@@ -138,15 +147,11 @@
     "plugins/power-editor/src/main.ts"
   ],
   "action-columns-2.svg": [
+    "plugins/power-editor/src/blocks.ts",
     "plugins/power-editor/src/editor/utils/block-formats.js",
     "plugins/power-editor/src/main.ts"
   ],
   "action-columns-3.svg": [
-    "plugins/power-editor/src/main.ts"
-  ],
-  "action-columns.svg": [
-    "plugins/power-editor/src/blocks.ts",
-    "plugins/power-editor/src/editor/utils/block-formats.js",
     "plugins/power-editor/src/main.ts"
   ],
   "action-copy.svg": [
@@ -165,13 +170,17 @@
     "plugins/power-editor/src/main.ts"
   ],
   "action-diff.svg": [
+    "plugins/git/src/commit-context-menu.js",
     "plugins/power-editor/src/editor/utils/note-code-block.js"
   ],
   "action-divide.svg": [
     "plugins/power-editor/src/main.ts"
   ],
   "action-document.svg": [
-    "plugins/power-editor/src/main.ts"
+    "plugins/git/src/commit-view.js",
+    "plugins/power-editor/src/main.ts",
+    "plugins/power-editor/src/menu-styles/presets.css",
+    "plugins/power-editor/src/tasks.ts"
   ],
   "action-ellipsis-vertical.svg": [
     "plugins/power-editor/src/menus/toolbar-overflow.ts"
@@ -195,10 +204,6 @@
   "action-file-code.svg": [
     "plugins/code-editor/src/view.ts"
   ],
-  "action-file.svg": [
-    "plugins/power-editor/src/main.ts",
-    "plugins/power-editor/src/tasks.ts"
-  ],
   "action-files.svg": [
     "plugins/power-editor/src/main.ts"
   ],
@@ -211,6 +216,16 @@
   ],
   "action-folder.svg": [
     "plugins/power-editor/src/main.ts"
+  ],
+  "action-git-rollback.svg": [
+    "plugins/git/src/commit-context-menu.js"
+  ],
+  "action-git-shelve.svg": [
+    "plugins/git/src/commit-context-menu.js"
+  ],
+  "action-git-show-diff.svg": [
+    "plugins/git/src/commit-context-menu.js",
+    "plugins/git/src/diff-view.js"
   ],
   "action-grip-vertical.svg": [
     "plugins/power-editor/src/main.ts"
@@ -267,10 +282,6 @@
     "plugins/power-editor/src/main.ts"
   ],
   "action-indent-increase.svg": [
-    "plugins/power-editor/src/editor/note-code-menus.js",
-    "plugins/power-editor/src/main.ts"
-  ],
-  "action-indent.svg": [
     "plugins/power-editor/src/editor/note-code-actions.js",
     "plugins/power-editor/src/editor/note-code-menus.js",
     "plugins/power-editor/src/main.ts"
@@ -352,9 +363,6 @@
   "action-option.svg": [
     "plugins/power-editor/src/editor/note-code-menus.js"
   ],
-  "action-outdent.svg": [
-    "plugins/power-editor/src/main.ts"
-  ],
   "action-paintbrush.svg": [
     "plugins/power-editor/src/main.ts"
   ],
@@ -370,9 +378,6 @@
   "action-panel-top.svg": [
     "plugins/power-editor/src/main.ts"
   ],
-  "action-panels-top-left.svg": [
-    "plugins/power-editor/src/main.ts"
-  ],
   "action-paperclip.svg": [
     "plugins/power-editor/src/main.ts"
   ],
@@ -380,13 +385,13 @@
     "plugins/power-editor/src/editor/note-code-controls.js"
   ],
   "action-pen-line.svg": [
+    "plugins/git/src/commit-context-menu.js",
+    "plugins/power-editor/src/blocks.ts",
+    "plugins/power-editor/src/editor/document-mode-actions.js",
+    "plugins/power-editor/src/editor/explorer-menus.js",
     "plugins/power-editor/src/main.ts"
   ],
   "action-pen.svg": [
-    "plugins/power-editor/src/main.ts"
-  ],
-  "action-pencil.svg": [
-    "plugins/power-editor/src/blocks.ts",
     "plugins/power-editor/src/main.ts"
   ],
   "action-pizza.svg": [
@@ -396,6 +401,7 @@
     "plugins/power-editor/src/editor/note-code-editor.js"
   ],
   "action-plus.svg": [
+    "plugins/git/src/commit-context-menu.js",
     "plugins/power-editor/src/editor/note-code-menus.js",
     "plugins/power-editor/src/main.ts"
   ],
@@ -424,6 +430,7 @@
     "plugins/power-editor/src/main.ts"
   ],
   "action-refresh-cw.svg": [
+    "plugins/git/src/commit-context-menu.js",
     "plugins/power-editor/src/main.ts"
   ],
   "action-remove-formatting.svg": [
@@ -476,9 +483,6 @@
   "action-sparkles.svg": [
     "plugins/power-editor/src/main.ts"
   ],
-  "action-square-code.svg": [
-    "plugins/power-editor/src/editor/utils/block-formats.js"
-  ],
   "action-square.svg": [
     "plugins/claudian-extension/src/composer-actions.ts"
   ],
@@ -508,16 +512,6 @@
   ],
   "action-text-search.svg": [
     "plugins/power-editor/src/main.ts"
-  ],
-  "action-text.svg": [
-    "plugins/claudian-extension/src/code-actions.ts",
-    "plugins/power-editor/src/blocks.ts",
-    "plugins/power-editor/src/editor/note-code-editor.js",
-    "plugins/power-editor/src/editor/utils/block-formats.js",
-    "plugins/power-editor/src/editor/utils/document-blocks.js",
-    "plugins/power-editor/src/format.ts",
-    "plugins/power-editor/src/main.ts",
-    "plugins/power-editor/src/tasks.ts"
   ],
   "action-toolbox.svg": [
     "plugins/power-editor/src/main.ts"
@@ -549,10 +543,6 @@
   ],
   "action-user.svg": [
     "plugins/power-editor/src/main.ts"
-  ],
-  "action-verified.svg": [
-    "plugins/power-editor/src/main.ts",
-    "plugins/power-editor/src/page.ts"
   ],
   "action-view.svg": [
     "plugins/power-editor/src/tasks.ts"

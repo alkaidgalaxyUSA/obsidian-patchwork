@@ -6,7 +6,7 @@ const BASIC_BLOCKS = [
     { id: "numbered-list", label: "Numbered list", icon: "list-ordered" },
     { id: "bulleted-list", label: "Bulleted list", icon: "list" },
     { id: "todo-list", label: "To-do list", icon: "list-todo" },
-    { id: "code", label: "Code block", icon: "square-code" },
+    { id: "code", label: "Code block", icon: "code-square" },
 ];
 const RICH_BLOCKS = [
     { id: "highlighter", label: "Highlighter", icon: "highlighter" },
@@ -22,7 +22,7 @@ const INSERT_GROUPS = [
     ] },
     { label: "Headings", items: HEADINGS },
     { label: "Programmer's area", items: [
-        { id: "code", label: "Code block", icon: "square-code" },
+        { id: "code", label: "Code block", icon: "code-square" },
         { id: "formula", label: "Formula", icon: "sigma" },
         { id: "text-diagram", label: "Text diagram", icon: "workflow" },
     ] },

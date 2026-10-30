@@ -4,7 +4,7 @@ import { GitRepository } from "./git-repository";
 
 const ACTIONS = [
     ["pull", "Update Project…", "arrow-down-left"],
-    ["open-commit", "Commit…", "check"],
+    ["open-commit", "Commit…", "git-commit"],
     ["push", "Push…", "arrow-up-right"],
 ];
 
@@ -16,8 +16,13 @@ export class GitPopup {
         this.doc = anchor.ownerDocument;
         this.onClose = onClose;
         this.repository = new GitRepository(app);
-        this.expanded = new Set(["Recent"]);
+        this.expanded = new Set(["Recent", "Remote"]);
+        this.collapsedRemotes = new Set();
         this.mode = "branches";
+        this.preferencesPlugin = app.plugins.plugins["patchwork-power-editor"];
+        this.options = { showActions: true, groupByPrefix: false, showRecent: true, showTags: false,
+            ...this.preferencesPlugin?.settings.gitPopupOptions };
+        this.collapsedPrefixes = new Set();
     }
 
     open() {
@@ -30,18 +35,28 @@ export class GitPopup {
         setIcon(search.createSpan(), "search");
         this.input = search.createEl("input", { type: "search", attr: { placeholder: "Search for branches and actions", "aria-label": "Search for branches and actions" } });
         this.input.addEventListener("input", () => this.render());
-        this.expandButton = this.tool(header, "Expand popup", "expand", () => {
-            const wide = this.el.classList.toggle("is-wide");
-            this.expandButton.setAttribute("aria-label", wide ? "Restore popup size" : "Expand popup");
-            this.position();
+        this.fetchButton = this.tool(header, "Fetch", "refresh-cw", async () => {
+            if (this.fetching) return;
+            this.fetching = true;
+            this.fetchButton.disabled = true;
+            this.fetchButton.setAttribute("aria-busy", "true");
+            try { await this.repository.fetch(); await this.load(); }
+            finally {
+                this.fetching = false;
+                this.fetchButton.disabled = !this.repository.plugin?.gitReady;
+                this.fetchButton.removeAttribute("aria-busy");
+            }
         });
-        this.tool(header, "Git settings", "settings", () => {
-            this.close(); this.app.setting.open(); this.app.setting.openTabById("patchwork-git");
-        });
+        this.settingsButton = this.tool(header, "Settings", "settings", () => this.showSettings());
         this.content = this.el.createDiv({ cls: "pw-git-popup-content" });
+        this.content.addEventListener("scroll", () => this.branchMenu?.hide());
+        this.content.addEventListener("pointerover", event => {
+            const row = event.target.closest(".pw-git-row");
+            if (row && row.dataset.ref !== this.branchMenuRef) this.branchMenu?.hide();
+        });
         this.el.addEventListener("keydown", (event) => this.keydown(event));
         this.outside = (event) => {
-            if (!this.el.contains(event.target) && !this.anchor.contains(event.target) && !this.branchMenu?.dom.contains(event.target)) this.close(false);
+            if (!this.el.contains(event.target) && !this.anchor.contains(event.target) && !this.branchMenu?.dom.contains(event.target) && !this.settingsMenu?.dom.contains(event.target)) this.close(false);
         };
         this.reposition = () => this.position();
         this.doc.addEventListener("pointerdown", this.outside, true);
@@ -67,10 +82,39 @@ export class GitPopup {
     }
 
     tool(host, label, icon, action) {
-        const button = host.createEl("button", { cls: "clickable-icon", attr: { type: "button", "aria-label": label, title: label } });
+        const button = host.createEl("button", { cls: "clickable-icon", attr: { type: "button", "aria-label": label } });
         setIcon(button, icon);
         button.addEventListener("click", action);
         return button;
+    }
+
+    showSettings() {
+        if (this.settingsMenu) { this.settingsMenu.hide(); return; }
+        this.branchMenu?.hide();
+        const menu = this.settingsMenu = new Menu();
+        menu.dom.classList.add("pw-git-submenu");
+        menu.setParentElement(this.settingsButton);
+        const option = (key, title) => menu.addItem(item => item.setTitle(title).setChecked(this.options[key]).onClick(() => {
+            this.options[key] = !this.options[key];
+            if (key === "showTags" && this.options[key]) this.expanded.add("Tags");
+            this.render();
+            if (!this.preferencesPlugin) return;
+            this.preferencesPlugin.settings.gitPopupOptions = { ...this.options };
+            void this.preferencesPlugin.persistSettings().catch(() => new Notice("Could not save Git popup preferences."));
+        }));
+        option("showActions", "Show Action in Search Result");
+        menu.addSeparator();
+        option("groupByPrefix", "Group by Prefix");
+        option("showRecent", "Show Recent Branches");
+        option("showTags", "Show Tags");
+        menu.addItem(item => item.setTitle("Restore Popup Size").setDisabled(true));
+        this.settingsButton.setAttribute("aria-expanded", "true");
+        menu.onHide(() => {
+            if (this.settingsMenu === menu) this.settingsMenu = undefined;
+            this.settingsButton.setAttribute("aria-expanded", "false");
+        });
+        const bounds = this.settingsButton.getBoundingClientRect();
+        menu.showAtPosition({ x: bounds.left, y: bounds.bottom + 4 });
     }
 
     row(label, icon, action) {
@@ -95,13 +139,18 @@ export class GitPopup {
     }
 
     render() {
+        this.branchMenu?.hide();
+        this.fetchButton.disabled = !!this.fetching || !this.repository.plugin?.gitReady;
         this.content.empty();
         if (this.mode === "revisions") { this.renderRevisions(); this.position(); return; }
-        for (const action of ACTIONS) this.action(...action);
-        this.content.createDiv({ cls: "pw-git-separator" });
-        this.action("create-branch", "New Branch…", "plus");
-        if (this.matches("Checkout Tag or Revision…")) {
-            const button = this.row("Checkout Tag or Revision…", "git-branch-flipped", () => {
+        const showActions = !this.input.value.trim() || this.options.showActions;
+        if (showActions) {
+            for (const action of ACTIONS) this.action(...action);
+            this.content.createDiv({ cls: "pw-git-separator" });
+            this.action("create-branch", "New Branch…", "plus");
+        }
+        if (showActions && this.matches("Checkout Tag or Revision…")) {
+            const button = this.row("Checkout Tag or Revision…", "", () => {
                 this.mode = "revisions"; this.input.value = "";
                 this.input.placeholder = "Tag or revision to check out";
                 this.input.setAttribute("aria-label", this.input.placeholder);
@@ -115,9 +164,10 @@ export class GitPopup {
             if (this.repository.plugin?.repositoryMissing) this.row("Initialize Repository…", "plus", () => { this.close(); this.repository.command("init-repo"); });
             this.position(); return;
         }
-        this.group("Recent", this.data.recent);
+        if (this.options.showRecent) this.group("Recent", this.data.recent);
         this.group("Local", this.data.local);
         this.group("Remote", this.data.remote, true);
+        if (this.options.showTags) this.group("Tags", this.data.tags);
         if (this.input.value.trim() && !this.content.querySelector(".pw-git-row")) this.content.createDiv({ cls: "pw-git-status", text: "No matching branches or actions", attr: { role: "status" } });
         this.position();
     }
@@ -137,13 +187,73 @@ export class GitPopup {
         heading.setAttribute("aria-expanded", String(expanded));
         if (!expanded) return;
         if (!filtered.length) this.content.createDiv({ cls: "pw-git-status", text: remote && this.data.remoteError ? "Could not load remote branches" : "No branches" });
-        for (const branch of filtered) this.branch(branch, remote);
+        if (remote) { this.remoteGroups(filtered, searching); return; }
+        this.branchList(filtered, remote, name);
     }
 
-    branch(ref, remote) {
+    branchList(refs, remote, group, base = "", prefix = "", depth = 0) {
+        const folders = new Map();
+        const searching = !!this.input.value.trim();
+        for (const ref of refs) {
+            const label = ref.slice(base.length + prefix.length);
+            const slash = this.options.groupByPrefix ? label.indexOf("/") : -1;
+            if (slash >= 0) {
+                const name = label.slice(0, slash);
+                if (!folders.has(name)) folders.set(name, []);
+                folders.get(name).push(ref);
+                continue;
+            }
+            const row = group === "Tags"
+                ? this.row(label, "tag", () => { this.close(); this.repository.checkout(ref); })
+                : this.branch(ref, remote, label);
+            if (group === "Tags" || depth) row.style.paddingLeft = `${(remote ? 72 : 48) + depth * 20}px`;
+        }
+        for (const [name, children] of folders) {
+            const next = `${prefix}${name}/`;
+            const key = `${group}:${base}${next}`;
+            const expanded = searching || !this.collapsedPrefixes.has(key);
+            const folder = this.row(name, expanded ? "chevron-down" : "chevron-right", () => {
+                if (this.collapsedPrefixes.has(key)) this.collapsedPrefixes.delete(key);
+                else this.collapsedPrefixes.add(key);
+                this.render();
+            });
+            folder.classList.add("pw-git-prefix-folder");
+            folder.style.paddingLeft = `${(remote ? 72 : 48) + depth * 20}px`;
+            folder.setAttribute("aria-expanded", String(expanded));
+            if (expanded) this.branchList(children, remote, group, base, next, depth + 1);
+        }
+    }
+
+    remoteGroups(branches, searching) {
+        const names = this.data.remotes ?? [...new Set(branches.map(ref => ref.split("/")[0]))];
+        for (const name of names) {
+            const refs = branches.filter(ref => ref.startsWith(`${name}/`));
+            if (searching && !refs.length) continue;
+            const expanded = searching || !this.collapsedRemotes.has(name);
+            const folder = this.row(name, expanded ? "chevron-down" : "chevron-right", () => {
+                if (this.collapsedRemotes.has(name)) this.collapsedRemotes.delete(name);
+                else this.collapsedRemotes.add(name);
+                this.render();
+                [...this.content.querySelectorAll(".pw-git-remote-folder")].find(row => row.dataset.remote === name)?.focus();
+            });
+            folder.classList.add("pw-git-remote-folder");
+            folder.dataset.remote = name;
+            folder.setAttribute("aria-expanded", String(expanded));
+            const icon = this.doc.createElement("span");
+            icon.className = "pw-git-row-icon";
+            setIcon(icon, "folder");
+            folder.insertBefore(icon, folder.querySelector(".pw-git-row-label"));
+            if (!expanded) continue;
+            this.branchList(refs, true, "Remote", `${name}/`);
+        }
+    }
+
+    branch(ref, remote, label = ref) {
         const current = !remote && ref === this.data.current;
-        const button = this.row(ref, current ? "tag" : "git-branch-flipped", () => this.branchActions(button, ref, remote));
+        const button = this.row(label, current ? "git-current-branch" : "git-branch-flipped", () => this.branchActions(button, ref, remote));
         button.classList.add("pw-git-branch");
+        button.classList.add(remote ? "pw-git-remote-branch" : "pw-git-local-branch");
+        button.dataset.ref = ref;
         button.classList.toggle("is-current", current);
         button.setAttribute("aria-haspopup", "menu");
         if (current) {
@@ -152,21 +262,73 @@ export class GitPopup {
         const tracking = !remote && this.data.upstreams.get(ref);
         if (tracking) button.createSpan({ cls: "pw-git-row-detail", text: tracking });
         setIcon(button.createSpan({ cls: "pw-git-branch-more" }), "chevron-right");
+        button.addEventListener("pointerenter", event => {
+            if (remote && event.pointerType !== "touch") this.branchActions(button, ref, true);
+        });
+        button.addEventListener("keydown", event => {
+            if (event.key !== "ArrowRight") return;
+            event.preventDefault(); event.stopPropagation();
+            this.branchActions(button, ref, remote);
+        });
+        return button;
     }
 
     branchActions(button, ref, remote) {
+        if (this.branchMenu?.dom.isConnected && this.branchMenuRef === ref) return;
         this.branchMenu?.hide();
         const menu = this.branchMenu = new Menu();
+        menu.dom.classList.add("pw-git-submenu");
+        this.branchMenuRef = ref;
         menu.setParentElement(button);
-        menu.addItem((item) => item.setTitle("Checkout").setIcon(iconName("git-branch-flipped"))
-            .setDisabled(!remote && ref === this.data.current).onClick(() => { this.close(); this.repository.checkout(ref, remote); }));
-        menu.addItem((item) => item.setTitle("Copy branch name").setIcon("copy").onClick(async () => {
-            try { await this.doc.defaultView.navigator.clipboard.writeText(ref); }
-            catch { new Notice("Could not copy branch name."); }
-        }));
-        menu.onHide(() => { if (this.branchMenu === menu) this.branchMenu = undefined; });
+        if (remote) this.remoteBranchActions(menu, ref);
+        else {
+            menu.addItem((item) => item.setTitle("Checkout").setIcon(iconName("git-branch-flipped"))
+                .setDisabled(ref === this.data.current).onClick(() => { this.close(); this.repository.checkout(ref); }));
+            menu.addItem((item) => item.setTitle("Copy branch name").setIcon("copy").onClick(async () => {
+                try { await this.doc.defaultView.navigator.clipboard.writeText(ref); }
+                catch { new Notice("Could not copy branch name."); }
+            }));
+        }
+        button.setAttribute("aria-expanded", "true");
+        menu.onHide(() => {
+            button.setAttribute("aria-expanded", "false");
+            if (this.branchMenu === menu) { this.branchMenu = undefined; this.branchMenuRef = undefined; }
+        });
         const bounds = button.getBoundingClientRect();
         menu.showAtPosition({ x: bounds.right, y: bounds.top });
+    }
+
+    remoteBranchActions(menu, ref) {
+        const current = this.data.current;
+        const local = this.data.local.includes(current);
+        const busy = !!this.repository.plugin?.controller.busy;
+        const actions = [
+            ["checkout", "Checkout"],
+            ["new-branch", `New Branch from '${ref}'`],
+            ["checkout-rebase", `Checkout and Rebase onto '${current}'`, true],
+            null,
+            ["compare", `Compare with '${current}'`, true],
+            ["working-diff", "Show Diff with Working Tree"],
+            null,
+            ["rebase", `Rebase '${current}' onto '${ref}'`, true],
+            ["merge", `Merge '${ref}' into '${current}'`, true],
+            null,
+            ["worktree", `New Worktree from '${ref}'`],
+            null,
+            ["pull-rebase", `Pull into '${current}' Using Rebase`, true],
+            ["pull-merge", `Pull into '${current}' Using Merge`, true],
+        ];
+        for (const action of actions) {
+            if (!action) { menu.addSeparator(); continue; }
+            const [id, title, needsLocal] = action;
+            menu.addItem(item => item.setTitle(title).setDisabled(busy || needsLocal && !local)
+                .onClick(() => { this.close(); void this.repository.remoteAction(id, ref, current); }));
+        }
+        menu.addSeparator();
+        menu.addItem(item => {
+            item.setTitle("Delete").setDisabled(true);
+            item.dom.setAttribute("aria-label", "Remote branch deletion is not enabled.");
+        });
     }
 
     renderRevisions() {
@@ -212,6 +374,7 @@ export class GitPopup {
         if (this.closed) return;
         this.closed = true;
         this.branchMenu?.hide();
+        this.settingsMenu?.hide();
         this.doc.removeEventListener("pointerdown", this.outside, true);
         this.doc.defaultView.removeEventListener("resize", this.reposition);
         this.el.remove();

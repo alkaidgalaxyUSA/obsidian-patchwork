@@ -5,3 +5,6 @@
 @import "../menu-styles/presets.css";
 @import "../attachments/styles.css";
 @import "../editor/document-tab-strip.css";
+@import "../editor/document-status-bar.css";
+@import "../editor/tools/bottom-tools.css";
+@import "./workspace-cards.css";

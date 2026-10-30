@@ -3,6 +3,7 @@ import { setIcon } from "../../../utils/icons";
 import { createDocumentMenu, createExplorerMenu, createMarkdown, showCreateDialog } from "./explorer-menus.js";
 import { installExplorerSearch } from "./explorer-search.js";
 import { expandExplorerSelection, installExplorerSelection } from "./explorer-selection.js";
+import { installExplorerFileMenus } from "./explorer-file-actions.js";
 
 /** Own only the file-list controls; keep native tree and sorting implementations. */
 export function installExplorerActions(plugin) {
@@ -11,6 +12,37 @@ export function installExplorerActions(plugin) {
     const entries = new Map();
     const searchReturns = new Map();
     const dialogs = new Set();
+    installExplorerFileMenus(plugin);
+    let lastDocumentLeaf;
+    const rememberDocument = leaf => {
+        if (!leaf?.view.containerEl.closest(".mod-root")) return;
+        if (leaf.view.file || leaf.getViewState().state?.file) lastDocumentLeaf = leaf;
+    };
+    const rememberSelectedDocument = () => {
+        const selected = [];
+        workspace.iterateAllLeaves(leaf => {
+            if (leaf.parent?.children?.[leaf.parent.currentTab] === leaf && leaf.view.containerEl.closest(".mod-root")
+                && (leaf.view.file || leaf.getViewState().state?.file)) selected.push(leaf);
+        });
+        selected.sort((left, right) => (right.activeTime ?? 0) - (left.activeTime ?? 0));
+        rememberDocument(selected[0]);
+    };
+    rememberSelectedDocument();
+    rememberDocument(workspace.getMostRecentLeaf());
+    rememberDocument(workspace.activeLeaf);
+    const selectedDocument = () => {
+        if (lastDocumentLeaf && workspace.isAttached(lastDocumentLeaf)) {
+            const path = lastDocumentLeaf.view.file?.path ?? lastDocumentLeaf.getViewState().state?.file;
+            const file = path && plugin.app.vault.getAbstractFileByPath(path);
+            if (file instanceof TFile) return file;
+        }
+        lastDocumentLeaf = undefined;
+        rememberSelectedDocument();
+        rememberDocument(workspace.getMostRecentLeaf());
+        const path = lastDocumentLeaf?.view.file?.path ?? lastDocumentLeaf?.getViewState().state?.file;
+        const file = path && plugin.app.vault.getAbstractFileByPath(path);
+        return file instanceof TFile ? file : undefined;
+    };
     let disposed = false;
     let pending = false;
     let restoringExplorer = false;
@@ -71,6 +103,10 @@ export function installExplorerActions(plugin) {
         entry.view.containerEl.removeEventListener("click", entry.selectFolder, true);
         entry.view.containerEl.ownerDocument.removeEventListener("pointerover", entry.suppressTooltip, true);
         entry.controls.forEach((el) => el.remove());
+        if (entry.nativeCollapse) {
+            if (entry.collapseDisplay) entry.nativeCollapse.style.setProperty("display", entry.collapseDisplay, entry.collapsePriority);
+            else entry.nativeCollapse.style.removeProperty("display");
+        }
         entry.view.containerEl.classList.remove("pw-explorer-controls");
         if (entry.view.getSortedFolderItems === entry.sorted) entry.view.getSortedFolderItems = entry.originalSort;
         entry.view.sort();
@@ -120,8 +156,28 @@ export function installExplorerActions(plugin) {
         divider.className = "pw-explorer-divider";
         divider.setAttribute("aria-hidden", "true");
         const select = button("Select Opened File", "select-opened-file", () => {
-            const file = workspace.getActiveFile() ?? workspace.getMostRecentLeaf()?.view.file;
-            if (file) view.revealInFolder(file);
+            const file = selectedDocument();
+            if (!file) { new Notice("No document tab is open."); return; }
+            const reveal = () => {
+                if (disposed) return;
+                const item = view.fileItems[file.path];
+                if (!item) return;
+                view.revealInFolder(file);
+                view.tree.infinityScroll.invalidateAll();
+                view.tree.clearSelectedDoms();
+                view.tree.selectItem(item);
+                view.tree.setFocusedItem(item, false);
+                view.tree.activeDom = item;
+            };
+            const search = view.search.searchComponent;
+            if (search.getValue().trim()) {
+                search.setValue("");
+                search.changeCallback?.("");
+                // Let the search restore its folds before revealing the requested file.
+                doc.defaultView.setTimeout(reveal, 0);
+                return;
+            }
+            reveal();
         });
         const expand = button("Expand Select", "chevrons-up-down", () => {
             void expandExplorerSelection(view).catch(error => new Notice(`Could not expand selection: ${error.message}`));
@@ -132,12 +188,22 @@ export function installExplorerActions(plugin) {
         more.classList.add("pw-explorer-more");
         const minimize = button("Hide files", "explorer-minimize", toggleCollapsed);
         minimize.classList.add("pw-explorer-minimize");
-        // Keep the native collapse/expand action, including its changing icon and label.
+        // Keep Collapse fixed; native state updates may still change the hidden control.
         host.prepend(create, divider, select);
         host.append(more, minimize);
-        const collapse = host.querySelector(".nav-action-button:has(.lucide-chevrons-down-up, .lucide-chevrons-up-down)");
-        host.insertBefore(expand, collapse ?? more);
-        entry.controls.push(create, divider, select, expand, more, minimize);
+        const collapse = button("Collapse All", "chevrons-down-up", () => {
+            view.tree.isAllCollapsed = false;
+            view.tree.setCollapseAll(true);
+        });
+        entry.nativeCollapse = view.collapseOrExpandAllEl;
+        if (entry.nativeCollapse) {
+            entry.collapseDisplay = entry.nativeCollapse.style.getPropertyValue("display");
+            entry.collapsePriority = entry.nativeCollapse.style.getPropertyPriority("display");
+            entry.nativeCollapse.style.setProperty("display", "none", "important");
+        }
+        host.insertBefore(expand, entry.nativeCollapse ?? more);
+        host.insertBefore(collapse, entry.nativeCollapse ?? more);
+        entry.controls.push(create, divider, select, expand, collapse, more, minimize);
         entries.set(leaf, entry);
         view.sort();
     };
@@ -220,8 +286,9 @@ export function installExplorerActions(plugin) {
         queueMicrotask(() => { pending = false; sync(); });
     };
     plugin.registerEvent(workspace.on("layout-change", schedule));
-    plugin.registerEvent(workspace.on("active-leaf-change", schedule));
-    plugin.registerEvent(workspace.on("file-open", () => { selectedFolder = undefined; }));
+    plugin.registerEvent(workspace.on("active-leaf-change", leaf => { rememberDocument(leaf); schedule(); }));
+    plugin.registerEvent(workspace.on("patchwork:document-tab-activated", rememberDocument));
+    plugin.registerEvent(workspace.on("file-open", () => { rememberDocument(workspace.activeLeaf); selectedFolder = undefined; }));
     const dockObserver = new doc.defaultView.MutationObserver(schedule);
     dockObserver.observe(workspace.leftSplit.containerEl, { attributes: true, attributeFilter: ["class", "style"] });
     workspace.onLayoutReady(schedule);

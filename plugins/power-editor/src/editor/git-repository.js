@@ -18,6 +18,18 @@ export class GitRepository {
         if (!this.app.commands.executeCommandById(`patchwork-git:${id}`)) new Notice("This Git action is currently unavailable.");
     }
 
+    async fetch() {
+        if (!this.plugin?.gitReady) { new Notice("Patchwork Git is not ready."); return; }
+        await this.plugin.controller.network("fetch");
+    }
+
+    remoteAction(id, ref, current) {
+        if (!this.plugin?.gitReady || !this.plugin.controller.branchActions) {
+            new Notice("Remote branch actions are unavailable. Reload Patchwork Git."); return;
+        }
+        return this.plugin.controller.branchActions.run(id, ref, current);
+    }
+
     checkout(ref, remote = false) {
         if (!this.plugin?.gitReady) { new Notice("Patchwork Git is not ready."); return; }
         void this.plugin.controller.checkout(ref, remote);

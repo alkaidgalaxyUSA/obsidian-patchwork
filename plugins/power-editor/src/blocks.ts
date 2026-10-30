@@ -279,7 +279,7 @@ export interface CalloutFlavor {
 
 export const CALLOUT_FLAVORS: CalloutFlavor[] = [
 	{ type: "tip", label: "Tip", icon: "lightbulb", emoji: "💡" },
-	{ type: "note", label: "Note", icon: "pencil", emoji: "📝" },
+	{ type: "note", label: "Note", icon: "pen-line", emoji: "📝" },
 	{ type: "info", label: "Info", icon: "info", emoji: "ℹ️" },
 	{ type: "success", label: "Success", icon: "check", emoji: "✅" },
 	{ type: "question", label: "Question", icon: "help-circle", emoji: "❓" },

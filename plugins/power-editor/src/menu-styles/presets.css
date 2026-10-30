@@ -86,7 +86,7 @@ body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchw
     translate: -22px -50%;
     width: 16px; height: 16px;
     background: currentColor !important;
-    mask: url("../../../../icons/action-file.svg") center / contain no-repeat;
+    mask: url("../../../../icons/action-document.svg") center / contain no-repeat;
     opacity: 1;
 }
 body .workspace-leaf-content[data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-folder .collapse-icon {
