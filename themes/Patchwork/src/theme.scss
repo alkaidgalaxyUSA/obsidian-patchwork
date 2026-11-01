@@ -2,37 +2,37 @@
 // Upstream MIT attribution is preserved in the repository root LICENSE.
 
 // Settings and shared variables.
-@use "app/style-settings.scss";
-@use "app/fonts.scss";
-@use "app/foundations.scss";
-@use "app/icons.scss";
-@use "app/dialogs.scss";
-@use "app/navigation.scss";
-@use "app/core-plugins.scss";
+@use "defaults/style-settings.scss";
+@use "defaults/fonts.scss";
+@use "defaults/foundations.scss";
+@use "defaults/icons.scss";
+@use "defaults/dialogs.scss";
+@use "defaults/navigation.scss";
+@use "defaults/core-plugins.scss";
 
 // Layout, control, and document variables.
-@use "layouts/workspace.scss";
-@use "layouts/tabs.scss";
-@use "layouts/status-bar.scss";
-@use "elements/control-variables.scss";
-@use "editor/text-variables.scss";
-@use "editor/block-variables.scss";
+@use "defaults/workspace.scss";
+@use "defaults/tabs.scss";
+@use "defaults/status-bar.scss";
+@use "defaults/controls.scss";
+@use "defaults/text.scss";
+@use "defaults/blocks.scss";
 
 // Color schemes and accessibility overrides.
 @use "color-schemes/mappings.scss";
 @use "color-schemes/dark.scss";
-@use "app/mobile.scss";
+@use "defaults/mobile.scss";
 @use "color-schemes/light.scss";
 @use "features/colorblind.scss";
 
 // Component rules in their original cascade order.
-@use "editor/tables.scss";
-@use "elements/buttons.scss";
-@use "editor/callouts.scss";
-@use "editor/headings.scss";
-@use "elements/input-focus.scss";
-@use "editor/inline-code.scss";
-@use "features/underline-headings.scss";
+
+@use "defaults/buttons.scss";
+
+
+@use "defaults/input-focus.scss";
+
+
 
 // Scoped Patchwork component customizations.
 // File-list appearance is owned by the editor's menu-styles component.

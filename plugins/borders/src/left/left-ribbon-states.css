@@ -1,0 +1,23 @@
+/* BEGIN Patchwork left ribbon states */
+/* Open panels use gray; only the panel with focus uses a blue background. */
+body.pw-window-actions-enabled .workspace-ribbon.mod-primary :is(
+    .pw-left-sidebar-toggle,
+    .pw-git-ribbon-action,
+    .pw-bottom-tool-actions > button
+)[aria-pressed="true"] {
+    --icon-color: var(--text-normal);
+    --icon-color-hover: var(--text-normal);
+    color: var(--text-normal);
+    background: var(--background-modifier-hover);
+}
+body.pw-window-actions-enabled .workspace-ribbon.mod-primary :is(
+    .pw-left-sidebar-toggle,
+    .pw-git-ribbon-action,
+    .pw-bottom-tool-actions > button
+)[aria-pressed="true"][data-pw-panel-focused="true"] {
+    --icon-color: white;
+    --icon-color-hover: white;
+    color: white;
+    background: #4788FF;
+}
+/* END Patchwork left ribbon states */

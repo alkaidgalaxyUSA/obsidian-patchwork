@@ -1,0 +1,189 @@
+body .pw-explorer-more-menu:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)),
+body .pw-explorer-more-menu .menu-item:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    font-family: var(--pw-explorer-menu-font, var(--font-interface));
+    font-size: calc(var(--font-ui-small) - 1px);
+    color: var(--pw-explorer-menu-color, var(--text-normal));
+}
+
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    --pw-explorer-selection-background: color-mix(in srgb, color-mix(in srgb, var(--background-secondary-alt) 65%, var(--color-base-100)) 16%, transparent);
+    --pw-explorer-text-color: #D4D4D4;
+    --nav-item-background-active: var(--pw-explorer-selection-background);
+    --nav-item-background-selected: var(--pw-explorer-selection-background);
+    --nav-item-size: calc(var(--font-ui-small) - 2px);
+    --nav-item-color: var(--pw-explorer-text-color);
+    --nav-item-color-active: var(--pw-explorer-text-color);
+    --nav-item-color-selected: var(--pw-explorer-text-color);
+    --nav-item-background-hover: transparent;
+    --nav-item-color-hover: var(--nav-item-color);
+    --nav-item-padding: 0 8px 0 30px;
+    --nav-item-parent-padding: var(--nav-item-padding);
+    --nav-collapse-icon-color: var(--pw-explorer-text-color);
+    --nav-collapse-icon-color-collapsed: var(--nav-collapse-icon-color);
+}
+body .workspace-leaf-content[data-pw-panel-focused="true"][data-type="file-explorer"][data-pw-module="project"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    --pw-explorer-selection-background: rgb(53 116 240 / 44%);
+}
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"] :is(.nav-file-title, .nav-folder-title).has-focus:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    background: var(--pw-explorer-selection-background);
+}
+body .workspace-leaf-content.pw-explorer-single-selection[data-type="file-explorer"][data-pw-module="project"] :is(.nav-file-title, .nav-folder-title):is(.is-active, .is-selected, .has-focus, :focus-within):not(.pw-explorer-selected):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    background: transparent !important;
+}
+body .workspace-leaf-content.pw-explorer-single-selection[data-type="file-explorer"][data-pw-module="project"] :is(.nav-file-title, .nav-folder-title).pw-explorer-selected:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    background: var(--pw-explorer-selection-background) !important;
+}
+body .workspace-leaf-content.pw-explorer-single-selection[data-type="file-explorer"][data-pw-module="project"] :is(.nav-file-title, .nav-folder-title).pw-explorer-selected.pw-selection-join-before:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
+body .workspace-leaf-content.pw-explorer-single-selection[data-type="file-explorer"][data-pw-module="project"] :is(.nav-file-title, .nav-folder-title).pw-explorer-selected.pw-selection-join-after:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"] :is(.nav-file-title, .nav-folder-title, .nav-file-title-content, .nav-folder-title-content, .collapse-icon):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { opacity: 1; }
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"] .nav-action-button:has(svg.lucide-search):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display: none; }
+body .pw-explorer-controls .nav-buttons-container > .nav-action-button:has(svg:is(.lucide-edit, .lucide-folder-plus, .lucide-sort-asc, .lucide-gallery-vertical)):where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display: none; }
+body .workspace-leaf-content.pw-explorer-controls[data-type="file-explorer"][data-pw-module="project"] .nav-buttons-container:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { gap: 5px; align-items: center; justify-content: flex-end; visibility: hidden; }
+body .workspace-leaf-content.pw-explorer-controls[data-type="file-explorer"][data-pw-module="project"]:hover .nav-buttons-container:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)),
+body .workspace-leaf-content[data-pw-panel-focused="true"].pw-explorer-controls[data-type="file-explorer"][data-pw-module="project"] .nav-buttons-container:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { visibility: visible; }
+body .pw-explorer-controls .nav-buttons-container > button.nav-action-button:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    height: 26px;
+    width: 26px;
+    min-width: 26px;
+    padding: 4px;
+    margin: 0;
+    box-shadow: none;
+    background: transparent;
+    color: var(--icon-color);
+    --icon-color: var(--pw-explorer-text-color);
+    --icon-opacity: 1;
+    opacity: 1;
+}
+body .pw-explorer-controls .nav-buttons-container > button.nav-action-button:hover:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { background: var(--background-modifier-hover); }
+body .pw-explorer-controls .nav-buttons-container > .nav-action-button:not(button):where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    padding: 3px 5px;
+    --icon-color: var(--pw-explorer-text-color);
+    --icon-opacity: 1;
+    opacity: 1;
+}
+body .pw-explorer-controls .nav-action-button svg:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width: 16px; height: 16px; }
+body .pw-explorer-controls .nav-action-button:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)),
+body .pw-explorer-controls .nav-action-button *:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { cursor: default; }
+body .pw-explorer-controls .nav-action-button.pw-explorer-create svg:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width: 18px; height: 18px; }
+body .pw-explorer-controls .nav-action-button.pw-explorer-minimize svg:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width: 18px; height: 18px; }
+body .pw-explorer-controls .nav-buttons-container > button.pw-explorer-minimize:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    --icon-color: color-mix(in srgb, var(--text-muted) 75%, var(--background-secondary));
+}
+body .pw-explorer-divider:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width: 1px; height: 16px; margin-inline: 4px; background: var(--background-modifier-border); }
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"][data-pw-compact="true"] :is(.nav-file-title, .nav-folder-title):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { height: 34px; padding-block: 0; }
+body .pw-explorer-menu:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { min-width: 230px; }
+body .pw-explorer-create-menu:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display: flex; flex-direction: column; width: 300px; max-height: min(560px, calc(100vh - 100px)); overflow: hidden; }
+body .pw-explorer-create-menu .menu-scroll:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { min-height: 0; overflow-y: auto; }
+body .pw-explorer-create-menu .menu-item-icon:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { opacity: 1; }
+body .pw-explorer-menu-search:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { flex-shrink: 0; display: flex; gap: 8px; align-items: center; padding: 8px; background: var(--background-primary); border-bottom: 1px solid var(--background-modifier-border); margin-bottom: 4px; }
+body .pw-explorer-menu-search > span:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display: flex; color: var(--text-muted); }
+body .pw-explorer-menu-search svg:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width: 16px; height: 16px; }
+body .pw-explorer-menu-search input:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width: 100%; min-width: 0; border: 1px solid var(--text-faint); box-shadow: none; }
+body .pw-explorer-menu-search input:focus:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { border-color: var(--color-blue); box-shadow: none; }
+body .pw-explorer-no-results:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { padding: 20px 12px; color: var(--text-muted); text-align: center; }
+body .pw-explorer-create-form:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display: flex; flex-direction: column; gap: 12px; }
+body .pw-explorer-create-form > input:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)),
+body .pw-explorer-create-form > input:focus:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width: 100%; border: 0; box-shadow: none; outline: none; }
+
+.pw-file-comparison.modal:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    width: min(1200px, 95vw);
+}
+
+.pw-file-comparison-columns:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--size-4-4);
+}
+
+.pw-file-comparison-columns pre:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    overflow: auto;
+    max-height: 65vh;
+    white-space: pre;
+}
+
+/* Match the explorer context-menu groups and blue selection in the reference. */
+body .menu.pw-explorer-context-menu:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    --background-modifier-hover: #2e4d78;
+    --interactive-accent: #2e4d78;
+    --text-on-accent: #dfe5ee;
+}
+
+body .menu.pw-explorer-context-menu .menu-item:not(.is-disabled):is(:hover, .selected, .is-selected, :focus-visible):where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    background-color: #2e4d78;
+    color: #dfe5ee;
+}
+
+body .menu.pw-explorer-context-menu .menu-item-icon:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    display: flex;
+    flex: 0 0 18px;
+    width: 18px;
+    min-width: 18px;
+}
+
+body .menu.pw-explorer-context-menu .menu-separator:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    display: block;
+    height: 0;
+    margin: 5px 8px;
+    border: 0;
+    border-top: 1px solid #393b40;
+    background: transparent;
+}
+
+body .pw-explorer-divider:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { background-color: var(--background-modifier-border); }
+
+body .workspace-leaf-content[data-pw-module="project"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    --pw-project-status-added-color: #73BD79;
+    --pw-project-status-modified-color: #70AEFF;
+    --pw-project-status-deleted-color: #6F737A;
+    --pw-project-status-conflict-color: #DE6A66;
+    --pw-project-status-ignored-color: #D69A6B;
+    --pw-project-status-unversioned-color: #E3807D;
+}
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"] .nav-file-title[data-pw-git-status="modified"] > .nav-file-title-content:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { color: var(--pw-project-status-modified-color) !important; }
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"] .nav-file-title[data-pw-git-status="added"] > .nav-file-title-content:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { color: var(--pw-project-status-added-color) !important; }
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"] .nav-file-title[data-pw-git-status="deleted"] > .nav-file-title-content:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { color: var(--pw-project-status-deleted-color) !important; }
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"] .nav-file-title[data-pw-git-status="conflict"] > .nav-file-title-content:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { color: var(--pw-project-status-conflict-color) !important; }
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"] .nav-file-title[data-pw-git-status="ignored"] > .nav-file-title-content:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { color: var(--pw-project-status-ignored-color) !important; }
+body .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"] .nav-file-title[data-pw-git-status="unversioned"] > .nav-file-title-content:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { color: var(--pw-project-status-unversioned-color) !important; }
+
+.pw-explorer-search-status:where([data-pw-module="project"], [data-pw-module="project"] *):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { margin-top: 5px; padding-inline: 4px; color: var(--text-muted); font-size: var(--font-ui-smaller); }
+
+body.theme-dark:not([data-pw-borders-enabled="true"]) .workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    --pw-left-panel-surface: rgb(from var(--background-secondary) calc(r * 1.1) calc(g * 1.1) calc(b * 1.1));
+    background-color: var(--pw-left-panel-surface);
+}
+
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) [data-pw-module="project"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    --background-primary: var(--pw-workspace-card);
+    background-color: var(--pw-workspace-card);
+}
+
+body [data-pw-module="project"] .pw-project-vault-root:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display:flex; align-items:center; gap:6px; min-height:30px; padding:4px 6px; cursor:default; font-size:var(--nav-item-size); outline:none; }
+
+body [data-pw-module="project"] .pw-project-vault-icon:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { position:relative; display:flex; flex-shrink:0; }
+
+body [data-pw-module="project"] .pw-project-vault-icon svg:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width:1em; height:1em; }
+
+body [data-pw-module="project"] .pw-project-vault-icon:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::after { content:""; position:absolute; right:-1px; bottom:-1px; width:6px; height:6px; background:#4788ff; border:1px solid var(--background-secondary); }
+
+body [data-pw-module="project"] .pw-project-vault-root strong:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { font-weight:700; white-space:nowrap; }
+
+body [data-pw-module="project"] .pw-project-vault-path:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { color:#74777e; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+
+body [data-pw-module="project"] .pw-project-vault-arrow:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display:flex; align-items:center; flex:0 0 1em; pointer-events:none; }
+
+body [data-pw-module="project"] .pw-project-vault-arrow svg:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width:1em; height:1em; }
+
+body [data-pw-module="project"] .pw-project-vault-children:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { padding-inline-start:14px; }
+
+body [data-pw-module="project"] .pw-project-vault-collapsed > .pw-project-vault-children:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display:none; }
+
+body [data-pw-module="project"] .pw-project-vault-root.is-selected:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { background:var(--pw-explorer-selection-background); border-radius:var(--radius-s); }
+
+body [data-pw-module="project"] .pw-project-file-icon:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display:inline-flex; align-items:center; justify-content:center; flex:0 0 1em; width:1em; height:1em; margin-inline-end:6px; font-size:inherit; color:inherit; pointer-events:none; }
+
+body [data-pw-module="project"] .pw-project-file-icon svg:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width:1em; height:1em; font-size:inherit; }
+
+body [data-pw-module="project"] .pw-project-folder-icon:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display:inline-flex; align-items:center; justify-content:center; flex:0 0 1em; width:1em; height:1em; margin-inline-end:6px; font-size:inherit; color:inherit; pointer-events:none; }
+body [data-pw-module="project"] .pw-project-folder-icon svg:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { width:1em; height:1em; font-size:inherit; }

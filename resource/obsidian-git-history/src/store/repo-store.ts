@@ -1,0 +1,242 @@
+import { Events } from "obsidian";
+import { GitService } from "../git/git-service";
+import { FileStatus, CommitInfo, BranchInfo } from "../types";
+
+export class RepoStore extends Events {
+  private _status: FileStatus[] = [];
+  private _branch = "";
+  private _branches: BranchInfo[] = [];
+  private _commits: CommitInfo[] = [];
+  private _ahead = 0;
+  private _behind = 0;
+  private _hasUpstream = false;
+  private _hasCommits = false;
+  private _loading = false;
+  private _merging = false;
+  private _refreshQueued = false;
+  private _statusFingerprint: string | null = null;
+  private _branchFingerprint: string | null = null;
+
+  private _busy = 0;
+  private _busyLabel: string | null = null;
+
+  constructor(private git: GitService) {
+    super();
+  }
+
+  /** True while a long-running git command started by the user is in flight. */
+  get busy(): boolean {
+    return this._busy > 0;
+  }
+
+  get busyLabel(): string | null {
+    return this._busyLabel;
+  }
+
+  /**
+   * Runs a git command that takes long enough to need feedback and reports it
+   * through the "busy-changed" event.
+   *
+   * Deliberately separate from the "loading" event: that one fires on every
+   * status refresh, including the ones the file watcher triggers while the user
+   * types, and a progress bar wired to it would blink constantly.
+   *
+   * The counter matters — an auto-fetch and a clicked push can overlap, and a
+   * boolean would let whichever finishes first declare the view idle.
+   */
+  async runTask<T>(label: string, fn: () => Promise<T>): Promise<T> {
+    this._busy++;
+    if (this._busy === 1) {
+      this._busyLabel = label;
+      this.trigger("busy-changed", true, label);
+    }
+    try {
+      return await fn();
+    } finally {
+      // finally, not then: a failed push has to clear the bar as well.
+      this._busy--;
+      if (this._busy === 0) {
+        this._busyLabel = null;
+        this.trigger("busy-changed", false, null);
+      }
+    }
+  }
+
+  /**
+   * Nested repositories are reported by git but cannot be staged, so they are
+   * left out of every list the UI builds on. The setting brings them back for
+   * vaults that use submodules on purpose.
+   */
+  private _showNestedRepos = false;
+
+  get showNestedRepos(): boolean {
+    return this._showNestedRepos;
+  }
+
+  set showNestedRepos(value: boolean) {
+    if (value === this._showNestedRepos) return;
+    this._showNestedRepos = value;
+    // The git state is unchanged, so a refresh would be deduplicated by the
+    // fingerprint — the views have to be told directly that the list changed.
+    if (this._statusFingerprint !== null) this.trigger("status-changed", this.status);
+  }
+
+  private get visible(): FileStatus[] {
+    if (this._showNestedRepos) return this._status;
+    return this._status.filter((f) => !f.embeddedRepo);
+  }
+
+  get status(): FileStatus[] {
+    return this.visible;
+  }
+  /** Every entry git reported, including the nested repositories. */
+  get rawStatus(): FileStatus[] {
+    return this._status;
+  }
+  get nestedRepos(): FileStatus[] {
+    return this._status.filter((f) => f.embeddedRepo);
+  }
+  get stagedFiles(): FileStatus[] {
+    return this.visible.filter((f) => f.staged);
+  }
+  /**
+   * The worktree half of the status. A file can be staged and edited again
+   * before the commit (`AM`, `MM`), and then it belongs in both sections: the
+   * index version is what a commit would record, the worktree version is what
+   * it would leave behind. Filtering these out hid the second edit entirely.
+   */
+  get changedFiles(): FileStatus[] {
+    return this.visible.filter(
+      (f) =>
+        f.workingStatus !== "." &&
+        f.workingStatus !== " " &&
+        f.workingStatus !== "?" &&
+        f.workingStatus !== "U",
+    );
+  }
+  get untrackedFiles(): FileStatus[] {
+    return this.visible.filter((f) => f.workingStatus === "?");
+  }
+  get branch(): string {
+    return this._branch;
+  }
+  get branches(): BranchInfo[] {
+    return this._branches;
+  }
+  get commits(): CommitInfo[] {
+    return this._commits;
+  }
+  get ahead(): number {
+    return this._ahead;
+  }
+  get behind(): number {
+    return this._behind;
+  }
+  /** False while the branch has no upstream — nothing pushed there yet. */
+  get hasUpstream(): boolean {
+    return this._hasUpstream;
+  }
+  get hasCommits(): boolean {
+    return this._hasCommits;
+  }
+  get loading(): boolean {
+    return this._loading;
+  }
+  get merging(): boolean {
+    return this._merging;
+  }
+
+  get mergeConflicts(): FileStatus[] {
+    return this.visible.filter((f) => f.indexStatus === "U" || f.workingStatus === "U");
+  }
+
+  private computeFingerprint(status: FileStatus[]): string {
+    // The old path too: git can pair a rename with a different file from one
+    // refresh to the next, and the row and its actions have to follow.
+    return status
+      .map(
+        (f) => `${f.path}:${f.originalPath ?? ""}:${f.indexStatus}:${f.workingStatus}:${f.staged}`,
+      )
+      .join("|");
+  }
+
+  async refresh(): Promise<void> {
+    if (this._loading) {
+      this._refreshQueued = true;
+      return;
+    }
+    this._loading = true;
+    this.trigger("loading", true);
+    try {
+      const [status, branch, ab] = await Promise.all([
+        this.git.status(),
+        this.git.currentBranch(),
+        this.git.getAheadBehind(),
+      ]);
+
+      const newStatusFp = this.computeFingerprint(status);
+      const newBranchFp = `${branch}:${ab.ahead}:${ab.behind}:${ab.hasUpstream}:${ab.hasCommits}`;
+      const isFirstLoad = this._statusFingerprint === null;
+      const statusChanged = isFirstLoad || newStatusFp !== this._statusFingerprint;
+      const branchChanged = isFirstLoad || newBranchFp !== this._branchFingerprint;
+
+      this._status = status;
+      this._branch = branch;
+      this._ahead = ab.ahead;
+      this._behind = ab.behind;
+      this._hasUpstream = ab.hasUpstream;
+      this._hasCommits = ab.hasCommits;
+      this._merging = status.some((f) => f.indexStatus === "U" || f.workingStatus === "U");
+      this._statusFingerprint = newStatusFp;
+      this._branchFingerprint = newBranchFp;
+
+      if (statusChanged) this.trigger("status-changed", this.status);
+      if (branchChanged) this.trigger("branch-changed", this._branch);
+    } catch (e) {
+      this.trigger("error", e);
+    } finally {
+      this._loading = false;
+      this.trigger("loading", false);
+      if (this._refreshQueued) {
+        this._refreshQueued = false;
+        void this.refresh();
+      }
+    }
+  }
+
+  async refreshBranches(): Promise<void> {
+    try {
+      this._branches = await this.git.branches();
+      this.trigger("branches-changed", this._branches);
+    } catch (e) {
+      this.trigger("error", e);
+    }
+  }
+
+  async refreshLog(opts?: { maxCount?: number; all?: boolean; file?: string }): Promise<void> {
+    try {
+      this._commits = await this.git.log({
+        maxCount: opts?.maxCount || 200,
+        all: opts?.all ?? true,
+        file: opts?.file,
+      });
+      this.trigger("log-changed", this._commits);
+    } catch (e) {
+      this.trigger("error", e);
+    }
+  }
+
+  async loadMoreCommits(count = 200): Promise<void> {
+    try {
+      const more = await this.git.log({
+        maxCount: count,
+        skip: this._commits.length,
+        all: true,
+      });
+      this._commits = [...this._commits, ...more];
+      this.trigger("log-changed", this._commits);
+    } catch (e) {
+      this.trigger("error", e);
+    }
+  }
+}

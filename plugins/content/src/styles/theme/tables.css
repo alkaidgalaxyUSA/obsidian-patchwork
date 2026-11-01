@@ -1,0 +1,11 @@
+/* Tables */
+.markdown-rendered td:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)),
+.markdown-rendered th:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    padding: var(--size-2-3) var(--size-4-3);
+}
+.markdown-rendered th:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    text-align: center;
+}
+.markdown-rendered tbody tr:nth-child(2n):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    background-color: var(--background-secondary);
+}

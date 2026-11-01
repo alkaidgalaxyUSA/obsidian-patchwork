@@ -1,6 +1,9 @@
 import { Modal, SuggestModal } from "obsidian";
+import { openGitDialog } from "./utils/portals";
 
-export function choose(app, title, choices) {
+export function choose(controller, title, choices) {
+    if (controller.disposed) return Promise.resolve(undefined);
+    const app = controller.app;
     return new Promise(resolve => {
         const modal = new SuggestModal(app);
         modal.setPlaceholder(title);
@@ -9,11 +12,13 @@ export function choose(app, title, choices) {
         modal.onChooseSuggestion = choice => resolve(choice);
         const onClose = modal.onClose.bind(modal);
         modal.onClose = () => { onClose(); queueMicrotask(() => resolve(undefined)); };
-        modal.open();
+        openGitDialog(controller, modal);
     });
 }
 
-export function prompt(app, title, label, initial = "") {
+export function prompt(controller, title, label, initial = "") {
+    if (controller.disposed) return Promise.resolve(undefined);
+    const app = controller.app;
     return new Promise(resolve => {
         const modal = new Modal(app);
         modal.setTitle(title);
@@ -27,11 +32,13 @@ export function prompt(app, title, label, initial = "") {
             resolve(input.value.trim()); modal.close();
         });
         modal.onClose = () => resolve(undefined);
-        modal.open(); input.focus(); input.select();
+        openGitDialog(controller, modal); input.focus(); input.select();
     });
 }
 
-export function confirm(app, title, description, action) {
+export function confirm(controller, title, description, action) {
+    if (controller.disposed) return Promise.resolve(undefined);
+    const app = controller.app;
     return new Promise(resolve => {
         const modal = new Modal(app);
         modal.setTitle(title);
@@ -40,14 +47,16 @@ export function confirm(app, title, description, action) {
         buttons.createEl("button", { text: "Cancel" }).onclick = () => modal.close();
         buttons.createEl("button", { text: action, cls: "mod-warning" }).onclick = () => { resolve(true); modal.close(); };
         modal.onClose = () => resolve(false);
-        modal.open();
+        openGitDialog(controller, modal);
     });
 }
 
-export function showOutput(app, title, text) {
+export function showOutput(controller, title, text) {
+    if (controller.disposed) return;
+    const app = controller.app;
     const modal = new Modal(app);
     modal.setTitle(title);
     modal.modalEl.classList.add("pw-git-output-modal");
     modal.contentEl.createEl("pre", { cls: "pw-git-output", text: text || "No changes." });
-    modal.open();
+    openGitDialog(controller, modal);
 }

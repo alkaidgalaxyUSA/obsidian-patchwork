@@ -1,8 +1,14 @@
 {
-  "runtimeFiles": ["main.js", "styles.css", "manifest.json", "LICENSE"],
+  "runtimeFiles": [
+    "main.js",
+    "styles.css",
+    "manifest.json",
+    "LICENSE"
+  ],
   "plugins": {
     "git": {
-      "styles": "styles.css",
+      "source": "git",
+      "styles": "styles/index.css",
       "manifest": {
         "id": "patchwork-git",
         "name": "Patchwork Git",
@@ -12,7 +18,8 @@
         "isDesktopOnly": true
       }
     },
-    "power-editor": {
+    "content": {
+      "source": "content",
       "styles": "src/styles/index.css",
       "manifest": {
         "id": "patchwork-power-editor",
@@ -24,6 +31,7 @@
       }
     },
     "code-editor": {
+      "source": "content/code-editor",
       "styles": "styles.css",
       "manifest": {
         "id": "code-editor",
@@ -34,7 +42,8 @@
         "isDesktopOnly": false
       }
     },
-    "claudian-extension": {
+    "claudian": {
+      "source": "claudian",
       "styles": "styles.css",
       "manifest": {
         "id": "claudian-extension",
@@ -42,6 +51,42 @@
         "minAppVersion": "1.7.2",
         "description": "Patchwork companion controls and appearance for Claudian.",
         "author": "sky",
+        "isDesktopOnly": true
+      }
+    },
+    "borders": {
+      "source": "borders",
+      "styles": "src/styles/index.css",
+      "manifest": {
+        "id": "patchwork-borders",
+        "name": "Patchwork Borders",
+        "minAppVersion": "1.8.7",
+        "description": "Workspace borders, native panel hosts and document status controls.",
+        "author": "Patchwork contributors",
+        "isDesktopOnly": true
+      }
+    },
+    "project": {
+      "source": "project",
+      "styles": "src/styles/index.css",
+      "manifest": {
+        "id": "patchwork-project",
+        "name": "Patchwork Project",
+        "minAppVersion": "1.8.7",
+        "description": "Native file explorer controls, search, selection and file menus.",
+        "author": "Patchwork contributors",
+        "isDesktopOnly": true
+      }
+    },
+    "terminal": {
+      "source": "terminal",
+      "styles": "src/styles/index.css",
+      "manifest": {
+        "id": "patchwork-terminal",
+        "name": "Patchwork Terminal",
+        "minAppVersion": "1.8.7",
+        "description": "Independent terminal sessions and tabs in the registered bottom panel.",
+        "author": "Patchwork contributors",
         "isDesktopOnly": true
       }
     }

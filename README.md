@@ -1,6 +1,9 @@
 # Obsidian Patchwork
 
 Independent theme and plugin enhancements for Obsidian.
+Source ownership is split across seven independent packages. See the
+[migration status](docs/module-isolation-migration-progress.md) and
+[runtime acceptance checklist](docs/module-isolation-acceptance.md) for verification and release gates.
 Repository: https://github.com/alkaidgalaxyUSA/obsidian-patchwork
 Local checkout: `D:\ideaProjects\obsidian-patchwork`.
 
@@ -14,9 +17,15 @@ themes/
     versions.json
     README.md
 plugins/
-  claudian-extension/        TypeScript Claudian companion
-  power-editor/             Unified Patchwork Editor (TypeScript + editor modules)
-  code-editor/              Standalone code file editor
+  borders/                   Window chrome and generic panel hosts
+  claudian/                  TypeScript Claudian companion
+  content/                   Patchwork Editor and document implementations
+    code-editor/             Independent code-file editor package
+  git/                       Native Git tools
+  project/                   Native file tree, selection, search and file menus
+  terminal/                  Terminal sessions, tabs and isolated xterm rendering
+  contracts/                 Types-only module service contracts
+  utils/                     Shared infrastructure
   package.json              Shared plugin dependencies and build commands
   manifest.json             Central plugin manifests and runtime packaging configuration
   scripts/                  Unified TypeScript build and deployment
@@ -45,9 +54,13 @@ dependencies but have independent installed entry points.
 
 | Source directory | Installed plugin ID | Ownership |
 | --- | --- | --- |
-| `claudian-extension` | `claudian-extension` | Claudian integration only |
-| `power-editor` | `patchwork-power-editor` | Unified formatting, code cards, titles, history, navigation and outline |
-| `code-editor` | `code-editor` | Standalone SQL, PowerShell and text-file editing |
+| `borders` | `patchwork-borders` | Window chrome, panel geometry, settings slots and document status |
+| `project` | `patchwork-project` | File tree, search, selection, presets and semantic file-menu contributions |
+| `git` | `patchwork-git` | Commit, Log, Diff, branch header/popup, repository commands and Git file actions |
+| `terminal` | `patchwork-terminal` | Terminal sessions, tabs and xterm rendering |
+| `claudian` | `claudian-extension` | Claudian integration only |
+| `content` | `patchwork-power-editor` | Unified formatting, code cards, titles, history, navigation and outline |
+| `content/code-editor` | `code-editor` | Standalone SQL, PowerShell and text-file editing |
 
 Disabling a companion restores its upstream interface; removing Markdown code
 controls leaves ordinary fenced Markdown and its optional metadata in notes.
@@ -143,8 +156,8 @@ npm run build
 npm run build -- -VaultPath 'E:/Notes'
 
 # Install only one plugin or a selected batch after compilation.
-npm run build -- -Plugin power-editor
-npm run build -- -Plugin power-editor,code-editor
+npm run build -- -Plugin content
+npm run build -- -Plugin content,code-editor
 
 # Build and install only the theme.
 npm run build -- -ThemeOnly
@@ -154,7 +167,7 @@ The root `scripts` directory contains `Build-Install.ps1` and the standalone
 `Repair-ClaudianCodexIdentity.ps1` identity checker. Old build-only
 and install-only scripts, npm deployment commands, compatibility wrappers,
 migration and removal scripts, and the common directory have been removed.
-`plugins/scripts/build.mjs` and its two check helpers remain internal compiler
+`plugins/scripts/build.mjs` and its source/bundle check helpers remain internal compiler
 implementation details. Targets are registered in `plugins/manifest.json`;
 the installer also checks an explicit allowlist in `Assert-PatchworkManagedPlugin`
 to prevent changes to third-party plugins.
@@ -178,37 +191,35 @@ dist/obsidian-patchwork/
 destinations are validated before any running plugin is disabled. Copied files
 are verified with SHA-256. Selected plugins are unloaded and their current and
 previously owned runtime files are removed before copying the new files. Plugin
-installation and cleanup are restricted to `patchwork-git`,
-`patchwork-power-editor`, `code-editor`, and `claudian-extension`. Claudian
+installation and cleanup are restricted to `patchwork-borders`, `patchwork-project`, `patchwork-git`,
+`patchwork-power-editor`, `patchwork-terminal`, `code-editor`, and `claudian-extension`. Claudian
 (`realclaudian` or `claudian`) and other third-party plugins are never cleanup
 targets. Settings,
-unknown user files and unrelated packages are preserved. Selected plugins are
-enabled even if previously disabled. A failed build stops before installation.
+unknown user files and unrelated packages are preserved. Existing enabled states
+are preserved; newly installed packages stay disabled by default. A failed build
+stops before installation. Runtime replacement is staged and backed up as one
+selected set; installation/reload failures restore the previous runtime and enabled
+states. If rollback itself fails, the error identifies the retained recovery backup.
+
+Use `-MigrateModules` to migrate an enabled legacy Content installation. Content,
+Borders, Project and Terminal are included together. Newly introduced modules are
+enabled for that migration; already installed, explicitly disabled modules remain
+disabled. Borders loads before its clients and unloads after them. `data.json` is
+never replaced by runtime installation.
 
 Keep the target vault open and enable **Settings > General > Advanced > Command
 line interface**. The script verifies the connected vault before copying files.
 Use `-ObsidianCliPath` for a custom CLI path. For manual reload, disable affected
 plugins first, pass `-SkipReload`, then enable only the
-new plugins afterwards. Theme CSS reloads
+plugins that you need afterwards. Enabled selected plugins are rejected with
+`-SkipReload` because their safe unload cannot be verified. Theme CSS reloads
 through Obsidian's file watcher; installation never changes the active theme.
 
-After deployment, the installer runs `Repair-ClaudianCodexIdentity.ps1`. This
-checks only Claudian's Codex initialization client name and launch environment,
-setting both `clientInfo.name` and `CODEX_INTERNAL_ORIGINATOR_OVERRIDE` to
-`codex_cli_rs`. It does not uninstall Claudian or change its account settings.
-The checker backs up `main.js` before changes, skips an absent plugin, does
-nothing when both values match, and fails without editing if the bundle layout
-cannot be located uniquely. This is a local compatibility override; acceptance
-by the configured third-party endpoint still requires a real request.
-
-After every identity check, the installer attempts to unload the current Claudian
-instance and reload it if enabled, even when the file already matches. An
-existing Codex process can retain the previous identity after a disk-only patch.
-When Claudian has active work, its reload is deferred with a warning and package
-installation still completes. After the work finishes, restart Obsidian or run
-`Repair-ClaudianCodexIdentity.ps1 -Reload` to reload Claudian without rebuilding.
-With `-SkipReload`, restart Obsidian manually. To repair after a Claudian update
-without compiling or installing project plugins, run:
+Claudian identity maintenance is a separate explicit action. Package installation
+never patches or reloads the upstream Claudian plugin. The standalone checker
+backs up its bundle before changing the Codex client identity and launch
+environment. Its compatibility result still requires a real request to verify.
+To request this maintenance after a Claudian update, run:
 
 ```powershell
 & .\scripts\Repair-ClaudianCodexIdentity.ps1 -Reload
@@ -232,7 +243,7 @@ Deploy `patchwork-power-editor`, and manually disable the old `powereditor`,
 `patchwork-code-blocks`, Awesome Format Bar and its style companion. The installer
 does not clean these legacy plugins. Do not enable
 the old editors alongside the fusion. The former `note-code-blocks` source is
-now part of `plugins/power-editor/src/editor`, not a second plugin.
+now part of `plugins/content/src/editor`, not a second plugin.
 
 The Yuque document stylesheet moved out of the theme into the editor's
 `src/styles/foundations.css`. Deploy the updated theme as well to remove its old

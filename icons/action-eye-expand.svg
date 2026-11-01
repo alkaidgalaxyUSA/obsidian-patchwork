@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(1 1) scale(.9)">
+        <!-- Eye geometry adapted from JetBrains inspectionsEye_dark.svg, Copyright 2000-2022 JetBrains s.r.o. and contributors, Apache-2.0. See LICENSE-JetBrains.txt and NOTICE-JetBrains.txt. -->
+        <g transform="translate(-1.2 -3.7) scale(1.4)" stroke-linecap="butt" stroke-linejoin="miter">
+            <circle vector-effect="non-scaling-stroke" cx="8" cy="8" r="1.5"/>
+            <path vector-effect="non-scaling-stroke" d="M8 11.5C5.62351 11.5 3.2737 9.94494 2.53088 8C3.2737 6.05506 5.62351 4.5 8 4.5C10.3765 4.5 12.7263 6.05506 13.4691 8C12.7263 9.94494 10.3765 11.5 8 11.5Z"/>
+        </g>
+        <path d="M14.190378,18.951996L18.761696,18.951996L18.761696,14.380678Z" transform="translate(2.5 -1.25) translate(16.476037 16.666337) scale(1.136722057) translate(-16.476037 -16.666337)" fill="currentColor" stroke="none"/>
+    </g>
+</svg>

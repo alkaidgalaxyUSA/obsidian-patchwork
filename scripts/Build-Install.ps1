@@ -8,6 +8,7 @@ param(
   [switch]$PluginsOnly,
   [switch]$ThemeOnly,
   [switch]$SkipReload,
+  [switch]$MigrateModules,
   [string]$ObsidianCliPath = (Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'Deployment.psd1')).ObsidianCliPath
 )
 
@@ -39,7 +40,7 @@ function Get-PatchworkPackages {
 
 function Assert-PatchworkManagedPlugin {
   param([string]$Id)
-  $managedIds = @('patchwork-git', 'patchwork-power-editor', 'code-editor', 'claudian-extension')
+  $managedIds = @('patchwork-terminal', 'patchwork-project', 'patchwork-borders', 'patchwork-git', 'patchwork-power-editor', 'code-editor', 'claudian-extension')
   if ($Id -cnotin $managedIds) { throw "Plugin is outside the managed installation scope: $Id" }
 }
 
@@ -61,15 +62,21 @@ function Get-PatchworkPluginPackages {
     if ($manifest.Contains('version')) { throw 'Set the shared version only in plugins/package.json.' }
     $ids += $id
     $manifest.version = $project.version
-    $source = Get-PatchworkChildPath -Parent $parent -RelativePath $name
+    if ($definition.source -cnotmatch '^[a-z0-9-]+(?:/[a-z0-9-]+)*$') { throw "Invalid plugin source: $name" }
+    if ($definition.styles -cnotmatch '^(?:[a-z0-9-]+/)*[a-z0-9-]+\.css$') { throw "Invalid plugin stylesheet: $name" }
+    $source = Get-PatchworkChildPath -Parent $parent -RelativePath $definition.source
     if (-not (Test-Path -LiteralPath $source -PathType Container)) { throw "Plugin source missing: $source" }
+    foreach ($entry in @('src/main.ts', $definition.styles)) {
+      $entryPath = Get-PatchworkChildPath -Parent $source -RelativePath $entry
+      if (-not (Test-Path -LiteralPath $entryPath -PathType Leaf)) { throw "Plugin entry missing: $entryPath" }
+    }
     $output = Get-PatchworkChildPath -Parent $ProjectRoot -RelativePath "dist/plugins/$id"
     $files = @($config.runtimeFiles)
     foreach ($required in @('main.js', 'manifest.json', 'styles.css', 'LICENSE')) {
       if ($required -notin $files) { throw "Plugin runtime file missing from shared configuration: $required" }
     }
     [pscustomobject]@{
-      Id = $id; Kind = 'plugins'; SourceRoot = $output; SourceDirectory = $source
+      Id = $id; Target = $name; Kind = 'plugins'; SourceRoot = $output; SourceDirectory = $source
       Manifest = [pscustomobject]$manifest; Files = $files
       StyleEntry = $null; StyleOutput = 'styles.css'
       ObsoleteFiles = @(); Bundled = $true
@@ -439,19 +446,37 @@ $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $vaultRoot = [IO.Path]::GetFullPath($VaultPath)
 $obsidianRoot = Join-Path $vaultRoot '.obsidian'
 if (-not (Test-Path -LiteralPath $obsidianRoot -PathType Container)) { throw 'Vault is not initialized.' }
+# Capture presence and enabled state before building or modifying runtime files.
+$cli = if ($SkipReload) { $null } else { Get-PatchworkCli -VaultRoot $vaultRoot -CliPath $ObsidianCliPath }
+$enabledPath = Join-Path $obsidianRoot 'community-plugins.json'
+$enabled = if ($cli) { @(Get-ObsidianEnabledPlugins -Cli $cli) }
+  elseif (Test-Path -LiteralPath $enabledPath) { @(Get-Content -LiteralPath $enabledPath -Raw | ConvertFrom-Json) }
+  else { @() }
+$installedBefore = @{}
 $allPackages = @(Get-PatchworkPackages -ProjectRoot $projectRoot)
+foreach ($candidate in $allPackages | Where-Object Kind -eq 'plugins') {
+  $candidatePath = Get-PatchworkChildPath -Parent $obsidianRoot -RelativePath "plugins/$($candidate.Id)/manifest.json"
+  $installedBefore[$candidate.Id] = Test-Path -LiteralPath $candidatePath -PathType Leaf
+}
 $requested = @($Plugin | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique)
 foreach ($name in $requested) {
-  $matches = @($allPackages | Where-Object { $_.Kind -eq 'plugins' -and ($_.Id -ceq $name -or (Split-Path -Path $_.SourceDirectory -Leaf) -ceq $name) })
+  $matches = @($allPackages | Where-Object { $_.Kind -eq 'plugins' -and ($_.Id -ceq $name -or $_.Target -ceq $name) })
   if ($matches.Count -ne 1) { throw "Unknown or ambiguous plugin: $name" }
 }
 $packages = @($allPackages | Where-Object {
   if ($ThemeOnly) { $_.Kind -eq 'themes' }
-  elseif ($requested.Count) { $_.Kind -eq 'plugins' -and ($_.Id -in $requested -or (Split-Path -Path $_.SourceDirectory -Leaf) -in $requested) }
+  elseif ($requested.Count) { $_.Kind -eq 'plugins' -and ($_.Id -in $requested -or $_.Target -in $requested) }
   elseif ($PluginsOnly) { $_.Kind -eq 'plugins' }
   else { $true }
 })
+if ($MigrateModules -and -not $ThemeOnly -and 'patchwork-power-editor' -in $enabled) {
+  $modulePackages = @($allPackages | Where-Object { $_.Kind -eq 'plugins' -and $_.Target -in @('content', 'borders', 'project', 'terminal') })
+  $packages = @(@($packages) + @($modulePackages) | Sort-Object Kind, Id -Unique)
+}
 if (-not $packages.Count) { throw 'No packages selected.' }
+if ($SkipReload -and @($packages | Where-Object { $_.Kind -eq 'plugins' -and $_.Id -in $enabled }).Count) {
+  throw '-SkipReload requires selected plugins to be disabled first, or close Obsidian and disable them in community-plugins.json.'
+}
 if (@($allPackages | Group-Object Kind, Id | Where-Object Count -gt 1).Count) { throw 'Duplicate package IDs.' }
 Invoke-PatchworkBuild -ProjectRoot $projectRoot -Packages $packages -AllPackages $allPackages
 $buildRoot = Join-Path $projectRoot 'dist/obsidian-patchwork'
@@ -503,8 +528,6 @@ foreach ($package in $packages) {
   Write-Host "Validated: $($package.Kind)/$($package.Id)"
 }
 
-$cli = if ($SkipReload) { $null } else { Get-PatchworkCli -VaultRoot $vaultRoot -CliPath $ObsidianCliPath }
-$enabled = if ($cli) { @(Get-ObsidianEnabledPlugins -Cli $cli) } else { @() }
 $pluginCleanup = @(
   foreach ($package in $packages | Where-Object Kind -eq 'plugins') {
     $id = $package.Id
@@ -518,49 +541,110 @@ $pluginCleanup = @(
     [pscustomobject]@{ Id = $id; Destination = $destination; Files = $files }
   }
 )
-foreach ($cleanup in $pluginCleanup) {
-  if ($cli -and $cleanup.Id -in $enabled) {
-    Invoke-ObsidianCli -Cli $cli -Command 'plugin:disable' -Parameters @("id=$($cleanup.Id)", 'filter=community') -ExpectedPattern "(?m)^Disabled: $([regex]::Escape($cleanup.Id))$" | Out-Null
+# Stage and back up the complete selected runtime before unloading any client.
+# Only owned runtime files are copied; data.json and unknown user files are untouched.
+$transactionRoot = Join-Path ([IO.Path]::GetTempPath()) ("patchwork-install-" + [guid]::NewGuid().ToString('N'))
+[IO.Directory]::CreateDirectory($transactionRoot) | Out-Null
+$runtimeBackup = @()
+$desiredEnabled = @($enabled)
+foreach ($package in $packages | Where-Object Kind -eq 'plugins') {
+  if ($MigrateModules -and 'patchwork-power-editor' -in $enabled -and $package.Target -in @('borders', 'project', 'terminal') -and -not $installedBefore[$package.Id]) {
+    $desiredEnabled += $package.Id
   }
-  if ($cli) {
-    $idJson = ConvertTo-Json -InputObject $cleanup.Id -Compress
+}
+$loadOrder = @('patchwork-borders', 'patchwork-project', 'patchwork-power-editor', 'patchwork-git', 'patchwork-terminal', 'claudian-extension', 'code-editor')
+$loadPackages = @($packages | Where-Object Kind -eq 'plugins' | Sort-Object { $loadOrder.IndexOf($_.Id) })
+$unloadPackages = @($loadPackages)
+[array]::Reverse($unloadPackages)
+$runtimeChanged = $false
+try {
+  foreach ($package in $packages) {
+    $relative = "$($package.Kind)/$($package.Id)"
+    $destination = Get-PatchworkChildPath -Parent $obsidianRoot -RelativePath $relative
+    $files = @($package.Files + $package.ObsoleteFiles + '.patchwork-files.json' | Select-Object -Unique)
+    $present = @()
+    foreach ($file in $files) {
+      if ($file -eq 'data.json') { throw 'Settings cannot be part of a runtime transaction.' }
+      $existing = Get-PatchworkChildPath -Parent $destination -RelativePath $file
+      if (Test-Path -LiteralPath $existing -PathType Leaf) {
+        Copy-VerifiedFile -SourcePath $existing -DestinationPath (Get-PatchworkChildPath -Parent $transactionRoot -RelativePath "backup/$relative/$file")
+        $present += $file
+      }
+    }
+    foreach ($file in @($package.Files + '.patchwork-files.json')) {
+      Copy-VerifiedFile -SourcePath (Join-Path $package.SourceRoot $file) -DestinationPath (Get-PatchworkChildPath -Parent $transactionRoot -RelativePath "stage/$relative/$file")
+    }
+    $runtimeBackup += [pscustomobject]@{ Package = $package; Relative = $relative; Destination = $destination; Files = $files; Present = $present }
+  }
+  $runtimeChanged = $true
+  foreach ($package in $unloadPackages) {
+    if (-not $cli) { continue }
+    if ($package.Id -in $enabled) {
+      Invoke-ObsidianCli -Cli $cli -Command 'plugin:disable' -Parameters @("id=$($package.Id)", 'filter=community') -ExpectedPattern "(?m)^Disabled: $([regex]::Escape($package.Id))$" | Out-Null
+    }
+    $idJson = ConvertTo-Json -InputObject $package.Id -Compress
     $code = '(async () => { const id = ' + $idJson + '; if (app.plugins.plugins[id]) await app.plugins.unloadPlugin(id); if (app.plugins.plugins[id]) throw new Error("Plugin is still loaded: " + id); return "plugin-unloaded"; })()'
     Invoke-ObsidianCli -Cli $cli -Command 'eval' -Parameters @("code=$code") -ExpectedPattern '(?m)^=> plugin-unloaded$' | Out-Null
   }
-}
-foreach ($cleanup in $pluginCleanup) {
-  Clear-PatchworkPluginRuntime -Id $cleanup.Id -Destination $cleanup.Destination -Files $cleanup.Files
-  Write-Host "Cleaned plugin runtime: $($cleanup.Id)"
-}
-foreach ($package in $packages) {
-  $destination = Get-PatchworkChildPath -Parent $obsidianRoot -RelativePath "$($package.Kind)/$($package.Id)"
-  foreach ($file in $package.Files | Sort-Object { $_ -eq 'main.js' }) {
-    Copy-VerifiedFile -SourcePath (Join-Path $package.SourceRoot $file) -DestinationPath (Get-PatchworkChildPath -Parent $destination -RelativePath $file)
+  foreach ($cleanup in $pluginCleanup) {
+    Clear-PatchworkPluginRuntime -Id $cleanup.Id -Destination $cleanup.Destination -Files $cleanup.Files
   }
-  Remove-PatchworkObsoleteFiles -Destination $destination -PreviousFiles $package.ObsoleteFiles -CurrentFiles $package.Files
-  Copy-VerifiedFile -SourcePath (Join-Path $package.SourceRoot '.patchwork-files.json') -DestinationPath (Join-Path $destination '.patchwork-files.json')
-  Write-Host "Installed: $destination"
-}
-if ($cli -and @($packages | Where-Object Kind -eq 'plugins').Count) {
-  Invoke-ObsidianCli -Cli $cli -Command 'eval' -Parameters @('code=(async () => { await app.plugins.loadManifests(); return "patchwork-manifests-ready"; })()') -ExpectedPattern '(?m)^=> patchwork-manifests-ready$' | Out-Null
-  foreach ($package in $packages | Where-Object Kind -eq 'plugins') {
-    Invoke-ObsidianCli -Cli $cli -Command 'plugin:enable' -Parameters @("id=$($package.Id)", 'filter=community') -ExpectedPattern "(?m)^Enabled: $([regex]::Escape($package.Id))$" | Out-Null
-    $idJson = ConvertTo-Json -InputObject $package.Id -Compress
-    $code = '(() => { const id = ' + $idJson + '; if (!app.plugins.enabledPlugins.has(id) || !app.plugins.plugins[id]) throw new Error("Plugin did not load: " + id); return "plugin-ready"; })()'
-    Invoke-ObsidianCli -Cli $cli -Command 'eval' -Parameters @("code=$code") -ExpectedPattern '(?m)^=> plugin-ready$' | Out-Null
-    Write-Host "Enabled: $($package.Id)"
+  foreach ($backup in $runtimeBackup) {
+    $package = $backup.Package
+    $stage = Get-PatchworkChildPath -Parent $transactionRoot -RelativePath "stage/$($backup.Relative)"
+    foreach ($file in $package.Files | Sort-Object { $_ -eq 'main.js' }) {
+      Copy-VerifiedFile -SourcePath (Join-Path $stage $file) -DestinationPath (Get-PatchworkChildPath -Parent $backup.Destination -RelativePath $file)
+    }
+    Remove-PatchworkObsoleteFiles -Destination $backup.Destination -PreviousFiles $package.ObsoleteFiles -CurrentFiles $package.Files
+    Copy-VerifiedFile -SourcePath (Join-Path $stage '.patchwork-files.json') -DestinationPath (Join-Path $backup.Destination '.patchwork-files.json')
+    Write-Host "Installed: $($backup.Destination)"
   }
-}
-
-$identityResult = & (Join-Path $PSScriptRoot 'Repair-ClaudianCodexIdentity.ps1') -VaultPath $vaultRoot
-if ($identityResult) {
-  if ($cli) {
-    Restart-ClaudianPlugin -Cli $cli -PluginId $identityResult.PluginId
-  } else {
-    Write-Warning 'Claudian identity was checked on disk. Restart Obsidian before retrying Codex; existing processes may still use the old identity.'
+  if ($cli -and $loadPackages.Count) {
+    Invoke-ObsidianCli -Cli $cli -Command 'eval' -Parameters @('code=(async () => { await app.plugins.loadManifests(); return "patchwork-manifests-ready"; })()') -ExpectedPattern '(?m)^=> patchwork-manifests-ready$' | Out-Null
+    foreach ($package in $loadPackages) {
+      if ($package.Id -notin $desiredEnabled) { continue }
+      Invoke-ObsidianCli -Cli $cli -Command 'plugin:enable' -Parameters @("id=$($package.Id)", 'filter=community') -ExpectedPattern "(?m)^Enabled: $([regex]::Escape($package.Id))$" | Out-Null
+      $idJson = ConvertTo-Json -InputObject $package.Id -Compress
+      $code = '(() => { const id = ' + $idJson + '; if (!app.plugins.enabledPlugins.has(id) || !app.plugins.plugins[id]) throw new Error("Plugin did not load: " + id); return "plugin-ready"; })()'
+      Invoke-ObsidianCli -Cli $cli -Command 'eval' -Parameters @("code=$code") -ExpectedPattern '(?m)^=> plugin-ready$' | Out-Null
+    }
   }
+} catch {
+  $installFailure = $_
+  if ($runtimeChanged) {
+    try {
+      if ($cli) {
+        foreach ($package in $unloadPackages) {
+          $idJson = ConvertTo-Json -InputObject $package.Id -Compress
+          $code = '(async () => { const id = ' + $idJson + '; await app.plugins.disablePluginAndSave(id); if (app.plugins.plugins[id]) await app.plugins.unloadPlugin(id); if (app.plugins.plugins[id]) throw new Error("Plugin remains loaded: " + id); return "plugin-unloaded"; })()'
+          Invoke-ObsidianCli -Cli $cli -Command 'eval' -Parameters @("code=$code") -ExpectedPattern '(?m)^=> plugin-unloaded$' | Out-Null
+        }
+      }
+      foreach ($backup in $runtimeBackup) {
+        foreach ($file in $backup.Files) {
+          $target = Get-PatchworkChildPath -Parent $backup.Destination -RelativePath $file
+          if ($file -in $backup.Present) {
+            Copy-VerifiedFile -SourcePath (Get-PatchworkChildPath -Parent $transactionRoot -RelativePath "backup/$($backup.Relative)/$file") -DestinationPath $target
+          } elseif (Test-Path -LiteralPath $target -PathType Leaf) { Remove-Item -LiteralPath $target -Force }
+        }
+      }
+      if ($cli) {
+        Invoke-ObsidianCli -Cli $cli -Command 'eval' -Parameters @('code=(async () => { await app.plugins.loadManifests(); return "patchwork-manifests-ready"; })()') -ExpectedPattern '(?m)^=> patchwork-manifests-ready$' | Out-Null
+        foreach ($package in $loadPackages) {
+          if ($package.Id -in $enabled) {
+            Invoke-ObsidianCli -Cli $cli -Command 'plugin:enable' -Parameters @("id=$($package.Id)", 'filter=community') -ExpectedPattern "(?m)^Enabled: $([regex]::Escape($package.Id))$" | Out-Null
+          }
+        }
+      }
+      Write-Warning 'Installation failed. Previous runtime files and enabled states were restored.'
+    } catch {
+      Write-Warning "Rollback could not finish. Backup retained at $transactionRoot. Rollback error: $_"
+      throw "Installation failed: $installFailure. Manual recovery is required from $transactionRoot."
+    }
+  }
+  throw $installFailure
 }
-
-if ($SkipReload) { Write-Host 'Automatic reload skipped. Enable the selected plugins manually.' }
-Write-Host 'Build and installation complete. Unrelated plugins, settings and notes were preserved.'
-
+# Backup removal happens only after success or a verified rollback.
+Remove-PatchworkDirectory -Parent ([IO.Path]::GetTempPath()) -RelativePath (Split-Path -Path $transactionRoot -Leaf)
+if ($SkipReload) { Write-Host 'Automatic reload skipped. Selected plugins remain disabled.' }
+Write-Host 'Build and installation complete. Previous enabled states, unrelated plugins, settings and notes were preserved.'

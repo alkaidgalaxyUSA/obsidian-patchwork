@@ -1,0 +1,19 @@
+import type { CallContext, Unsubscribe } from "./common";
+import type { FileMenuContext, MenuAction } from "./project";
+
+export type GitFileState = "added" | "modified" | "deleted" | "conflict" | "ignored" | "unversioned";
+export interface GitSnapshot {
+    ready: boolean; busy: boolean; error?: string;
+    branch?: string; detachedCommit?: string;
+    status: readonly { vaultPath: string; originalVaultPath?: string; state: GitFileState }[];
+}
+export interface GitApi {
+    readonly version: 1;
+    getSnapshot(): GitSnapshot;
+    onSnapshot(listener: (snapshot: GitSnapshot) => void): Unsubscribe;
+    refresh(context: CallContext): Promise<void>;
+    openCommit(paths: readonly string[], context: CallContext): Promise<void>;
+    openLog(context: CallContext): Promise<void>;
+    showDiff(paths: readonly string[], options: { newTab?: boolean }, context: CallContext): Promise<void>;
+    buildFileActions(context: FileMenuContext): readonly MenuAction[];
+}

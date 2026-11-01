@@ -1,0 +1,84 @@
+body .pw-vault-git:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) {
+    font-family: var(--font-interface);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    flex: 0 1 auto;
+    min-width: 32px;
+    height: calc(var(--pw-document-header-height, 46px) - 14px);
+    padding: 4px 15px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+    font-size: calc(var(--font-ui-small) - 1px);
+    -webkit-app-region: no-drag;
+}
+body .pw-vault-git:hover:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)),
+body .pw-vault-git[aria-expanded="true"]:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { background: var(--background-modifier-hover); }
+body .pw-vault-git > span:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display: flex; align-items: center; }
+body .pw-vault-git svg:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { width: 14px; height: 14px; }
+body .pw-vault-git > .pw-vault-git-label:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgb(from var(--text-muted) calc(r * 1.1) calc(g * 1.1) calc(b * 1.1) / alpha); }
+body .pw-header-chevron:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) {
+    flex: 0 0 7px;
+    height: 7px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    background: transparent;
+    clip-path: none;
+    transform: translateY(-2px) rotate(45deg);
+    margin-inline: 2px;
+}
+body .pw-vault-git:focus-visible:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { outline: 2px solid var(--interactive-accent); outline-offset: 1px; }
+.pw-git-popup.menu:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) {
+    font-family: var(--font-interface);
+    font-size: calc(var(--font-ui-small) - 1px);
+    position: fixed;
+    width: min(376px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+    padding: 8px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-secondary);
+    z-index: var(--layer-menu);
+    -webkit-app-region: no-drag;
+}
+.pw-git-popup.menu.is-wide:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { width: min(540px, calc(100vw - 16px)); }
+.pw-git-popup-header:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display: flex; align-items: center; gap: 6px; margin: 6px 2px 8px; }
+.pw-git-search-box:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display: flex; align-items: center; flex: 1; min-width: 0; padding-left: 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; }
+.pw-git-search-box > span:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display: flex; color: var(--text-muted); }
+.pw-git-popup-header svg:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { width: 14px; height: 14px; }
+.pw-git-popup-header .clickable-icon svg:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { width: 15px; height: 15px; }
+body .pw-git-submenu:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)),
+body .pw-git-submenu .menu-item:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { font-size: calc(var(--font-ui-small) - 1px); }
+.pw-git-search-box input[type="search"]:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { width: 100%; height: 28px; padding: 4px 6px; border: 0; box-shadow: none; background: transparent; font: inherit; }
+body .pw-git-popup .pw-git-search-box input[type="search"]:is(:focus, :focus-visible):where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { border: 0; outline: none; box-shadow: none; background: transparent; }
+.pw-git-search-box:focus-within:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { border-color: var(--interactive-accent); }
+.pw-git-popup-header .clickable-icon:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { flex: 0 0 22px; padding: 4px; }
+.pw-git-popup-content:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { max-height: min(540px, calc(100vh - 120px)); overflow-y: auto; }
+body .pw-git-row:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) {
+    display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+    width: 100%; height: 25px; padding: 3px 8px;
+    border: 0; border-radius: 4px; box-shadow: none;
+    background: transparent; color: var(--text-normal);
+    font-family: inherit; font-size: inherit; font-weight: 400; text-align: left;
+}
+body .pw-git-row:hover:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)),
+body .pw-git-row:focus-visible:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { background: var(--background-modifier-hover); }
+.pw-git-row-icon:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display: flex; flex: 0 0 16px; color: var(--text-muted); }
+.pw-git-row svg:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { width: 14px; height: 14px; }
+.pw-git-row-label:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-git-row-detail:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { margin-left: auto; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-git-separator:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { height: 1px; margin: 14px 0; background: var(--background-modifier-border); }
+body .pw-git-group:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { margin-top: 2px; }
+body .pw-git-branch:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { padding-left: 48px; }
+body .pw-git-remote-folder:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { padding-left: 24px; }
+body .pw-git-remote-branch:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { padding-left: 72px; }
+.pw-git-local-branch .pw-git-row-icon svg:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { transform: scaleX(-1); }
+.pw-git-branch.is-current .pw-git-row-icon:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { color: #f2c55c; }
+.pw-git-branch-more:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display: flex; margin-left: auto; color: var(--text-muted); }
+.pw-git-row-detail + .pw-git-branch-more:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { margin-left: 0; }
+.pw-git-local-branch :is(.pw-git-row-detail, .pw-git-branch-more):where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { color: #B8BDC7; }
+.pw-git-status:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { padding: 6px 8px; color: var(--text-muted); font-size: inherit; }

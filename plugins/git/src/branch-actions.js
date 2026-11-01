@@ -1,7 +1,7 @@
 import { basename, dirname, isAbsolute, join } from "node:path";
-import { prompt, showOutput } from "./dialogs";
+import { prompt, showOutput, confirm } from "./dialogs";
 
-/** Remote branch operations share the controller's serialized mutation queue. */
+/** Local and remote branch operations share the controller's serialized mutation queue. */
 export class BranchActions {
     constructor(controller) {
         this.controller = controller;
@@ -16,28 +16,33 @@ export class BranchActions {
             ["rebase", context => this.repository.run(["rebase", context.ref])],
             ["merge", context => this.repository.run(["merge", "--no-edit", context.ref])],
             ["worktree", context => this.worktree(context)],
+            ["rename", context => this.rename(context)],
+            ["delete", context => this.delete(context)],
+            ["update", context => this.update(context)],
+            ["push", context => this.push(context)],
             ["pull-rebase", context => this.repository.run(["pull", "--rebase", context.remote, context.branch])],
             ["pull-merge", context => this.repository.run(["pull", "--no-rebase", "--no-edit", context.remote, context.branch])],
         ]);
     }
 
-    async context(ref, expectedCurrent) {
+    async context(ref, expectedCurrent, isRemote) {
         const snapshot = await this.repository.snapshot();
-        if (!snapshot.remote.includes(ref)) throw new Error("This remote branch no longer exists. Fetch and reopen the branch menu.");
+        if (!(isRemote ? snapshot.remote : snapshot.local).includes(ref)) throw new Error("This branch no longer exists. Reopen the branch menu.");
         if (snapshot.current !== expectedCurrent) throw new Error("The current branch changed. Reopen the branch menu and try again.");
-        const remote = snapshot.remotes.filter(name => ref.startsWith(`${name}/`)).sort((left, right) => right.length - left.length)[0];
-        if (!remote) throw new Error("The remote is no longer configured.");
-        const branch = ref.slice(remote.length + 1);
-        if ([remote, branch, snapshot.current].some(value => value.startsWith("-"))) throw new Error("Unsupported branch or remote name.");
-        return { ref, remote, branch, current: snapshot.current,
+        const tracking = isRemote ? ref : snapshot.upstreams.get(ref);
+        const remote = snapshot.remotes.filter(name => tracking?.startsWith(`${name}/`)).sort((left, right) => right.length - left.length)[0];
+        if (isRemote && !remote) throw new Error("The remote is no longer configured.");
+        const branch = isRemote ? ref.slice(remote.length + 1) : ref;
+        if ([remote, branch, snapshot.current].some(value => value?.startsWith("-"))) throw new Error("Unsupported branch or remote name.");
+        return { ref, remote, branch, isRemote, tracking, current: snapshot.current,
             local: snapshot.local, upstreams: snapshot.upstreams };
     }
 
-    run(id, ref, current) {
+    run(id, ref, current, remote = true) {
         return this.controller.act(async () => {
             const action = this.actions.get(id);
             if (!action) throw new Error("This branch action is unavailable.");
-            const context = await this.context(ref, current);
+            const context = await this.context(ref, current, remote);
             if (["checkout-rebase", "rebase", "merge", "pull-rebase", "pull-merge"].includes(id) && !context.local.includes(current)) {
                 throw new Error("Check out a local branch before using this action.");
             }
@@ -47,6 +52,7 @@ export class BranchActions {
 
     async checkout(context) {
         const { branch, ref, local, upstreams } = context;
+        if (!context.isRemote) { await this.repository.run(["switch", branch]); return; }
         if (local.includes(branch)) {
             if (upstreams.get(branch) && upstreams.get(branch) !== ref) {
                 throw new Error(`Local branch '${branch}' tracks another remote. Use New Branch to choose a different name.`);
@@ -57,8 +63,35 @@ export class BranchActions {
         await this.repository.run(["switch", "--track", "-c", branch, ref]);
     }
 
+    async rename(context) {
+        if (context.isRemote) throw new Error("Rename is available for local branches only.");
+        const name = await this.branchName(`Rename '${context.ref}'`, context.ref);
+        if (name && name !== context.ref) await this.repository.run(["branch", "-m", context.ref, name]);
+    }
+
+    async delete(context) {
+        if (context.isRemote || context.ref === context.current) throw new Error("Select a local branch other than the current branch.");
+        if (await confirm(this.controller, "Delete branch", `Delete local branch '${context.ref}'?`, "Delete")) {
+            await this.repository.run(["branch", "-d", context.ref]);
+        }
+    }
+
+    async push(context) {
+        if (!context.remote || !context.tracking) throw new Error("This branch has no tracked remote branch.");
+        const target = context.tracking.slice(context.remote.length + 1);
+        await this.repository.run(["push", "--", context.remote, `${context.ref}:${target}`]);
+    }
+
+    async update(context) {
+        if (context.isRemote) { await this.repository.run(["fetch", "--", context.remote, context.branch]); return; }
+        if (!context.tracking || !context.remote) throw new Error("This branch has no tracked remote branch.");
+        if (context.ref === context.current) { await this.repository.run(["pull", "--ff-only"]); return; }
+        const remoteBranch = context.tracking.slice(context.remote.length + 1);
+        await this.repository.run(["fetch", "--", context.remote, `${remoteBranch}:${context.ref}`]);
+    }
+
     async branchName(title, initial = "") {
-        const name = await prompt(this.app, title, "Branch name", initial);
+        const name = await prompt(this.controller, title, "Branch name", initial);
         if (!name) return;
         if (name.startsWith("-")) throw new Error("Enter a valid branch name.");
         await this.repository.run(["check-ref-format", "--branch", name]);
@@ -73,20 +106,20 @@ export class BranchActions {
     async compare(context) {
         const commits = await this.repository.run(["log", "--left-right", "--oneline", `${context.current}...${context.ref}`, "--"]);
         const diff = await this.repository.run(["diff", "--no-ext-diff", "--no-textconv", "--no-color", context.current, context.ref, "--"]);
-        showOutput(this.app, `Compare '${context.ref}' with '${context.current}'`,
+        showOutput(this.controller, `Compare '${context.ref}' with '${context.current}'`,
             `Commits (< ${context.current}, > ${context.ref})\n${commits || "No different commits.\n"}\nChanges\n${diff || "No differences."}`);
     }
 
     async workingDiff(context) {
         const diff = await this.repository.run(["diff", "--no-ext-diff", "--no-textconv", "--no-color", context.ref, "--"]);
-        showOutput(this.app, `Diff: '${context.ref}' with Working Tree`, diff);
+        showOutput(this.controller, `Diff: '${context.ref}' with Working Tree`, diff);
     }
 
     async worktree(context) {
         const name = await this.branchName(`New Worktree from '${context.ref}'`, `${context.branch}-worktree`);
         if (!name) return;
         const suggested = join(dirname(this.repository.root), `${basename(this.repository.root)}-${name.replaceAll("/", "-")}`);
-        const path = await prompt(this.app, "New Worktree", "Worktree directory", suggested);
+        const path = await prompt(this.controller, "New Worktree", "Worktree directory", suggested);
         if (!path) return;
         if (!isAbsolute(path)) throw new Error("Enter an absolute directory path.");
         await this.repository.run(["worktree", "add", "-b", name, path, context.ref]);

@@ -1,0 +1,128 @@
+/* ========================================
+   CODE EDITOR STYLES
+   ======================================== */
+
+.view-content.ce-editor-view:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	height: 100%;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.ce-editor-container:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+/* CodeMirror editor styling */
+.ce-editor-container .cm-editor:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	height: 100%;
+	flex: 1;
+}
+
+/* Doubled class selector raises specificity to (0,3,1), enough to win
+   over Obsidian's built-in editor font rules without resorting to
+   !important. */
+.ce-editor-container.ce-editor-container .cm-editor:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)),
+.ce-editor-container.ce-editor-container .cm-editor *:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	font-family: Consolas, "Cascadia Mono", "Liberation Mono", monospace;
+	font-feature-settings: normal;
+	font-variant-alternates: normal;
+	font-variant-ligatures: none;
+}
+
+.ce-editor-container .cm-scroller:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	overflow: auto;
+}
+
+.ce-editor-view .ce-editor-container .cm-gutters:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	border-right: none;
+}
+
+.ce-editor-container .cm-content:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	padding: 8px 0;
+}
+
+.ce-editor-container .cm-line:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	padding: 0 8px 0 0;
+}
+
+.ce-editor-container .cm-lineNumbers .cm-gutterElement:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	text-align: right;
+	padding: 0 16px 0 8px;
+	min-width: 3ch;
+}
+
+/* CodeMirror assigns a negative inline z-index; opaque line backgrounds hide it.
+   Keep the translucent selection above lines, below the cursor and gutters. */
+.ce-editor-container .cm-selectionLayer:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	z-index: 1 !important;
+}
+
+/* SQL group highlighting never changes the saved document. */
+.ce-editor-container .cm-line.ce-sql-section-hover:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	background: rgba(80, 110, 160, 0.12);
+}
+
+/* Binary file warning */
+.ce-editor-binary:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+}
+
+.ce-binary-warning:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	padding: 20px 30px;
+	background: var(--background-modifier-error);
+	border-radius: 8px;
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+}
+
+/* Settings styles */
+.ce-hint:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.ce-extension-list:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	padding: 12px;
+	background: var(--background-secondary);
+	border-radius: 6px;
+	margin: 10px 0;
+}
+
+.ce-extension-list code:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	word-break: break-word;
+	line-height: 1.6;
+}
+
+.ce-status:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	margin-top: 20px;
+	padding: 12px;
+	border-radius: 6px;
+	text-align: center;
+}
+
+.ce-status.ce-enabled:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	background: rgba(var(--color-green-rgb), 0.15);
+	color: var(--text-success);
+}
+
+.ce-status.ce-disabled:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	background: var(--background-secondary);
+	color: var(--text-muted);
+}
+
+.ce-attribution:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	margin-top: 16px;
+	font-size: 0.8em;
+	color: var(--text-muted);
+}
+
+.ce-attribution a:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	color: var(--text-accent);
+}

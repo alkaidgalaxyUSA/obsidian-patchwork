@@ -1,0 +1,1 @@
+body .pw-file-readonly .pw-document-mode-action:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { opacity: 0.4; pointer-events: none; }

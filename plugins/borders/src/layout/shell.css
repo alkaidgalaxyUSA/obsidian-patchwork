@@ -1,0 +1,31 @@
+body.pw-window-actions-enabled {
+    --ribbon-width: 48.4px;
+    --pw-window-control-width: 44px;
+    --pw-header-action-size: 28px;
+    --pw-header-action-offset: 0px;
+    --pw-tab-actions-gap: 11px;
+    --pw-left-ribbon-width: 45.98px;
+    --pw-left-action-size: 31px;
+    --pw-vault-tabs-space: 50px;
+    --pw-titlebar-height: 44px;
+    --titlebar-height: var(--pw-titlebar-height);
+    --vault-profile-font-size: calc(var(--font-ui-small) - 1px);
+}
+
+body.pw-window-actions-enabled :is(.mod-root, .mod-right-split) .workspace-tabs.mod-top > .workspace-tab-header-container {
+    --header-height: var(--pw-document-header-height, 46px);
+    height: var(--header-height);
+    min-height: var(--header-height);
+}
+
+body.pw-window-actions-enabled .workspace-ribbon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 0 var(--ribbon-width);
+    width: var(--ribbon-width);
+    margin-top: var(--pw-document-header-height, var(--header-height));
+    padding: 8px 4px;
+}
+
+body.pw-window-actions-enabled .workspace-tab-header-container > .sidebar-toggle-button { display: none; }

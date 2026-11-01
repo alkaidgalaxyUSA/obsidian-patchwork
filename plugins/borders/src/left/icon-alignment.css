@@ -1,0 +1,12 @@
+/* BEGIN Patchwork pixel-aligned icons */
+/* Align Power Editor icons inside odd-height rail buttons without resizing artwork. */
+body .pw-left-panel-actions > .pw-left-sidebar-toggle > svg.svg-icon,
+body .pw-left-ribbon-shortcuts > .side-dock-ribbon-action > svg {
+    position: relative; top: -0.5px;
+}
+body .pw-left-sidebar-toggle > svg.svg-icon,
+body .pw-left-ribbon-shortcuts > .side-dock-ribbon-action > svg.svg-icon,
+body .pw-bottom-tool-actions > button > svg.svg-icon {
+    opacity: 1;
+}
+/* END Patchwork pixel-aligned icons */

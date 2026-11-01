@@ -1,0 +1,19 @@
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    --patchwork-note-background: var(--pw-workspace-card);
+}
+
+/* The document tab strip and its content form one continuous card. */
+
+
+body.pw-window-actions-enabled:not(.is-mobile) .mod-root .workspace-tabs > .pw-document-top-area > .pw-document-tab-strip:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    --tab-container-background: var(--pw-workspace-card);
+    background: var(--pw-workspace-card);
+}
+
+
+
+
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) [data-pw-module="content"]:not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    --background-primary: var(--pw-workspace-card);
+    background-color: var(--pw-workspace-card);
+}

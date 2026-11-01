@@ -1,0 +1,527 @@
+/* Keep the docked chat flush with the right sidebar and bottom edge. */
+body .workspace-split.mod-right-split .workspace-leaf-content[data-type="claudian-view"] .view-content.claudian-container:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    padding: 0;
+}
+
+body .workspace-split.mod-right-split .claudian-container:not(.claudian-zen):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    --patchwork-claudian-input-min-height: min(112px, 17.5vh);
+}
+
+/* Narrow only the conversation transcript scrollbar. */
+body .claudian-container .claudian-messages:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *))::-webkit-scrollbar {
+    width: 10px;
+}
+
+body .workspace-split.mod-right-split .claudian-container:not(.claudian-zen) .claudian-input-footer:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    width: 95%;
+    margin-top: auto;
+    margin-inline: auto;
+    margin-bottom: 20px;
+    padding-bottom: 0;
+}
+
+/* Hide linked-content labels and rows containing only those labels without changing context. */
+body .claudian-container .claudian-input-info-linked:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+body .claudian-container .claudian-input-info-row:not(:has(> :not(.claudian-input-info-linked))):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    display: none;
+}
+
+/* Enlarge both the composer shell and its editable CodeMirror surface. */
+body .workspace-split.mod-right-split .claudian-container:not(.claudian-zen) .claudian-input-wrapper .claudian-composer-editor:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+body .workspace-split.mod-right-split .claudian-container:not(.claudian-zen) .claudian-input-wrapper .claudian-composer-editor .cm-content:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    min-height: var(--patchwork-claudian-input-min-height);
+    font-size: 15px;
+}
+
+/* Highlight the border only while the message editor has focus. */
+body .workspace-split.mod-right-split .claudian-container:not(.claudian-zen) .claudian-input-wrapper:has(.claudian-composer-editor:focus-within):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    --claudian-input-wrapper-border-color: var(--color-blue);
+}
+
+/* Distinguish rendered Markdown quotes without overriding semantic callouts. */
+body .claudian-container .claudian-message-content blockquote:not(.callout):not(.callout blockquote):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    --blockquote-color: var(--color-blue);
+    --blockquote-border-color: var(--color-blue);
+    --blockquote-background-color: rgba(var(--color-blue-rgb), 0.08);
+    margin: var(--size-4-3) 0;
+    padding: var(--size-4-2) var(--size-4-3);
+    border: 0;
+    border-inline-start: 3px solid var(--blockquote-border-color);
+    border-radius: var(--radius-s);
+    background: var(--blockquote-background-color);
+    color: var(--blockquote-color);
+}
+
+/* Keep task checkboxes inside the message and their checkmarks inside the box. */
+body .claudian-container .claudian-message-content li.task-list-item:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    list-style: none;
+}
+
+body .claudian-container .claudian-message-content input.task-list-item-checkbox:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    position: relative;
+    inset: auto;
+    box-sizing: border-box;
+    width: var(--checkbox-size);
+    height: var(--checkbox-size);
+    margin-inline: 0 0.5em;
+    vertical-align: -0.15em;
+}
+
+body .claudian-container .claudian-message-content input.task-list-item-checkbox:checked:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *))::after {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    -webkit-mask-size: 80% 80%;
+    mask-size: 80% 80%;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+/* Keep code readable without changing prose, composer text, or syntax colors. */
+body .claudian-container :is(
+    .claudian-message-content pre,
+    .claudian-message-content code,
+    .claudian-tool-bash-command,
+    .claudian-tool-lines,
+    .claudian-tool-result-text,
+    .claudian-tool-script-code,
+    .claudian-tool-script-output
+):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    --font-monospace: Consolas, "Cascadia Mono", monospace;
+    font-family: var(--font-monospace);
+    font-size: 14px;
+    line-height: 1.6;
+    font-variant-ligatures: none;
+    font-feature-settings: normal;
+}
+
+/* Enlarge Markdown code blocks without changing inline code. */
+body .claudian-container .claudian-message-content pre:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+body .claudian-container .claudian-message-content pre code:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    font-size: 15px;
+}
+
+/* Use neutral gray backgrounds for sent user messages. */
+body.theme-light .claudian-container .claudian-message-user > .claudian-message-content:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    background: #e5e5e5;
+}
+
+body.theme-dark .claudian-container .claudian-message-user > .claudian-message-content:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    background: #3a3a3a;
+}
+
+.claudian-container .claudian-code-wrapper.claudian-extension-enhanced:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    position: relative;
+    padding-top: 0;
+}
+
+/* Override the header space forced by the Colorful Code Blocks snippet. */
+.claudian-container .claudian-code-wrapper.claudian-extension-enhanced > pre:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    margin-top: 0;
+    padding-top: 12px !important;
+}
+
+.claudian-container .claudian-code-wrapper.claudian-extension-enhanced > pre:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *))::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* Keep native copy handlers and language metadata, but hide their old controls. */
+.claudian-container .claudian-code-wrapper.claudian-extension-enhanced > .claudian-code-lang-label:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+.claudian-container .claudian-code-wrapper.claudian-extension-enhanced > .copy-code-button:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+.claudian-container .claudian-code-wrapper.claudian-extension-enhanced > pre > .copy-code-button:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    /* The snippet otherwise forces the native copy control to remain visible. */
+    display: none !important;
+}
+
+.claudian-container .claudian-extension-toolbar:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    /* Float on the top edge like VS Code, without reserving a header row. */
+    position: absolute;
+    top: 0;
+    inset-inline-end: 15px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+    box-sizing: border-box;
+    padding: 2px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+    z-index: 3;
+}
+
+.claudian-container .claudian-extension-enhanced:is(:hover, :focus-within) > .claudian-extension-toolbar:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.claudian-container .claudian-extension-toolbar button:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    position: static;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    margin: 0;
+    padding: 4px;
+    border: 0;
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--text-muted);
+    box-shadow: none;
+    font-family: var(--font-interface);
+    font-size: var(--font-ui-smaller);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.claudian-container .claudian-extension-toolbar button:hover:not(:disabled):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    color: var(--text-normal);
+    background: var(--background-modifier-hover);
+}
+
+.claudian-container .claudian-extension-toolbar button:disabled:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.claudian-container .claudian-extension-toolbar button:focus-visible:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+.claudian-container .claudian-extension-enhanced:focus-visible:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+
+.claudian-container .claudian-extension-toolbar svg:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+@media (hover: none) {
+    .claudian-container .claudian-extension-toolbar:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .claudian-container .claudian-extension-toolbar:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+        transition: none;
+    }
+}
+
+/* Visually separate placeholder hints from the user's actual input. */
+.claudian-container .claudian-input-wrapper .claudian-composer-editor .cm-placeholder:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+.claudian-container .claudian-input-wrapper .claudian-composer-editor:empty:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *))::before {
+    color: var(--text-faint);
+    opacity: 0.75;
+}
+
+/* Keep the permission menu beside context usage; reserve the far right for Send/Stop. */
+.claudian-container .claudian-input-toolbar.claudian-extension-composer-toolbar > .claudian-permission-toggle:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    margin-inline-start: 0;
+}
+
+.claudian-container .claudian-input-toolbar.claudian-extension-composer-toolbar > .claudian-permission-toggle > .claudian-toolbar-popover:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    inset-inline-start: 0;
+    inset-inline-end: auto;
+}
+
+/* Compact VS Code-style primary action, without changing the composer's text size. */
+.claudian-container .claudian-input-toolbar.claudian-extension-composer-toolbar > button.claudian-extension-send:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    appearance: none;
+    display: inline-flex;
+    flex: 0 0 28px;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0;
+    margin-inline-start: auto;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-normal);
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.claudian-container .claudian-input-toolbar.claudian-extension-composer-toolbar > button.claudian-extension-send[data-mode="send"]:not(:disabled):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    background: #007acc;
+    color: #fff;
+}
+
+.claudian-container .claudian-input-toolbar.claudian-extension-composer-toolbar > button.claudian-extension-send[data-mode="send"]:hover:not(:disabled):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    background: #006bb3;
+}
+
+.claudian-container .claudian-input-toolbar.claudian-extension-composer-toolbar > button.claudian-extension-send:disabled:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    background: transparent;
+    color: var(--text-faint);
+    cursor: default;
+    opacity: 1;
+}
+
+.claudian-container .claudian-input-toolbar.claudian-extension-composer-toolbar > button.claudian-extension-send[data-mode="stop"]:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+.claudian-container .claudian-input-toolbar.claudian-extension-composer-toolbar > button.claudian-extension-send[data-mode="stop"]:is(:hover, :focus, :active):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--text-normal) 12%, var(--background-primary));
+}
+
+.claudian-container .claudian-input-toolbar.claudian-extension-composer-toolbar > button.claudian-extension-send:focus-visible:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+
+.claudian-container .claudian-extension-send svg:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    width: 16px;
+    height: 16px;
+}
+
+.claudian-container .claudian-extension-send[data-mode="stop"] svg:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    width: 12px;
+    height: 12px;
+    fill: currentColor;
+}
+
+/* Suppress the session pane while an already-wide view returns to compact mode. */
+body .workspace-split.mod-right-split .view-content.claudian-container > .claudian-session-sidebar:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+body .workspace-split.mod-right-split .view-content.claudian-container > .claudian-session-resizer:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    display: none;
+}
+
+/* Keep navigation above the transcript, outside its scrolling area. */
+.claudian-container .claudian-chat-panel > .claudian-extension-top-toolbar:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: flex-end;
+    box-sizing: border-box;
+    height: 34px;
+    min-height: 34px;
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+}
+
+.claudian-container .claudian-extension-top-toolbar > .claudian-input-nav-actions:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    gap: 4px;
+}
+
+.claudian-container .claudian-extension-top-toolbar button.claudian-input-nav-btn:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    flex-basis: 28px;
+    width: 28px;
+    height: 26px;
+    border-radius: var(--radius-s);
+}
+
+.claudian-container .claudian-extension-top-toolbar button.claudian-input-nav-btn:hover:not(:disabled):not([aria-disabled="true"]):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    background: var(--background-modifier-hover);
+}
+
+/* History now opens downward from the top bar, retaining its native menu. */
+.claudian-container .claudian-extension-top-toolbar .claudian-nav-dropup-menu:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    top: 100%;
+    bottom: auto;
+    inset-inline: 4px;
+    margin-top: 4px;
+    margin-bottom: 0;
+    max-height: min(400px, var(--claudian-extension-menu-height));
+    overflow-y: auto;
+}
+
+/* Keep tabs and side-chat status in their original row; omit it when empty. */
+.claudian-container .claudian-extension-nav-relocated:not(:has(.claudian-tab-bar-container:not(.claudian-hidden), .claudian-side-chat-status:not(.claudian-hidden))):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    display: none;
+}
+
+/* Reserve a separate icon column outside the Zen input's border. */
+body .claudian-container.claudian-extension-zen:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    --claudian-extension-zen-action-width: 34px;
+}
+
+body .claudian-zen .claudian-extension-zen-composer:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    position: relative;
+    box-sizing: border-box;
+    padding-inline-end: var(--claudian-extension-zen-action-width);
+}
+
+/* Center the history drawer over the input, excluding the external action column. */
+body .claudian-container.claudian-extension-zen > .claudian-zen-drawer:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    width: calc((100% - var(--claudian-extension-zen-action-width)) * 0.9);
+    margin-inline-end: var(--claudian-extension-zen-action-width);
+}
+
+body .claudian-zen button.claudian-extension-zen-toggle:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    position: absolute;
+    inset-inline-end: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    margin: 0;
+    padding: 5px;
+    border: 0;
+    border-radius: var(--radius-s);
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    pointer-events: auto;
+    transform: translateY(-50%);
+}
+
+body .claudian-zen button.claudian-extension-zen-toggle:hover:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+body .claudian-zen button.claudian-extension-zen-toggle svg:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    width: 16px;
+    height: 16px;
+}
+
+/* Keep native offsets intact so expanding restores the original window position. */
+body .claudian-container.claudian-extension-zen:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    translate: 0 0;
+    opacity: 0.6;
+    transition: translate 180ms ease, opacity 140ms ease;
+}
+
+body .claudian-container.claudian-extension-zen:is(:hover, .claudian-extension-zen-active):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    opacity: 1;
+}
+
+body .claudian-container.claudian-extension-zen.claudian-zen--snapped:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    transition: translate 180ms ease, left 160ms ease-out, bottom 160ms ease-out, opacity 140ms ease;
+}
+
+body .claudian-container.claudian-extension-zen.claudian-extension-zen-initial:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    transition: none;
+}
+
+body .claudian-container.claudian-extension-zen-collapsed:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    left: 50%;
+    bottom: 0;
+    translate: 0 100%;
+    clip-path: inset(0 0 100% 0);
+    pointer-events: none;
+}
+
+/* The reveal zone remains inside the bottom of the editor, above any window chrome. */
+body .claudian-zen-host > .claudian-extension-zen-dock:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    position: absolute;
+    z-index: 3;
+    left: 50%;
+    bottom: 0;
+    top: auto;
+    height: 32px;
+    max-height: 32px;
+    flex: none;
+    max-width: 100%;
+    transform: translateX(-50%);
+    pointer-events: auto;
+}
+
+body .claudian-zen-host > .claudian-extension-zen-dock[hidden]:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    display: none;
+}
+
+body button.claudian-extension-zen-expand:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 166.4px;
+    max-width: calc(100% - 16px);
+    min-width: 0;
+    height: 10.08px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px 6px 0 0;
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    box-shadow: var(--shadow-s);
+    opacity: 0;
+    transform: translateX(-50%);
+    cursor: pointer;
+    transition: opacity 140ms ease;
+}
+
+body .claudian-extension-zen-dock:is(:hover, :focus-within) > button.claudian-extension-zen-expand:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    opacity: 1;
+}
+
+body button.claudian-extension-zen-expand:hover:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+body button.claudian-extension-zen-expand svg:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    width: 9px;
+    height: 7px;
+    pointer-events: none;
+}
+
+body button.claudian-extension-zen-expand:focus-visible:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+body .claudian-zen button.claudian-extension-zen-toggle:focus-visible:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+
+@media (hover: none) {
+    body button.claudian-extension-zen-expand:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body .claudian-container.claudian-extension-zen:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+body .claudian-container.claudian-extension-zen.claudian-zen--snapped:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)),
+body button.claudian-extension-zen-expand:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+        transition: none;
+    }
+}
+
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) .workspace-leaf-content[data-type="claudian-view"]:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    --background-secondary: var(--pw-workspace-card);
+    --background-primary-alt: var(--pw-workspace-card);
+    --background-secondary-alt: var(--pw-workspace-card);
+}
+
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) .workspace-leaf-content[data-type="claudian-view"] :is(
+    .claudian-container,
+    .claudian-chat-panel,
+    .claudian-messages,
+    .claudian-extension-top-toolbar
+):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    background-color: var(--pw-workspace-card);
+}
+
+
+body.theme-dark.pw-window-actions-enabled:not(.is-mobile) [data-pw-module="claudian"]:not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    --background-primary: var(--pw-workspace-card);
+    background-color: var(--pw-workspace-card);
+}
+
+[data-pw-module="claudian"] .claudian-diff-separator:not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) { border-color: var(--background-modifier-border); }

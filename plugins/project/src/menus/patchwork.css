@@ -1,0 +1,178 @@
+/*!
+ * File explorer adapted from Maple Theme v1.5.14 by subframe7536.
+ * Copyright (c) 2022 subframe7536. MIT License.
+ * Source: https://github.com/subframe7536/obsidian-theme-maple
+ * License: ../../../../LICENSE
+ */
+
+/* Youdao note-list metrics, retaining Patchwork's custom file icons and tree. */
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    --nav-item-size: 11px;
+    --pw-nav-row-background: var(--pw-explorer-selection-background, var(--background-modifier-hover));
+    --pw-nav-surface: var(--pw-left-panel-surface, var(--background-secondary));
+    --pw-nav-divider: var(--background-modifier-border);
+    --nav-item-padding: 0 8px 0 34px;
+    --nav-item-parent-padding: 0 8px 0 34px;
+    --nav-item-children-padding-start: 0px;
+    --nav-item-children-margin-start: 14px;
+    --nav-indentation-guide-width: 0px;
+    --nav-item-background-hover: transparent;
+    --nav-item-background-active: var(--pw-nav-row-background);
+    --nav-item-background-selected: var(--pw-nav-row-background);
+    --nav-item-color-active: var(--nav-item-color);
+    background-color: var(--pw-nav-surface);
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-buttons-container:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    justify-content: flex-start;
+    padding-left: var(--size-4-1);
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-files-container:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    background-color: var(--pw-nav-surface);
+    border-top: 0;
+    padding-inline-start: 0;
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    position: relative;
+    box-sizing: border-box;
+    height: 50px;
+    align-items: center;
+    border: 1px solid transparent;
+    border-top-color: var(--pw-nav-divider);
+    border-radius: 0;
+    margin-block: 0;
+    font-family: "PingFang SC", "Source Han Sans", "思源黑体", "Microsoft Yahei", "WenQuanYi Micro Hei", Arial, sans-serif;
+    font-size: var(--nav-item-size);
+    font-weight: 500;
+    line-height: 19.5px;
+    padding-block: 0;
+    text-rendering: auto;
+    -webkit-font-smoothing: auto;
+    color: var(--nav-item-color) !important;
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title-content, .nav-folder-title-content):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    position: relative;
+    top: 0;
+    line-height: 19.5px;
+    padding-right: 8px;
+    /* Keep Git status coloring from changing the menu's text palette. */
+    color: inherit !important;
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):is(:focus-within, .has-focus, .is-active, .is-selected):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    background-color: var(--pw-nav-row-background);
+    border-top-color: var(--pw-nav-surface);
+    border-radius: 4px;
+}
+
+/* Use the row background for focus; retain the rename input's focus ring. */
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title).has-focus:not(.is-being-renamed):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    box-shadow: none !important;
+}
+
+/* Mask the next row's divider, including across expanded folder boundaries. */
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):is(:focus-within, .has-focus, .is-active, .is-selected):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::after {
+    content: "";
+    position: absolute;
+    inset-inline: -1px;
+    bottom: -2px;
+    height: 1px;
+    z-index: 1;
+    background-color: var(--pw-nav-surface);
+    pointer-events: none;
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-files-container > div > .tree-item:nth-child(1 of .tree-item:not(.mod-root)) > .tree-item-self:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    border-top-color: var(--pw-nav-surface);
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title).is-being-dragged:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title).is-being-renamed:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    background-color: var(--nav-item-background-selected) !important;
+    --nav-item-color-active: var(--text-normal) !important;
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):is(.is-active, .is-selected):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    font-weight: 500;
+    color: var(--nav-item-color-active) !important;
+}
+
+/* Preserve the text and drag cursors during rename and drag operations. */
+body:not(.is-grabbing) .workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] :is(.nav-file-title, .nav-folder-title):not(.is-being-renamed):not(.is-being-dragged):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    --cursor: pointer;
+    cursor: pointer;
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .collapse-icon svg.svg-icon > *:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    display: none;
+}
+
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder-title-content:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    padding-left: var(--size-4-1);
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .nav-folder-children:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    transition: border-color var(--animation-fast);
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .nav-folder-children:hover:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    border-color: var(--background-modifier-hover);
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .collapse-icon:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    margin-inline-start: calc(var(--size-2-1) - var(--size-4-5));
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .collapse-icon svg.svg-icon:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    display: inline-block;
+    flex-shrink: 0;
+    background: url("../../../../icons/menu-folder.svg") center / contain no-repeat;
+    width: 21.6px;
+    height: 21.6px;
+    translate: 0 -1px;
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-folder .collapse-icon.is-collapsed svg.svg-icon:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    transform: none;
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::before {
+    content: "";
+    position: absolute;
+    flex-shrink: 0;
+    translate: calc(var(--size-2-1) - var(--size-4-5) - 3.6px) -50%;
+    top: calc(50% - 1px);
+    --file-icon: url("../../../../icons/menu-default.svg");
+    background: var(--file-icon) center / contain no-repeat;
+    width: 21.6px;
+    height: 21.6px;
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title[data-path$=".md" i]:where(:not([data-path$="excalidraw.md" i], [data-path$=".smm.md" i])):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::before {
+    --file-icon: url("../../../../icons/menu-markdown.svg");
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title[data-path$=".sql" i]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::before {
+    --file-icon: url("../../../../icons/menu-sql.svg");
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title[data-path$=".mdenc" i]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::before {
+    --file-icon: url("../../../../icons/menu-locked.svg");
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title:is([data-path$=".ps1" i], [data-path$=".cmd" i], [data-path$=".bat" i], [data-path$=".sh" i]):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::before {
+    --file-icon: url("../../../../icons/menu-shell.svg");
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    padding-inline-end: 0;
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title .nav-file-tag:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    margin-right: var(--size-2-3);
+    background-color: var(--background-modifier-hover);
+    color: var(--text-accent);
+    line-height: unset;
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title.is-active:not(.is-selected) .nav-file-tag:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    backdrop-filter: brightness(0.85);
+    color: var(--nav-item-color-active);
+}
+.workspace-leaf-content[data-pw-module="project"][data-type="file-explorer"][data-pw-menu-style="patchwork"] .nav-file-title-content:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+    padding-left: var(--size-4-1);
+}

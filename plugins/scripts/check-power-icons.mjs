@@ -21,7 +21,8 @@
 // Run by esbuild.config.mjs after a production build; also fine on its own.
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { homedir } from "os";
-import { join } from "path";
+import { dirname, join, resolve } from "path";
+import { fileURLToPath } from "node:url";
 import process from "process";
 
 /**
@@ -108,7 +109,7 @@ const walk = (dir) => {
 	for (const entry of readdirSync(dir)) {
 		const p = join(dir, entry);
 		if (statSync(p).isDirectory()) walk(p);
-		else if (p.endsWith(".ts") && !p.endsWith(".d.ts")) files.push(p);
+		else if (/\.(?:js|ts)$/.test(p) && !p.endsWith(".d.ts")) files.push(p);
 	}
 };
 walk(join(process.argv[2], "src"));
@@ -119,6 +120,7 @@ walk(join(process.argv[2], "src"));
 // lower case, no spaces. An icon named "icon set" is not a typo, it is a label.
 const CERTAIN = [
 	/\bsetIcon\s*\(\s*(?:[^,()]*,\s*)?"([^"]+)"/g,
+	/\biconName\s*\(\s*"([^"]+)"/g,
 	/\bicon\s*:\s*"([a-z][a-z0-9-]*)"/g,
 	/\baddRibbonIcon\s*\(\s*"([^"]+)"/g,
 ];
@@ -132,6 +134,10 @@ const MAYBE = [/"([a-z][a-z0-9]*(?:-[a-z0-9]+)+)"/g];
 
 /** Icons the plugin registers itself are its own to name. */
 const own = new Set();
+const iconRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../icons");
+for (const file of readdirSync(iconRoot)) {
+	if (/^(?:action-|code-)[a-z0-9-]+\.svg$/.test(file)) own.add(file.replace(/^action-/, "").replace(/\.svg$/, ""));
+}
 const sources = files.map((f) => [f, readFileSync(f, "utf8")]);
 for (const [, src] of sources) {
 	for (const m of src.matchAll(/\baddIcon\s*\(\s*"([^"]+)"/g)) own.add(m[1]);

@@ -1,13 +1,13 @@
 import { Notice, normalizePath } from "obsidian";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import { iconName } from "../../utils/icons";
-import { PanelFocus } from "../../utils/panel-focus";
+import { getServiceRegistry } from "../../utils/service-registry";
+import { getWindowContext } from "../../utils/windows";
 import { Repository } from "./repository";
-import { COMMIT_VIEW, CommitView } from "./commit-view";
+import { COMMIT_VIEW, CommitView } from "./commit/commit-view";
 import { addGitMenu } from "./context-menu";
 import { choose, confirm, prompt, showOutput } from "./dialogs";
 import { GitSettings } from "./settings";
-import { ExplorerStatus } from "./explorer-status";
+import { GitSnapshots } from "./status";
 import { Changelists } from "./changelists";
 import { DIFF_VIEW, DiffView } from "./diff-view";
 import { BranchActions } from "./branch-actions";
@@ -18,8 +18,11 @@ export class GitController {
         this.app = plugin.app;
         this.repository = new Repository(vaultPath);
         this.branchActions = new BranchActions(this);
-        this.explorerStatus = new ExplorerStatus(this.app, this.repository);
+        this.snapshots = new GitSnapshots(this);
+        this.ignored = [];
         this.views = new Set();
+        this.logTools = new Map();
+        this.dialogs = new Set();
         this.entries = [];
         this.selected = new Set();
         this.known = new Set();
@@ -34,21 +37,10 @@ export class GitController {
     install() {
         const plugin = this.plugin;
         plugin.registerView(COMMIT_VIEW, leaf => new CommitView(leaf, this));
-        plugin.registerView(DIFF_VIEW, leaf => new DiffView(leaf));
-        this.ribbon = plugin.addRibbonIcon(iconName("git-commit"), "Commit", () => void this.open(true));
-        this.ribbon.classList.add("pw-git-ribbon-action");
-        this.ribbon.setAttribute("data-tooltip-position", "right");
-        this.ribbon.setAttribute("role", "button");
-        this.ribbon.tabIndex = 0;
-        this.panelFocus = new PanelFocus(plugin, () => [
-            { id: COMMIT_VIEW, button: this.ribbon, leaves: this.app.workspace.getLeavesOfType(COMMIT_VIEW) },
-        ]);
-        plugin.registerDomEvent(this.ribbon, "keydown", event => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            event.preventDefault(); this.ribbon.click();
-        });
+        plugin.registerView(DIFF_VIEW, leaf => new DiffView(leaf, this));
         const commands = [
             ["open-commit", "Commit…", () => this.open()],
+            ["open-history", "Open Git history", () => this.openHistory()],
             ["refresh", "Refresh changes", () => this.refresh()],
             ["fetch", "Fetch", () => this.network("fetch")],
             ["pull", "Update Project…", () => this.network("pull")],
@@ -57,62 +49,41 @@ export class GitController {
             ["init-repo", "Initialize Repository…", () => this.initialize()],
         ];
         for (const [id, name, callback] of commands) plugin.addCommand({ id, name, callback: () => { void callback(); } });
-        plugin.registerEvent(this.app.workspace.on("file-menu", (menu, file) => this.fileMenu(menu, [file])));
-        plugin.registerEvent(this.app.workspace.on("files-menu", (menu, files) => this.fileMenu(menu, files)));
+        plugin.registerEvent(this.app.workspace.on("file-menu", (menu, file, source) => this.fileMenu(menu, [file], source)));
+        plugin.registerEvent(this.app.workspace.on("files-menu", (menu, files, source) => this.fileMenu(menu, files, source)));
         plugin.registerEvent(this.app.workspace.on("file-open", file => { if (file) this.lastOpenedFile = file; }));
-        for (const event of ["layout-change", "active-leaf-change"]) {
-            plugin.registerEvent(this.app.workspace.on(event, () => this.scheduleRibbon()));
-        }
-        const panelObserver = new this.app.workspace.containerEl.ownerDocument.defaultView.MutationObserver(records => {
-            if (records.some(record => record.target.matches(".workspace-leaf, .workspace-tab-header"))) this.scheduleRibbon();
-        });
-        panelObserver.observe(this.app.workspace.leftSplit.containerEl, { subtree: true, attributes: true, attributeFilter: ["class", "style"] });
-        plugin.register(() => panelObserver.disconnect());
         for (const event of ["create", "delete", "rename", "modify"]) {
             plugin.registerEvent(this.app.vault.on(event, () => this.scheduleRefresh()));
         }
         plugin.registerDomEvent(window, "focus", () => void this.refresh());
-        plugin.registerInterval(window.setInterval(() => { this.syncRibbon(); void this.refresh(); }, 5000));
+        plugin.registerInterval(window.setInterval(() => { void this.refresh(); }, 5000));
         plugin.addSettingTab(new GitSettings(this.app, plugin, this));
-        this.app.workspace.onLayoutReady(() => { if (!this.disposed) { this.syncRibbon(); void this.refresh(); } });
+        this.app.workspace.onLayoutReady(() => { if (!this.disposed) { void this.refresh(); } });
     }
 
-    fileMenu(menu, files) {
+    fileMenu(menu, files, source) {
+        if (source === "file-explorer-context-menu" && getServiceRegistry(this.app).get("project")) return;
         if (!files.length) return;
         try { addGitMenu(menu, this, files.map(file => this.repository.path(file.path))); }
         catch { /* Files outside the discovered repository do not have Git actions. */ }
-    }
-
-    scheduleRibbon() {
-        if (this.disposed || this.ribbonFrame !== undefined) return;
-        this.ribbonFrame = this.app.workspace.containerEl.ownerDocument.defaultView.requestAnimationFrame(() => {
-            this.ribbonFrame = undefined;
-            this.syncRibbon();
-        });
-    }
-
-    syncRibbon() {
-        if (this.disposed) return;
-        this.explorerStatus.sync();
-        const ribbon = this.app.workspace.leftRibbon;
-        const project = ribbon.containerEl.querySelector(".pw-left-sidebar-toggle");
-        if (project && project.nextElementSibling !== this.ribbon) project.after(this.ribbon);
-        else if (!project && this.ribbon.parentElement !== ribbon.ribbonItemsEl) ribbon.ribbonItemsEl.append(this.ribbon);
-        const visible = this.app.workspace.getLeavesOfType(COMMIT_VIEW).some(leaf => this.visible(leaf));
-        this.ribbon.setAttribute("aria-pressed", String(visible));
-        this.ribbon.setAttribute("aria-expanded", String(visible));
-        this.panelFocus.sync();
     }
 
     visible(leaf) {
         const dock = this.app.workspace.leftSplit;
         if (!leaf.tabHeaderEl?.classList.contains("is-active")) return false;
         const bounds = leaf.view.containerEl.getBoundingClientRect();
-        return !dock.collapsed && bounds.width > 0 && bounds.height > 0;
+        return !!dock && !dock.collapsed && bounds.width > 0 && bounds.height > 0;
     }
 
     async open(toggle = false) {
         if (this.opening || this.disposed) return;
+        const borders = getServiceRegistry(this.app).get("borders");
+        if (borders) {
+            const context = getWindowContext(this.app.workspace.containerEl.ownerDocument);
+            try { await (toggle ? borders.togglePanel("git:commit", { context, focus: true }) : borders.openPanel("git:commit", { context, focus: true })); }
+            catch (error) { new Notice(error.message); }
+            return;
+        }
         this.opening = true;
         try {
             let leaf = this.app.workspace.getLeavesOfType(COMMIT_VIEW)[0];
@@ -124,7 +95,7 @@ export class GitController {
             }
             await this.app.workspace.revealLeaf(leaf);
         } catch (error) { new Notice(error.message); }
-        finally { this.opening = false; this.syncRibbon(); }
+        finally { this.opening = false; }
     }
 
     async openSelection(paths) {
@@ -135,7 +106,7 @@ export class GitController {
     }
 
     async newChangelist() {
-        const name = await prompt(this.app, "New Changelist", "Changelist name");
+        const name = await prompt(this, "New Changelist", "Changelist name");
         if (!name || this.disposed) return;
         try {
             this.changelists.create(name);
@@ -146,7 +117,7 @@ export class GitController {
     async editChangelist(id) {
         const list = this.changelists.lists.find(list => list.id === id);
         if (!list) return;
-        const name = await prompt(this.app, "Edit Changelist", "Changelist name", list.name);
+        const name = await prompt(this, "Edit Changelist", "Changelist name", list.name);
         if (!name || this.disposed) return;
         try {
             this.changelists.rename(id, name);
@@ -156,7 +127,7 @@ export class GitController {
 
     async moveToChangelist(paths) {
         if (!paths.length) return;
-        const list = await choose(this.app, "Move to Another Changelist", this.changelists.lists);
+        const list = await choose(this, "Move to Another Changelist", this.changelists.lists);
         if (!list || this.disposed) return;
         try {
             this.changelists.move(paths, list.id);
@@ -183,7 +154,7 @@ export class GitController {
         if (!paths.length || this.busy) return;
         const files = paths.map(path => this.sourceFile(path));
         if (files.some(file => !file)) { new Notice("Only existing files inside this vault can be deleted here."); return; }
-        if (!await confirm(this.app, "Delete files", `Move ${files.length} selected file(s) to trash? Git will detect tracked files as deleted.`, "Delete")) return;
+        if (!await confirm(this, "Delete files", `Move ${files.length} selected file(s) to trash? Git will detect tracked files as deleted.`, "Delete")) return;
         await this.act(async () => {
             for (const file of files) await this.app.fileManager.trashFile(file);
         });
@@ -198,7 +169,7 @@ export class GitController {
     }
 
     async exportPatch(paths) {
-        const destination = await prompt(this.app, "Create Patch from Local Changes", "Patch path relative to the vault (existing files are not overwritten)", "changes.patch");
+        const destination = await prompt(this, "Create Patch from Local Changes", "Patch path relative to the vault (existing files are not overwritten)", "changes.patch");
         if (!destination || this.disposed) return;
         await this.act(async () => {
             if (isAbsolute(destination) || destination.replaceAll("\\", "/").split("/").includes("..") || !destination.endsWith(".patch")) {
@@ -237,29 +208,33 @@ export class GitController {
     async readStatus() {
         try {
             if (!this.ready) await this.repository.discover();
-            const [entries, branch, ignored] = await Promise.all([this.repository.status(), this.repository.branch(), this.repository.ignored()]);
+            const [entries, branch, ignored, head] = await Promise.all([this.repository.status(), this.repository.branch(), this.repository.ignored(), this.repository.head()]);
             if (this.disposed) return;
             const changed = JSON.stringify(entries) !== JSON.stringify(this.entries) || this.error || !this.ready;
+            const ignoredChanged = JSON.stringify(ignored) !== JSON.stringify(this.ignored);
             for (const entry of entries) if (!this.known.has(entry.path) && !entry.untracked) this.selected.add(entry.path);
             const paths = new Set(entries.map(entry => entry.path));
             for (const path of this.selected) if (!paths.has(path)) this.selected.delete(path);
             this.known = paths;
             this.entries = entries; this.error = ""; this.ready = true;
-            this.explorerStatus.update(entries, ignored);
-            if (this.branch !== branch || changed) {
+            this.ignored = ignored;
+            if (this.head !== head) { this.head = head; this.plugin.history?.invalidate(); }
+            if (this.branch !== branch || changed || ignoredChanged) {
                 this.branch = branch;
                 this.app.workspace.trigger("patchwork-git:refreshed");
             }
+            this.snapshots.publish();
             if (changed) this.render();
         } catch (error) {
             if (this.disposed) return;
             this.error = error.message; this.ready = false; this.render();
-            this.explorerStatus.update([]);
+            this.ignored = [];
+            this.snapshots.publish();
             this.app.workspace.trigger("patchwork-git:refreshed");
         }
     }
 
-    render() { for (const view of this.views) view.render(); }
+    render() { for (const view of this.views) view.render(); this.snapshots.publish(); }
 
     async act(action) {
         if (this.busy || this.disposed) return;
@@ -272,6 +247,7 @@ export class GitController {
             await this.refresh(true);
             this.busy = false;
             if (!this.disposed) this.render();
+            this.plugin.history?.invalidate();
         }
     }
 
@@ -279,7 +255,7 @@ export class GitController {
         if (this.busy) return;
         this.validationRequested = true;
         if (this.commitValidation()) { this.render(); return; }
-        if (this.draft.amend && !await confirm(this.app, "Amend commit", "Replace the latest commit with the checked working-tree changes and this message? If it was pushed, a normal push may be rejected; this plugin never force-pushes.", "Amend")) return;
+        if (this.draft.amend && !await confirm(this, "Amend commit", "Replace the latest commit with the checked working-tree changes and this message? If it was pushed, a normal push may be rejected; this plugin never force-pushes.", "Amend")) return;
         await this.act(async () => {
             const result = await this.repository.commit(new Set(this.selected), this.draft.message, this.draft.amend);
             this.draft = { message: "", amend: false };
@@ -313,7 +289,7 @@ export class GitController {
     }
 
     async newBranch() {
-        const name = await prompt(this.app, "New Branch", "Branch name");
+        const name = await prompt(this, "New Branch", "Branch name");
         if (!name) return;
         await this.act(async () => {
             await this.repository.run(["check-ref-format", "--branch", name]);
@@ -322,7 +298,7 @@ export class GitController {
     }
 
     async initialize() {
-        if (!await confirm(this.app, "Initialize Repository", `Create a Git repository in ${this.repository.vaultPath}?`, "Initialize")) return;
+        if (!await confirm(this, "Initialize Repository", `Create a Git repository in ${this.repository.vaultPath}?`, "Initialize")) return;
         await this.act(() => this.repository.run(["init"], { cwd: this.repository.vaultPath }));
     }
 
@@ -330,7 +306,7 @@ export class GitController {
 
     async rollback(paths) {
         if (!paths.length || this.busy) return;
-        if (!await confirm(this.app, "Rollback changes", `Discard tracked changes in ${paths.join(", ")}? Staged changes will also be discarded. Unversioned files will be kept.`, "Rollback")) return;
+        if (!await confirm(this, "Rollback changes", `Discard tracked changes in ${paths.join(", ")}? Staged changes will also be discarded. Unversioned files will be kept.`, "Rollback")) return;
         await this.act(async () => {
             const entries = await this.repository.status();
             const matches = entries.filter(entry => !entry.untracked && paths.some(path => path === "." || entry.path === path || entry.path.startsWith(`${path}/`)));
@@ -344,7 +320,7 @@ export class GitController {
 
     async shelve(paths, askTitle = false) {
         if (!paths.length) return;
-        const message = askTitle ? await prompt(this.app, "Shelve Changes", "Shelf name", this.draft.message.trim().split(/\r?\n/)[0] || "Local changes") : this.draft.message;
+        const message = askTitle ? await prompt(this, "Shelve Changes", "Shelf name", this.draft.message.trim().split(/\r?\n/)[0] || "Local changes") : this.draft.message;
         if (askTitle && !message) return;
         return this.act(async () => {
             const shelf = await this.repository.shelves.create(paths, message);
@@ -353,7 +329,7 @@ export class GitController {
     }
 
     async restoreShelf(shelf) {
-        if (!await confirm(this.app, "Restore shelved changes", `Restore ${shelf.title} (${shelf.paths.length} files)? Existing changes to those files must be committed or shelved first.`, "Restore")) return;
+        if (!await confirm(this, "Restore shelved changes", `Restore ${shelf.title} (${shelf.paths.length} files)? Existing changes to those files must be committed or shelved first.`, "Restore")) return;
         await this.act(async () => {
             const result = await this.repository.shelves.restore(shelf.id);
             new Notice(result.warning || "Shelved changes restored.", result.warning ? 15000 : 5000);
@@ -372,37 +348,50 @@ export class GitController {
                 output.push(await this.repository.run(["diff", "--no-index", "--no-ext-diff", "--no-textconv", "--no-color", "--", "/dev/null", join(this.repository.root, entry.path)], { allowedExitCodes: [1] }));
             }
             const text = output.filter(Boolean).join("\n");
-            if (!newTab) { showOutput(this.app, "Diff with Working Tree", text); return; }
+            if (!newTab) { showOutput(this, "Diff with Working Tree", text); return; }
             const leaf = this.app.workspace.getLeaf("tab");
-            await leaf.setViewState({ type: DIFF_VIEW, active: true, state: { title: paths.length === 1 ? `Diff: ${paths[0]}` : "Git Diff", text } });
+            await leaf.setViewState({ type: DIFF_VIEW, active: true, state: { title: paths.length === 1 ? `Diff: ${paths[0]}` : "Git Diff", text, paths, comparison: "working" } });
             await this.app.workspace.revealLeaf(leaf);
         });
     }
 
-    showHistory(paths) {
-        return this.act(async () => {
-            const output = await this.repository.run(["log", "-100", "--date=short", "--format=%h  %ad  %an%n%s", "--stat", "--", ...paths]);
-            showOutput(this.app, "Git History", output || "No commits for this selection.");
-        });
+    showHistory(paths) { return this.openHistory(paths); }
+
+    async openHistory(paths, document = this.app.workspace.containerEl.ownerDocument) {
+        if (this.disposed || !document.defaultView) return;
+        const borders = getServiceRegistry(this.app).get("borders");
+        if (!borders) { new Notice("Enable Borders to open Git Log."); return; }
+        try {
+            await borders.openPanel("git:log", { context: getWindowContext(document), focus: true });
+            if (this.disposed || !document.defaultView) return;
+            if (paths?.length) return await this.logTools.get(document)?.openHistory(paths);
+            return this.logTools.get(document)?.tabs.active?.pane;
+        } catch (error) { if (!this.disposed) new Notice(error.message); }
     }
 
     saveDraft() {
+        if (this.disposed) return;
         clearTimeout(this.draftTimer);
-        this.draftTimer = setTimeout(() => { void this.plugin.saveData({ ...this.draft, changelists: this.changelists.serialize() }).catch(error => new Notice(`Could not save commit draft: ${error.message}`)); }, 300);
+        this.draftTimer = setTimeout(() => { void this.persistDraft().catch(error => new Notice(`Could not save commit draft: ${error.message}`)); }, 300);
+    }
+
+    persistDraft() {
+        return this.plugin.settingsStore.saveDraft(this.draft.message, this.draft.amend, this.changelists.serialize());
     }
 
     dispose() {
+        if (this.disposed) return;
         this.disposed = true;
-        this.app.workspace.containerEl.ownerDocument.defaultView.cancelAnimationFrame(this.ribbonFrame);
         clearTimeout(this.refreshTimer); clearTimeout(this.draftTimer);
-        void this.plugin.saveData({ ...this.draft, changelists: this.changelists.serialize() }).catch(() => {});
+        void this.persistDraft().catch(error => console.error("Could not save final Git draft.", error));
         this.repository.dispose();
-        this.explorerStatus.dispose();
+        for (const dialog of this.dialogs) dialog.close();
+        this.dialogs.clear();
         this.app.workspace.detachLeavesOfType(COMMIT_VIEW);
         this.app.workspace.detachLeavesOfType(DIFF_VIEW);
-        this.ribbon.remove();
         this.views.clear();
         this.ready = false;
+        this.snapshots.dispose();
         this.app.workspace.trigger("patchwork-git:refreshed");
     }
 }

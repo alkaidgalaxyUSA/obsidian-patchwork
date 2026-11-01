@@ -1,0 +1,14 @@
+/* Callout */
+body.callout-on [data-pw-module="content"]:not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    --callout-radius: 0;
+    --callout-border-width: 0;
+    --callout-padding: 0 1em;
+}
+body.callout-on .callout:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    border-left: 0.25em solid var(--color-base-30);
+    background-color: transparent;
+    color: var(--text-muted);
+}
+body.callout-on .callout-content p:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    margin: 0.1em 0;
+}

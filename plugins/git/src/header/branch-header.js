@@ -1,0 +1,30 @@
+import { GitPopup } from "./git-popup";
+import { setIcon } from "../utils/icons";
+import { scopeModule } from "../../../utils/module-scope";
+
+/** Git renders branch state only inside its granted Borders header slot. */
+export class BranchHeader {
+    constructor(controller, host, context) {
+        this.controller = controller; this.doc = context.document;
+        this.button = host.createEl("button", { cls: "pw-vault-git", attr: { type: "button", "aria-haspopup": "menu", "aria-expanded": "false", "data-tooltip-position": "bottom" } });
+        this.scope = scopeModule(this.button, "git", { contribution: true, surface: "header" });
+        setIcon(this.button.createSpan(), "git-branch-flipped");
+        this.label = this.button.createSpan({ cls: "pw-vault-git-label" }); this.button.createSpan({ cls: "pw-header-chevron" });
+        this.button.addEventListener("click", () => {
+            if (this.menu) { this.menu.close(); return; }
+            if (this.disposed || controller.disposed) return;
+            this.menu = new GitPopup(controller, this.button, () => { this.menu = undefined; }); this.menu.open();
+        });
+        this.stop = controller.snapshots.subscribe(snapshot => this.refresh(snapshot));
+    }
+
+    refresh(snapshot) {
+        if (this.disposed) return;
+        const branch = snapshot.ready ? snapshot.branch || (snapshot.detachedCommit ? `Detached ${snapshot.detachedCommit}` : "Detached HEAD") : "Git";
+        this.label.textContent = branch;
+        this.button.setAttribute("aria-label", snapshot.error || `Git: ${branch}`);
+        void this.menu?.load();
+    }
+
+    dispose() { this.disposed = true; this.menu?.close(false); this.stop(); this.scope.dispose(); this.button.remove(); }
+}

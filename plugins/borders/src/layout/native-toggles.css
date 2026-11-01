@@ -1,0 +1,11 @@
+/*!
+ * Adapted from Maple Theme v1.5.14 by subframe7536.
+ * Copyright (c) 2022 subframe7536. MIT License.
+ * Source: https://github.com/subframe7536/obsidian-theme-maple
+ * License: ../../../../LICENSE
+ */
+body.pw-window-actions-enabled .sidebar-toggle-button,
+body.pw-window-actions-enabled :is(.mod-left-split, .mod-right-split) .workspace-tab-header-tab-list,
+body.pw-window-actions-enabled .titlebar .workspace-tab-header-tab-list {
+  display: none;
+}

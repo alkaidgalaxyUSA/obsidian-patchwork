@@ -1,19 +1,16 @@
 # Patchwork Theme
 
-Application appearance and native Markdown typography, independent of community
+Application appearance and native Markdown defaults, independent of community
 plugin enhancements. The display name and manifest remain Patchwork 0.1.0,
 requiring Obsidian 1.14.0 or later.
 
 ## Sources
 
 - `src/theme.scss`: the theme entry point, importing only local theme modules.
-- `src/app/`: settings, fonts, navigation, dialogs, file explorer, and mobile rules.
-- `../../icons/`: shared, replaceable SVG artwork for explorer, tab and plugin icons.
-- `src/editor/`: Markdown typography, tables, headings, callouts, and code colors.
-- `src/layouts/`: workspace, document tabs, and status bar.
-- `src/elements/`: standard controls, buttons, and focus styles.
+- `src/defaults/`: settings, fonts, native controls, typography tokens, navigation, dialogs, workspace/tab/status defaults and mobile rules.
+- `../../icons/`: shared SVG artwork used by native theme defaults.
 - `src/color-schemes/`: light/dark palettes and compatibility mappings.
-- `src/features/`: colorblind variants and heading underlines.
+- `src/features/`: global colorblind accessibility variants.
 - `github.theme.css`: unchanged historical GitHub Theme reference; never imported.
 - `img/` and `baseline.png`: theme reference images.
 
@@ -26,8 +23,8 @@ Editor plugin; the theme provides application appearance and native defaults.
 
 The theme combines GitHub-derived components with Maple typography, palettes,
 floating tabs, and file-explorer styles. The explorer has gold folder icons,
-file-type icons, accent-filled active rows, and hidden tree guides. Active note
-tabs use a brighter background and raised appearance in dark mode.
+file-type icons, accent-filled active rows, and hidden tree guides. Document tab appearance and tab icon mappings are owned by Content. Borders
+owns native dock geometry and replacement sidebar controls.
 
 Yuque-inspired document typography and code-card presentation now belong to
 Patchwork Editor, not a duplicated theme module. The theme keeps native component
@@ -44,24 +41,10 @@ original Style Settings namespace and non-plugin option IDs remain unchanged.
 
 ## Build and removal
 
-### File explorer icons
-
-Replace the matching SVG file in the repository-root `icons/` directory without changing its filename:
-
-| File | Usage |
-| --- | --- |
-| `menu-folder.svg` | Folders, both expanded and collapsed |
-| `menu-default.svg` | Files without a dedicated icon |
-| `menu-markdown.svg` | Markdown notes |
-| `menu-sql.svg` | SQL scripts |
-| `menu-shell.svg` | PowerShell, CMD, BAT and SH scripts |
-| `menu-locked.svg` | Encrypted Markdown notes (`.mdenc`) |
-
-Preserve a valid SVG namespace and `viewBox`. The display size is 21.6px.
-After replacing an icon, run the theme build below. The build reads these SVGs
-and embeds them in the generated CSS, so installed themes remain self-contained
-and do not depend on development paths or network resources. Source changes do
-not take effect until rebuilt and installed. Do not edit the generated data URLs.
+File-tree icon mappings and selection/menu presets belong to Project; see
+`plugins/project/README.md`. Document tab SVG mappings belong to Content.
+Rebuild the owning plugin after changing those assets. The theme retains only
+native defaults and its embedded font assets.
 
 From the repository root:
 
@@ -76,6 +59,15 @@ not generated CSS. Disabling or removing this theme does not disable companion
 plugins; their native Obsidian color fallbacks remain available.
 
 The root LICENSE contains the GitHub Theme and Maple Theme MIT attributions.
-The complete Maple Mono OFL notice is embedded in `src/app/fonts.scss` and is
+The complete Maple Mono OFL notice is embedded in `src/defaults/fonts.scss` and is
 preserved in compiled CSS. `package.psd1` records obsolete license files from
 older installations so deployment can remove those copies.
+
+## Module isolation
+
+Document tables, inline code, headings, callouts and heading underlines live in
+`plugins/content/src/styles/theme/`. Saved Style Settings IDs and body setting
+flags are retained, while the feature declarations target Content roots.
+The theme has no plugin imports and no global native status-bar hide rule.
+Borders owns the status shell while enabled; native defaults remain available
+when it is disabled. Font and Maple attribution notices remain with their sources.

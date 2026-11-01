@@ -1,0 +1,15 @@
+/*!
+ * Adapted from Maple Theme v1.5.14 by subframe7536.
+ * Copyright (c) 2022 subframe7536. MIT License.
+ * Source: https://github.com/subframe7536/obsidian-theme-maple
+ * License: ../../../../LICENSE
+ */
+body {
+  --tab-stacked-header-width: var(--setting-tab-stack-header-width, var(--header-height));
+}
+body {
+  --tab-radius: var(--size-2-3);
+}
+body.theme-light {
+  --tab-active-shadow: var(--shadow-s);
+}

@@ -1,0 +1,157 @@
+body.pw-window-actions-enabled .workspace-ribbon.mod-primary {
+    --ribbon-width: var(--pw-left-ribbon-width);
+}
+
+body.pw-window-actions-enabled .workspace-ribbon.mod-primary::before {
+    height: var(--pw-document-header-height, var(--header-height));
+}
+
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-split:is(.mod-left-split, .mod-right-split) > .workspace-leaf-resize-handle {
+    top: var(--pw-document-header-height, var(--pw-titlebar-height, 44px));
+    height: calc(100% - var(--pw-document-header-height, var(--pw-titlebar-height, 44px)));
+}
+
+body.pw-window-actions-enabled .workspace-ribbon.mod-primary > :not(.pw-left-panel-actions):not(.pw-left-sidebar-toggle):not(.pw-git-ribbon-action):not(.pw-left-ribbon-shortcuts):not(.pw-bottom-tool-actions) { display: none; }
+
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-split.mod-left-split > .workspace-sidedock-vault-profile {
+    order: -1;
+    border-top: 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+    background: var(--tab-container-background, var(--titlebar-background));
+    -webkit-app-region: drag;
+}
+
+body .pw-left-ribbon-shortcuts {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 10px;
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--background-modifier-border);
+    -webkit-app-region: no-drag;
+}
+
+body .pw-left-ribbon-shortcuts:empty { display: none; }
+
+body .pw-left-ribbon-shortcuts .side-dock-ribbon-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 var(--pw-left-action-size, 31px);
+    width: var(--pw-left-action-size, 31px);
+    height: var(--pw-left-action-size, 31px);
+    margin: 0;
+    padding: 4.5px;
+    border-radius: 4px;
+    --icon-color: color-mix(in srgb, var(--text-muted) 85%, var(--color-base-100));
+}
+
+body .pw-left-ribbon-shortcuts > .side-dock-ribbon-action > svg { width: 20px; height: 20px; }
+
+body .pw-left-ribbon-shortcuts .side-dock-ribbon-action:hover { background-color: var(--background-modifier-hover); color: var(--icon-color-hover); }
+
+body .pw-left-panel-actions > .pw-left-sidebar-toggle {
+    --icon-color: color-mix(in srgb, var(--text-muted) 85%, var(--color-base-100));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    padding: 5px;
+    border-radius: 4px;
+    box-shadow: none;
+}
+
+body .pw-left-panel-actions > .pw-left-sidebar-toggle > svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+body .pw-left-panel-actions > .pw-left-sidebar-toggle {
+    flex-basis: var(--pw-left-action-size, 31px);
+    width: var(--pw-left-action-size, 31px);
+    height: var(--pw-left-action-size, 31px);
+    box-sizing: border-box;
+    border: 0;
+    padding: 4.5px;
+}
+
+body .pw-left-panel-actions > .pw-left-sidebar-toggle[aria-pressed="true"] {
+    --icon-color: var(--text-normal);
+    --icon-color-hover: var(--text-normal);
+    color: var(--text-normal);
+    background: color-mix(in srgb, var(--background-secondary-alt) 65%, var(--color-base-100));
+}
+
+body .pw-left-panel-actions > .pw-left-sidebar-toggle[aria-pressed="true"] {
+    background: color-mix(in srgb, color-mix(in srgb, var(--background-secondary-alt) 65%, var(--color-base-100)) 40%, transparent);
+}
+
+body .pw-left-panel-actions > .pw-left-sidebar-toggle[aria-pressed="false"] { background: transparent; }
+
+body .pw-left-panel-actions > .pw-left-sidebar-toggle[aria-pressed="true"][data-pw-panel-focused="true"] {
+    --icon-color: white;
+    --icon-color-hover: white;
+    color: white;
+    background: #3574f0;
+}
+
+body .pw-left-panel-actions > .pw-left-sidebar-toggle:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-split.mod-left-split > .workspace-sidedock-vault-profile {
+    justify-content: flex-start;
+    position: relative;
+    z-index: 11;
+    gap: 0;
+    margin-left: calc(55px - var(--pw-left-ribbon-width));
+    width: calc(100% - (55px - var(--pw-left-ribbon-width)));
+    height: var(--pw-titlebar-height, 44px);
+    padding-block: 0;
+    padding-inline: 0 4px;
+}
+
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-split.mod-left-split > .workspace-sidedock-vault-profile::before {
+    content: "";
+    position: absolute;
+    right: 100%;
+    bottom: -1px;
+    width: max(0px, calc(55px - var(--pw-left-ribbon-width)));
+    border-bottom: 1px solid var(--background-modifier-border);
+    pointer-events: none;
+}
+
+body.pw-window-actions-enabled .workspace-ribbon.mod-primary > .pw-bottom-tool-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 5px;
+    margin-top: auto;
+    order: 99;
+    padding: 8px 0;
+    width: 40px;
+}
+body .pw-bottom-tool-actions > button { width: 32px; height: 32px; padding: 6px; border-radius: 4px; color: var(--icon-color); }
+body .pw-bottom-tool-actions > button > svg { width: 20px; height: 20px; }
+body .pw-bottom-tool-actions > button:is(:hover, [aria-pressed="true"]) { background: var(--background-modifier-hover); color: var(--icon-color-hover); }
+
+body .pw-left-panel-actions { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+
+/* Reuse the Git panel's horizontal separator color. */
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-ribbon.mod-primary > .pw-left-ribbon-shortcuts {
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+
+body .pw-left-panel-actions > .pw-git-ribbon-action { display: flex; align-items: center; justify-content: center; flex: 0 0 var(--pw-left-action-size, 31px); width: var(--pw-left-action-size, 31px); height: var(--pw-left-action-size, 31px); box-sizing: border-box; border: 0; margin: 0; padding: 4.5px; border-radius: 4px; --icon-color: color-mix(in srgb, var(--text-muted) 85%, var(--color-base-100)); }
+body .pw-left-panel-actions > .pw-git-ribbon-action > svg.svg-icon { width: 20px; height: 20px; position: relative; top: -0.5px; opacity: 1; }
+body .pw-git-ribbon-action[aria-pressed="false"] { background: transparent; }
+body .pw-git-ribbon-action[aria-pressed="true"] { --icon-color: var(--text-normal); --icon-color-hover: var(--text-normal); color: var(--text-normal); background: color-mix(in srgb, color-mix(in srgb, var(--background-secondary-alt) 65%, var(--color-base-100)) 40%, transparent); }
+body .pw-git-ribbon-action[aria-pressed="true"][data-pw-panel-focused="true"] { --icon-color: white; --icon-color-hover: white; color: white; background: #3574f0; }
+.pw-git-ribbon-action:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+body.pw-window-actions-enabled .workspace-tab-header-container.pw-panel-managed-header { display: none; }

@@ -1,0 +1,1638 @@
+import { describe, it, expect, beforeEach } from "vitest";
+import { WorkspaceLeaf, Notice, vaultFiles, openedFiles } from "obsidian";
+import { SourceControlView } from "../src/views/source-control-view";
+import { RepoStore } from "../src/store/repo-store";
+import type { GitService } from "../src/git/git-service";
+import type { CommitInfo, FileStatus } from "../src/types";
+import { readFileSync } from "fs";
+import { flushFrames } from "./setup";
+
+/**
+ * Mirrors the vault state from the bug report: three modified files, two
+ * untracked theme files, and two folders that are Git repositories of their
+ * own — the vault's plugin checkout and a stray `git init`.
+ */
+function screenshotStatus(): FileStatus[] {
+  return [
+    { path: ".obsidian/appearance.json", indexStatus: ".", workingStatus: "M", staged: false },
+    {
+      path: ".obsidian/community-plugins.json",
+      indexStatus: ".",
+      workingStatus: "M",
+      staged: false,
+    },
+    { path: ".obsidian/workspace.json", indexStatus: ".", workingStatus: "M", staged: false },
+    {
+      path: ".obsidian/themes/GitHub Theme/manifest.json",
+      indexStatus: " ",
+      workingStatus: "?",
+      staged: false,
+    },
+    {
+      path: ".obsidian/themes/GitHub Theme/theme.css",
+      indexStatus: " ",
+      workingStatus: "?",
+      staged: false,
+    },
+    {
+      path: ".obsidian/plugins/obsidian-git-history",
+      indexStatus: " ",
+      workingStatus: "?",
+      staged: false,
+      embeddedRepo: true,
+    },
+    {
+      path: "verification",
+      indexStatus: " ",
+      workingStatus: "?",
+      staged: false,
+      embeddedRepo: true,
+    },
+  ] as FileStatus[];
+}
+
+interface Calls {
+  release: Record<string, () => void>;
+  stageAll: number;
+  unstageAll: number;
+  discardAll: number;
+  stage: FileStatus[][];
+  /** How often the view asked git for the status, i.e. refreshed. */
+  status: number;
+  showCommitFiles: number;
+  /** Every diff the view asked the plugin to open, in order. */
+  openDiff: {
+    path: string;
+    ref?: string;
+    staged: boolean;
+    untracked: boolean;
+    renamedFrom?: string;
+  }[];
+}
+
+interface Upstream {
+  ahead: number;
+  behind: number;
+  hasUpstream: boolean;
+  hasCommits: boolean;
+}
+
+const IN_SYNC: Upstream = { ahead: 0, behind: 0, hasUpstream: true, hasCommits: true };
+
+async function mount(
+  status: FileStatus[],
+  settingsOverride: Record<string, unknown> = {},
+  upstream: Upstream = IN_SYNC,
+  gitOverride: Record<string, unknown> = {},
+) {
+  const calls: Calls = {
+    release: {},
+    stageAll: 0,
+    unstageAll: 0,
+    discardAll: 0,
+    stage: [],
+    status: 0,
+    showCommitFiles: 0,
+    openDiff: [],
+  };
+  let current = status;
+
+  const git = {
+    log: async () => [],
+    status: async () => {
+      calls.status++;
+      return current;
+    },
+    currentBranch: async () => "main",
+    getAheadBehind: async () => upstream,
+    branches: async () => [],
+    showCommitFiles: async () => {
+      calls.showCommitFiles++;
+      return [];
+    },
+    remotes: async () => [],
+    stashList: async () => [],
+    stageAll: async () => {
+      calls.stageAll++;
+      current = current.map((f) =>
+        f.embeddedRepo ? f : ({ ...f, staged: true, indexStatus: "M" } as FileStatus),
+      );
+      return { skipped: current.filter((f) => f.embeddedRepo).map((f) => f.path) };
+    },
+    unstageAll: async () => {
+      calls.unstageAll++;
+    },
+    discardAll: async () => {
+      calls.discardAll++;
+    },
+    stage: async (files: FileStatus[]) => {
+      calls.stage.push(files);
+    },
+    // Toolbar commands: each one hands back a promise the test releases, so the
+    // bar can be observed while the command is still running.
+    fetch: () => new Promise<void>((r) => (calls.release.fetch = r)),
+    pull: () => new Promise<void>((r) => (calls.release.pull = r)),
+    push: () => new Promise<void>((r) => (calls.release.push = r)),
+    stashSave: () => new Promise<void>((r) => (calls.release.stash = r)),
+    isRepo: async () => true,
+    ...gitOverride,
+  } as unknown as GitService;
+
+  const store = new RepoStore(git);
+  const settings = {
+    debounceMs: 0,
+    fileListMode: "tree",
+    compactFolders: true,
+    ...settingsOverride,
+  };
+  const plugin = {
+    store,
+    git,
+    settings,
+    openDiff: (
+      path: string,
+      ref?: string,
+      staged = false,
+      untracked = false,
+      renamedFrom?: string,
+    ) => {
+      calls.openDiff.push({ path, ref, staged, untracked, renamedFrom });
+    },
+    openGraphView: () => {},
+    saveSettings: async () => {},
+    setFileListMode: async (mode: string) => {
+      settings.fileListMode = mode;
+      view.refreshFileList();
+    },
+    refreshFileLists: () => view.refreshFileList(),
+  };
+  const view = new SourceControlView(new WorkspaceLeaf(), plugin as never);
+
+  await view.onOpen();
+  flushFrames();
+  return { view, store, git, calls, settings };
+}
+
+function findButton(root: HTMLElement, label: string): HTMLElement | null {
+  return root.querySelector(`button[aria-label="${label}"]`);
+}
+
+/** Lets the promise chain behind a render settle before asserting on the DOM. */
+const flushAsync = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+describe("SourceControlView — Stage All", () => {
+  beforeEach(() => {
+    Notice.messages = [];
+  });
+
+  it("renders the Changes section with the file count from the status", async () => {
+    const { view } = await mount(screenshotStatus());
+    const count = view.contentEl.querySelector(".gs-count-changed")?.textContent;
+    // Five stageable entries — the two nested repositories are not counted.
+    expect(count).toBe("5");
+  });
+
+  it("exposes a Stage All button in the Changes section", async () => {
+    const { view } = await mount(screenshotStatus());
+    expect(findButton(view.contentEl, "Stage all")).not.toBeNull();
+  });
+
+  it("stages everything when Stage All is clicked", async () => {
+    const { view, calls } = await mount(screenshotStatus());
+
+    const button = findButton(view.contentEl, "Stage all");
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 0));
+    flushFrames();
+
+    expect(calls.stageAll, "git.stageAll() was never reached").toBe(1);
+  });
+
+  it("stages when the click lands on the icon inside the button", async () => {
+    const { view, calls } = await mount(screenshotStatus());
+
+    // Users click the svg, not the button box.
+    const icon = findButton(view.contentEl, "Stage all")?.querySelector("svg");
+    icon?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 0));
+    flushFrames();
+
+    expect(calls.stageAll).toBe(1);
+  });
+
+  it("does not collapse the section when Stage All is clicked", async () => {
+    const { view } = await mount(screenshotStatus());
+    const tree = view.contentEl.querySelector(".gs-sc-tree") as HTMLElement;
+    expect(tree.style.display).not.toBe("none");
+
+    findButton(view.contentEl, "Stage all")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    await new Promise((r) => setTimeout(r, 0));
+    flushFrames();
+
+    const treeAfter = view.contentEl.querySelector(".gs-sc-tree") as HTMLElement;
+    expect(treeAfter?.style.display).not.toBe("none");
+  });
+
+  it("surfaces a Notice when staging fails instead of failing silently", async () => {
+    const { view, git } = await mount(screenshotStatus());
+    (git as unknown as { stageAll: () => Promise<void> }).stageAll = async () => {
+      throw new Error("fatal: Unable to create index.lock: File exists.");
+    };
+
+    findButton(view.contentEl, "Stage all")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(Notice.messages.join("\n")).toContain("index.lock");
+  });
+});
+
+describe("SourceControlView — sidebar graph", () => {
+  const commits = Array.from({ length: 120 }, (_, i) => ({
+    hash: `hash${i}`,
+    shortHash: `h${i}`,
+    parents: i < 119 ? [`hash${i + 1}`] : [],
+    message: `commit ${i}`,
+    body: "",
+    author: "Chris Oguntolu",
+    authorEmail: "c@example.com",
+    date: new Date(2026, 0, 1),
+    refs: [],
+    stats: { filesChanged: 3, additions: 10, deletions: 2 },
+  }));
+
+  async function mountGraphTab(status: FileStatus[]) {
+    const h = await mount(status);
+    (h.git as unknown as { log: () => Promise<unknown> }).log = async () => commits;
+    (h.view as unknown as { switchTab: (t: string) => void }).switchTab("graph");
+    await h.store.refreshLog({ all: true, maxCount: 500 });
+    flushFrames();
+    return h;
+  }
+
+  it("renders the commit list without a git lookup per row", async () => {
+    const h = await mountGraphTab([]);
+
+    const rows = h.view.contentEl.querySelectorAll(".gs-sg-row:not(.gs-sg-row-wc)");
+    expect(rows.length).toBe(commits.length);
+    expect(h.calls.showCommitFiles, "one git process per row is the N+1 regression").toBe(0);
+  });
+
+  it("shows the changes bar from the batched stats", async () => {
+    const h = await mountGraphTab([]);
+    const bars = h.view.contentEl.querySelectorAll(".gs-sg-changes-bar-wrap");
+    expect(bars.length).toBe(commits.length);
+  });
+
+  it("only touches the working changes row when the status changes", async () => {
+    const h = await mountGraphTab(screenshotStatus());
+
+    const rowsBefore = [...h.view.contentEl.querySelectorAll(".gs-sg-row:not(.gs-sg-row-wc)")];
+    expect(h.view.contentEl.querySelectorAll(".gs-sg-row-wc").length).toBe(1);
+
+    h.store["_status"] = screenshotStatus().slice(0, 2);
+    h.store.trigger("status-changed", h.store.status);
+    flushFrames();
+
+    const rowsAfter = [...h.view.contentEl.querySelectorAll(".gs-sg-row:not(.gs-sg-row-wc)")];
+    expect(rowsAfter.length).toBe(rowsBefore.length);
+    // Same element objects — the commit list was not rebuilt.
+    expect(rowsAfter.every((row, i) => row === rowsBefore[i])).toBe(true);
+    expect(h.view.contentEl.querySelector(".gs-sg-row-wc .gs-sg-meta")?.textContent).toContain(
+      "2 files",
+    );
+  });
+
+  it("keeps the working changes row first and removes it when clean", async () => {
+    const h = await mountGraphTab(screenshotStatus());
+    const list = h.view.contentEl.querySelector(".gs-sg-list, .gs-sg-rows") as HTMLElement | null;
+    const wc = h.view.contentEl.querySelector(".gs-sg-row-wc");
+    expect(wc).not.toBeNull();
+    if (list) expect(list.firstElementChild).toBe(wc);
+
+    h.store["_status"] = [];
+    h.store.trigger("status-changed", []);
+    flushFrames();
+
+    expect(h.view.contentEl.querySelector(".gs-sg-row-wc")).toBeNull();
+  });
+});
+
+describe("SourceControlView — loading state", () => {
+  it("does not leave the view flagged as loading once a refresh settles", async () => {
+    const { view } = await mount(screenshotStatus());
+    expect(view.contentEl.classList.contains("gs-loading")).toBe(false);
+  });
+
+  it("keeps the panel interactive while a refresh is in flight", async () => {
+    const { view, store, calls } = await mount(screenshotStatus());
+
+    // Simulate a background refresh starting (file watcher, window focus, …).
+    store.trigger("loading", true);
+    expect(view.contentEl.classList.contains("gs-loading")).toBe(true);
+
+    findButton(view.contentEl, "Stage all")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(calls.stageAll, "buttons must stay usable during a background refresh").toBe(1);
+  });
+});
+
+describe("SourceControlView — nested repositories", () => {
+  beforeEach(() => {
+    Notice.messages = [];
+  });
+
+  /** Folders render collapsed, so the rows only exist after Expand All. */
+  const filenames = (view: { contentEl: HTMLElement }): string[] => {
+    findButton(view.contentEl, "Expand all")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    flushFrames();
+    return Array.from(view.contentEl.querySelectorAll(".gs-tree-filename")).map(
+      (el) => el.textContent ?? "",
+    );
+  };
+
+  it("keeps nested repositories out of the changes list", async () => {
+    const { view } = await mount(screenshotStatus());
+    const names = filenames(view);
+    expect(names).not.toContain("verification");
+    expect(names).not.toContain("obsidian-git-history");
+    expect(names).toContain("theme.css");
+  });
+
+  it("lists them again once the setting is turned on", async () => {
+    const { view, store } = await mount(screenshotStatus());
+
+    store.showNestedRepos = true;
+    flushFrames();
+
+    expect(filenames(view)).toContain("verification");
+  });
+
+  it("offers no stage button for a nested repository", async () => {
+    const { view, store } = await mount(screenshotStatus());
+    store.showNestedRepos = true;
+    filenames(view);
+
+    const row = Array.from(view.contentEl.querySelectorAll(".gs-tree-file")).find(
+      (el) => el.querySelector(".gs-tree-filename")?.textContent === "verification",
+    );
+    expect(row, "the nested repository row is missing").toBeDefined();
+    expect(row?.querySelector('button[aria-label="Stage changes"]')).toBeNull();
+  });
+
+  it("stages the rest of the vault without mentioning what it skipped", async () => {
+    const { view, calls } = await mount(screenshotStatus());
+
+    findButton(view.contentEl, "Stage all")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    await new Promise((r) => setTimeout(r, 0));
+    flushFrames();
+
+    expect(calls.stageAll).toBe(1);
+    expect(Notice.messages).toEqual([]);
+  });
+});
+
+describe("SourceControlView — icons", () => {
+  const iconOf = (root: HTMLElement, label: string): string | undefined =>
+    findButton(root, label)
+      ?.querySelector("svg")
+      ?.getAttribute("class")
+      ?.replace("svg-icon lucide-", "");
+
+  it("uses one discard icon for all three discard actions", async () => {
+    const { view } = await mount(screenshotStatus());
+    // Expand the tree so the folder-level action exists too.
+    findButton(view.contentEl, "Expand all")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    flushFrames();
+
+    const icons = ["Discard all", "Discard all in folder", "Discard changes"].map((label) => [
+      label,
+      iconOf(view.contentEl, label),
+    ]);
+    for (const [label, icon] of icons) {
+      expect(icon, `${label} has no icon`).toBeDefined();
+    }
+    expect(
+      new Set(icons.map(([, icon]) => icon)).size,
+      `mismatched icons: ${JSON.stringify(icons)}`,
+    ).toBe(1);
+  });
+});
+
+/**
+ * The progress bar exists because push/pull/fetch take long enough to look
+ * broken without it. What matters is that it disappears again — in every case.
+ */
+describe("SourceControlView — progress bar", () => {
+  const bar = (view: { contentEl: HTMLElement }): HTMLElement =>
+    view.contentEl.querySelector(".gs-progress") as HTMLElement;
+  const active = (view: { contentEl: HTMLElement }): boolean =>
+    bar(view).classList.contains("gs-progress-active");
+  /** Longer than the minimum-visible delay, read from the view so it stays in sync. */
+  const settle = (): Promise<void> =>
+    new Promise((r) => setTimeout(r, SourceControlView.PROGRESS_MIN_MS + 50));
+
+  it("sits between the header and the tabs", async () => {
+    const { view } = await mount(screenshotStatus());
+    const children = Array.from(view.contentEl.children);
+    const header = children.findIndex((el) => el.classList.contains("gs-sc-header"));
+    const progress = children.findIndex((el) => el.classList.contains("gs-progress"));
+    const tabs = children.findIndex((el) => el.classList.contains("gs-sc-tabbar"));
+
+    expect(header).toBeGreaterThanOrEqual(0);
+    expect(progress).toBe(header + 1);
+    expect(tabs).toBe(progress + 1);
+  });
+
+  it("stays idle until a command runs", async () => {
+    const { view } = await mount(screenshotStatus());
+    expect(active(view)).toBe(false);
+  });
+
+  it("runs while a command is in flight and names it", async () => {
+    const { view, store } = await mount(screenshotStatus());
+    let release!: () => void;
+    const task = store.runTask("Pushing", () => new Promise<void>((r) => (release = r)));
+    await Promise.resolve();
+
+    expect(active(view)).toBe(true);
+    expect(bar(view).getAttribute("aria-label")).toBe("Pushing");
+    expect(bar(view).getAttribute("aria-busy")).toBe("true");
+
+    release();
+    await task;
+    await settle();
+    expect(active(view)).toBe(false);
+  });
+
+  it("clears when the command fails", async () => {
+    const { view, store } = await mount(screenshotStatus());
+    await expect(
+      store.runTask("Pushing", async () => {
+        throw new Error("no upstream");
+      }),
+    ).rejects.toThrow("no upstream");
+    await settle();
+
+    expect(active(view), "a failed push left the bar running forever").toBe(false);
+  });
+
+  it("keeps running until the last of two overlapping commands finishes", async () => {
+    const { view, store } = await mount(screenshotStatus());
+    let releaseSlow!: () => void;
+    const slow = store.runTask("Pushing", () => new Promise<void>((r) => (releaseSlow = r)));
+    const quick = store.runTask("Fetching", async () => {});
+    await quick;
+    await settle();
+
+    // The auto-fetch finished; the push has not.
+    expect(active(view), "one command ending declared the view idle").toBe(true);
+
+    releaseSlow();
+    await slow;
+    await settle();
+    expect(active(view)).toBe(false);
+  });
+
+  it("ignores the status refreshes the file watcher triggers", async () => {
+    const { view, store } = await mount(screenshotStatus());
+    await store.refresh();
+    flushFrames();
+
+    expect(active(view), "the bar blinks on every vault edit").toBe(false);
+  });
+});
+
+/**
+ * The bar is only worth anything if the toolbar buttons actually reach it.
+ * These click the real buttons instead of calling store.runTask() directly —
+ * the wiring in between is what the user sees.
+ */
+describe("SourceControlView — toolbar buttons drive the progress bar", () => {
+  const active = (view: { contentEl: HTMLElement }): boolean =>
+    (view.contentEl.querySelector(".gs-progress") as HTMLElement).classList.contains(
+      "gs-progress-active",
+    );
+
+  for (const [label, key] of [
+    ["Fetch", "fetch"],
+    ["Pull", "pull"],
+    ["Push", "push"],
+    ["Stash", "stash"],
+  ] as const) {
+    it(`shows the bar while ${label} is running`, async () => {
+      const { view, calls } = await mount(screenshotStatus());
+      expect(active(view)).toBe(false);
+
+      findButton(view.contentEl, label)?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(active(view), `clicking ${label} never reached the progress bar`).toBe(true);
+
+      // The bar sits just above the active tab's accent underline, so the
+      // label is what makes it readable as progress rather than decoration.
+      const busyLabel = view.contentEl.querySelector(".gs-sc-busy-label") as HTMLElement;
+      expect(busyLabel.classList.contains("gs-hidden"), `${label} showed no running command`).toBe(
+        false,
+      );
+      expect(busyLabel.textContent).toMatch(/…$/);
+
+      calls.release[key]?.();
+      await new Promise((r) => setTimeout(r, SourceControlView.PROGRESS_MIN_MS + 50));
+      expect(active(view), `the bar kept running after ${label} finished`).toBe(false);
+      expect(
+        (view.contentEl.querySelector(".gs-sc-busy-label") as HTMLElement).classList.contains(
+          "gs-hidden",
+        ),
+      ).toBe(true);
+    });
+  }
+});
+
+describe("SourceControlView — Open File", () => {
+  const rowFor = (view: { contentEl: HTMLElement }, name: string): HTMLElement | undefined =>
+    Array.from(view.contentEl.querySelectorAll(".gs-tree-file")).find(
+      (el) => el.querySelector(".gs-tree-filename")?.textContent === name,
+    ) as HTMLElement | undefined;
+
+  const expandAll = (view: { contentEl: HTMLElement }): void => {
+    findButton(view.contentEl, "Expand all")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    flushFrames();
+  };
+
+  beforeEach(() => {
+    vaultFiles.clear();
+    openedFiles.length = 0;
+    Notice.messages = [];
+  });
+
+  it("sits between Open Changes and the stage button", async () => {
+    vaultFiles.add("Testing.md");
+    const status = [
+      ...screenshotStatus(),
+      { path: "Testing.md", indexStatus: ".", workingStatus: "M", staged: false },
+    ] as FileStatus[];
+    const { view } = await mount(status);
+    expandAll(view);
+
+    const labels = Array.from(rowFor(view, "Testing.md")!.querySelectorAll("button")).map((b) =>
+      b.getAttribute("aria-label"),
+    );
+    expect(labels).toEqual([
+      "Open changes",
+      "Open current file",
+      "Discard changes",
+      "Stage changes",
+    ]);
+  });
+
+  it("opens the file as it currently is", async () => {
+    vaultFiles.add("Testing.md");
+    const status = [
+      ...screenshotStatus(),
+      { path: "Testing.md", indexStatus: ".", workingStatus: "M", staged: false },
+    ] as FileStatus[];
+    const { view } = await mount(status);
+    expandAll(view);
+
+    rowFor(view, "Testing.md")
+      ?.querySelector('button[aria-label="Open current file"]')
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(openedFiles).toEqual(["Testing.md"]);
+  });
+
+  it("is offered on every row, whether or not the vault holds the path", async () => {
+    // The button used to be dropped for `.obsidian/*` and deleted files, which
+    // meant it moved around between rows. It is always in the same place now;
+    // whether the file exists is answered on click, not on render.
+    const { view } = await mount(screenshotStatus());
+    expandAll(view);
+
+    const btn = rowFor(view, "workspace.json")?.querySelector(
+      'button[aria-label="Open current file"]',
+    );
+    expect(btn).not.toBe(null);
+
+    btn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+    expect(openedFiles).toEqual([]);
+  });
+
+  it("opens the note when the row itself is clicked", async () => {
+    // The row used to open the diff, which is the rarer of the two: a name in
+    // the changes list is reached for to read the note it belongs to.
+    vaultFiles.add("Testing.md");
+    const status = [
+      ...screenshotStatus(),
+      { path: "Testing.md", indexStatus: ".", workingStatus: "M", staged: false },
+    ] as FileStatus[];
+    const { view, calls } = await mount(status);
+    expandAll(view);
+
+    rowFor(view, "Testing.md")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(openedFiles).toEqual(["Testing.md"]);
+    expect(calls.openDiff).toEqual([]);
+  });
+
+  it("falls back to the diff for a path the vault does not hold", async () => {
+    // A file this change deleted, and everything under `.obsidian/`, is not in
+    // the vault index. The click still has to lead somewhere.
+    const { view, calls } = await mount(screenshotStatus());
+    expandAll(view);
+
+    rowFor(view, "workspace.json")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(openedFiles).toEqual([]);
+    expect(calls.openDiff).toEqual([
+      { path: ".obsidian/workspace.json", ref: undefined, staged: false, untracked: false },
+    ]);
+    // A config file is never a note. Saying so on every click would be noise.
+    expect(Notice.messages).toEqual([]);
+  });
+
+  it("goes straight to the changes for a file the change deleted", async () => {
+    // There is no current version of a deleted file and never will be, so the
+    // lookup is skipped rather than reported as something gone wrong.
+    const status = [
+      ...screenshotStatus(),
+      { path: "Gone.md", indexStatus: ".", workingStatus: "D", staged: false },
+    ] as FileStatus[];
+    const { view, calls } = await mount(status);
+    expandAll(view);
+
+    rowFor(view, "Gone.md")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(openedFiles).toEqual([]);
+    expect(calls.openDiff).toEqual([
+      { path: "Gone.md", ref: undefined, staged: false, untracked: false },
+    ]);
+    expect(Notice.messages).toEqual([]);
+  });
+
+  it("says so when a note the vault should hold is missing", async () => {
+    // The one case worth interrupting for: git reports a normal note, and the
+    // vault does not have it. That is not ordinary, and it used to be silent.
+    const status = [
+      ...screenshotStatus(),
+      { path: "Ghost.md", indexStatus: ".", workingStatus: "M", staged: false },
+    ] as FileStatus[];
+    const { view, calls } = await mount(status);
+    expandAll(view);
+
+    rowFor(view, "Ghost.md")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(calls.openDiff).toHaveLength(1);
+    expect(Notice.messages).toEqual([
+      '"Ghost.md" is not a note in this vault — showing its changes instead',
+    ]);
+  });
+
+  it("leaves the diff button opening the diff", async () => {
+    vaultFiles.add("Testing.md");
+    const status = [
+      ...screenshotStatus(),
+      { path: "Testing.md", indexStatus: ".", workingStatus: "M", staged: false },
+    ] as FileStatus[];
+    const { view, calls } = await mount(status);
+    expandAll(view);
+
+    rowFor(view, "Testing.md")
+      ?.querySelector('button[aria-label="Open changes"]')
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(calls.openDiff).toEqual([
+      { path: "Testing.md", ref: undefined, staged: false, untracked: false },
+    ]);
+    expect(openedFiles).toEqual([]);
+  });
+});
+
+/**
+ * A commit's file list is the second place a file name is clicked, and it has
+ * to behave like the changes list: the name opens the note, the diff button
+ * opens the diff, and a path the vault no longer holds falls back to the diff
+ * of that commit.
+ */
+describe("SourceControlView — a commit's file list", () => {
+  const commit = {
+    hash: "57ed234d9c221d077b5df7a53610e1726584b89c",
+    shortHash: "57ed234",
+    parents: [],
+    message: "Bestandsaufnahme",
+    body: "",
+    author: "Chris Oguntolu",
+    authorEmail: "chris@chrisurf.com",
+    date: new Date("2026-08-24T13:06:59Z"),
+    refs: [],
+  } as CommitInfo;
+
+  const commitFiles = [
+    { path: "Projects/Strategy/Bestandsaufnahme.md", additions: 323, deletions: 0 },
+    { path: "Projects/Strategy/Vom Preis zur Risikoentscheidung.md", additions: 1, deletions: 0 },
+  ];
+
+  const mountWithCommit = async () =>
+    mount(screenshotStatus(), {}, IN_SYNC, {
+      showCommitFiles: async () => commitFiles,
+    });
+
+  const fileRows = (view: { contentEl: HTMLElement }): HTMLElement[] =>
+    Array.from(view.contentEl.querySelectorAll(".gs-sg-changes-file-row"));
+
+  beforeEach(() => {
+    vaultFiles.clear();
+    openedFiles.length = 0;
+    Notice.messages = [];
+  });
+
+  it("opens the note when a file name is clicked", async () => {
+    vaultFiles.add("Projects/Strategy/Bestandsaufnahme.md");
+    const { view, calls } = await mountWithCommit();
+
+    view.showCommitChanges(commit);
+    await flushAsync();
+
+    fileRows(view)[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await flushAsync();
+
+    expect(openedFiles).toEqual(["Projects/Strategy/Bestandsaufnahme.md"]);
+    expect(calls.openDiff).toEqual([]);
+  });
+
+  it("falls back to that commit's diff when the vault no longer holds the file", async () => {
+    const { view, calls } = await mountWithCommit();
+
+    view.showCommitChanges(commit);
+    await flushAsync();
+
+    fileRows(view)[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await flushAsync();
+
+    expect(openedFiles).toEqual([]);
+    expect(calls.openDiff).toEqual([
+      {
+        path: "Projects/Strategy/Bestandsaufnahme.md",
+        ref: commit.hash,
+        staged: false,
+        untracked: false,
+      },
+    ]);
+  });
+
+  it("keeps the row's own diff button opening the diff", async () => {
+    vaultFiles.add("Projects/Strategy/Bestandsaufnahme.md");
+    const { view, calls } = await mountWithCommit();
+
+    view.showCommitChanges(commit);
+    await flushAsync();
+
+    fileRows(view)[0]
+      ?.querySelector('button[aria-label="View changes in this commit"]')
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await flushAsync();
+
+    expect(calls.openDiff).toEqual([
+      {
+        path: "Projects/Strategy/Bestandsaufnahme.md",
+        ref: commit.hash,
+        staged: false,
+        untracked: false,
+      },
+    ]);
+    expect(openedFiles).toEqual([]);
+  });
+});
+
+describe("progress bar timing", () => {
+  // happy-dom rewrites import.meta.url to an http URL, so read from the root.
+  const css = readFileSync("styles.css", "utf8");
+  const sweep = css.match(/animation:\s*gs-progress-slide\s+([\d.]+)s\s+(\w+[-\w]*)/);
+
+  it("moves at a constant speed", () => {
+    // ease-in-out spends the first third of the cycle creeping at the left
+    // edge, where the segment is still clipped — it reads as a stationary stub.
+    expect(sweep, "the animation is gone").not.toBeNull();
+    expect(sweep?.[2]).toBe("linear");
+  });
+
+  it("travels back and forth inside the track", () => {
+    // `alternate` from translateX(0) keeps the segment fully inside the clip at
+    // all times. A one-way sweep starts outside it and is invisible until it
+    // has crawled in, which is what made the bar look motionless.
+    expect(css).toMatch(/animation:\s*gs-progress-slide[^;]*alternate/);
+    expect(css).toMatch(
+      /@keyframes gs-progress-slide\s*\{\s*0%\s*\{\s*transform:\s*translateX\(0\)/,
+    );
+  });
+
+  it("stays up long enough for one full sweep", () => {
+    // Hiding the bar mid-sweep is what made it look motionless: the segment
+    // never got past the left edge before it disappeared again.
+    const durationMs = parseFloat(sweep![1]) * 1000;
+    expect(SourceControlView.PROGRESS_MIN_MS).toBeGreaterThanOrEqual(durationMs);
+  });
+});
+
+/**
+ * The changes list has two layouts: the folder tree, and one flat row per file
+ * the way VS Code's "View as List" does it. What matters is that the switch
+ * changes only the layout — the same files, the same actions, and a tree that
+ * comes back opened the way it was left.
+ */
+describe("SourceControlView — changes layout", () => {
+  const nested = (): FileStatus[] =>
+    [
+      { path: "Projects/cloudcourse/note.md", indexStatus: ".", workingStatus: "M", staged: false },
+      { path: ".obsidian/appearance.json", indexStatus: ".", workingStatus: "M", staged: false },
+      {
+        path: ".obsidian/themes/GitHub Theme/theme.css",
+        indexStatus: ".",
+        workingStatus: "M",
+        staged: false,
+      },
+    ] as FileStatus[];
+
+  const rows = (view: { contentEl: HTMLElement }, sel: string): HTMLElement[] =>
+    Array.from(view.contentEl.querySelectorAll(sel));
+
+  it("nests files under folders in the tree layout", async () => {
+    const { view } = await mount(nested());
+    expect(rows(view, ".gs-tree-dir").length).toBeGreaterThan(0);
+    // Only the top-level folders are open-able; no file is visible yet.
+    expect(rows(view, ".gs-tree-file")).toHaveLength(0);
+  });
+
+  it("shows every file at once in the list layout, with no folder rows", async () => {
+    const { view } = await mount(nested(), { fileListMode: "list" });
+    expect(rows(view, ".gs-tree-dir")).toHaveLength(0);
+    expect(rows(view, ".gs-tree-file")).toHaveLength(3);
+  });
+
+  it("names the folder next to each file so equal names stay apart", async () => {
+    const { view } = await mount(nested(), { fileListMode: "list" });
+    const paths = rows(view, ".gs-tree-filepath").map((el) => el.textContent);
+    expect(paths).toEqual([".obsidian", ".obsidian/themes/GitHub Theme", "Projects/cloudcourse"]);
+  });
+
+  it("sorts the flat list by path, not by file name", async () => {
+    const { view } = await mount(nested(), { fileListMode: "list" });
+    const names = rows(view, ".gs-tree-filename").map((el) => el.textContent);
+    expect(names).toEqual(["appearance.json", "theme.css", "note.md"]);
+  });
+
+  it("switches layout from the toolbar and keeps the file actions", async () => {
+    const { view } = await mount(nested());
+    findButton(view.contentEl, "View as list")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    flushFrames();
+
+    expect(rows(view, ".gs-tree-dir")).toHaveLength(0);
+    expect(rows(view, ".gs-tree-file")).toHaveLength(3);
+    expect(findButton(view.contentEl, "Stage changes")).not.toBeNull();
+  });
+
+  it("brings the tree back with the same folders open", async () => {
+    const { view } = await mount(nested());
+    findButton(view.contentEl, "Expand all")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    flushFrames();
+    const openBefore = rows(view, ".gs-tree-file").length;
+    expect(openBefore).toBe(3);
+
+    for (const label of ["View as list", "View as tree"]) {
+      const btn = findButton(view.contentEl, label);
+      expect(btn, `no "${label}" button`).not.toBeNull();
+      btn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      flushFrames();
+    }
+
+    expect(rows(view, ".gs-tree-file")).toHaveLength(openBefore);
+  });
+
+  it("offers one layout button, naming the layout it switches to", async () => {
+    const { view } = await mount(nested());
+    expect(findButton(view.contentEl, "View as list")).not.toBeNull();
+    expect(findButton(view.contentEl, "View as tree")).toBeNull();
+
+    findButton(view.contentEl, "View as list")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    flushFrames();
+
+    expect(findButton(view.contentEl, "View as tree")).not.toBeNull();
+    expect(findButton(view.contentEl, "View as list")).toBeNull();
+  });
+
+  it("offers nothing to fold while the list is flat", async () => {
+    const { view } = await mount(nested(), { fileListMode: "list" });
+    const fold =
+      findButton(view.contentEl, "Expand all") ?? findButton(view.contentEl, "Collapse all");
+    expect(fold?.classList.contains("gs-hidden")).toBe(true);
+  });
+
+  it("folds a chain of single-child folders into one row", async () => {
+    const { view } = await mount(nested());
+    const names = rows(view, ".gs-tree-dirname").map((el) => el.textContent);
+    expect(names).toContain("Projects/cloudcourse");
+  });
+
+  it("leaves the folders apart when compacting is off", async () => {
+    const { view } = await mount(nested(), { compactFolders: false });
+    const names = rows(view, ".gs-tree-dirname").map((el) => el.textContent);
+    expect(names).toContain("Projects");
+    expect(names).not.toContain("Projects/cloudcourse");
+  });
+
+  it("counts the changes in the toolbar", async () => {
+    const { view } = await mount(nested());
+    expect(view.contentEl.querySelector(".gs-sc-list-summary")?.textContent).toBe("3 changes");
+  });
+});
+
+/**
+ * Folding used to be all-or-nothing from the toolbar. Every folder carries the
+ * same control now, so a deep tree can be opened one branch at a time instead
+ * of clicking down through it level by level.
+ */
+describe("SourceControlView — folding a single folder", () => {
+  const deep = (): FileStatus[] =>
+    [
+      {
+        path: ".obsidian/plugins/history/main.js",
+        indexStatus: ".",
+        workingStatus: "M",
+        staged: false,
+      },
+      {
+        path: ".obsidian/themes/Github/theme.css",
+        indexStatus: ".",
+        workingStatus: "M",
+        staged: false,
+      },
+      { path: "Notes/todo.md", indexStatus: ".", workingStatus: "M", staged: false },
+    ] as FileStatus[];
+
+  const rows = (view: { contentEl: HTMLElement }, sel: string): HTMLElement[] =>
+    Array.from(view.contentEl.querySelectorAll(sel));
+
+  const click = (el: Element | null | undefined): void => {
+    el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    flushFrames();
+  };
+
+  const dirNames = (view: { contentEl: HTMLElement }): (string | null)[] =>
+    rows(view, ".gs-tree-dirname").map((el) => el.textContent);
+
+  it("offers the control on a folder that has folders inside it", async () => {
+    const { view } = await mount(deep(), { compactFolders: false });
+    expect(findButton(view.contentEl, "Expand all in folder")).not.toBeNull();
+  });
+
+  it("leaves it off a folder that holds nothing but files", async () => {
+    const { view } = await mount([
+      { path: "Notes/todo.md", indexStatus: ".", workingStatus: "M", staged: false },
+    ] as FileStatus[]);
+    // "Notes" is the only folder and has no folder inside it — its chevron
+    // already does everything a fold button could.
+    expect(dirNames(view)).toEqual(["Notes"]);
+    expect(findButton(view.contentEl, "Expand all in folder")).toBeNull();
+  });
+
+  it("opens every level below the folder in one click", async () => {
+    const { view } = await mount(deep(), { compactFolders: false });
+    expect(rows(view, ".gs-tree-file")).toHaveLength(0);
+
+    click(findButton(view.contentEl, "Expand all in folder"));
+
+    // .obsidian and all four folders below it, plus both their files — while
+    // the unrelated "Notes" folder stays shut.
+    expect(dirNames(view)).toEqual([
+      ".obsidian",
+      "plugins",
+      "history",
+      "themes",
+      "Github",
+      "Notes",
+    ]);
+    expect(rows(view, ".gs-tree-filename").map((el) => el.textContent)).toEqual([
+      "main.js",
+      "theme.css",
+    ]);
+  });
+
+  it("closes the whole subtree again from the same control", async () => {
+    const { view } = await mount(deep(), { compactFolders: false });
+    click(findButton(view.contentEl, "Expand all in folder"));
+    click(findButton(view.contentEl, "Collapse all in folder"));
+
+    expect(dirNames(view)).toEqual([".obsidian", "Notes"]);
+    expect(rows(view, ".gs-tree-file")).toHaveLength(0);
+  });
+
+  it("names what the click will do, not what the folder is", async () => {
+    const { view } = await mount(deep(), { compactFolders: false });
+    expect(findButton(view.contentEl, "Collapse all in folder")).toBeNull();
+    click(findButton(view.contentEl, "Expand all in folder"));
+    expect(findButton(view.contentEl, "Collapse all in folder")).not.toBeNull();
+  });
+
+  it("reaches a level the toolbar button cannot reach on its own", async () => {
+    const { view } = await mount(deep(), { compactFolders: false });
+    click(findButton(view.contentEl, "Expand all in folder"));
+
+    // "themes" is now on screen and carries a control of its own, one level
+    // deeper than the row that was clicked.
+    const themes = rows(view, ".gs-tree-dir").find(
+      (row) => row.querySelector(".gs-tree-dirname")?.textContent === "themes",
+    );
+    expect(themes?.querySelector('[aria-label="Collapse all in folder"]')).not.toBeNull();
+  });
+
+  it("folds only the folder it belongs to", async () => {
+    const { view } = await mount(deep(), { compactFolders: false });
+    click(findButton(view.contentEl, "Expand all"));
+    expect(rows(view, ".gs-tree-file")).toHaveLength(3);
+
+    const obsidian = rows(view, ".gs-tree-dir").find(
+      (row) => row.querySelector(".gs-tree-dirname")?.textContent === ".obsidian",
+    );
+    click(obsidian?.querySelector('[aria-label="Collapse all in folder"]'));
+
+    // Only todo.md is left: the other two live under the folder that was shut.
+    expect(rows(view, ".gs-tree-filename").map((el) => el.textContent)).toEqual(["todo.md"]);
+  });
+
+  it("does not also toggle the row it sits on", async () => {
+    const { view } = await mount(deep(), { compactFolders: false });
+    // A click that reached the row handler as well would undo itself and leave
+    // the subtree shut.
+    click(findButton(view.contentEl, "Expand all in folder"));
+    expect(dirNames(view)).toContain("plugins");
+  });
+});
+
+/**
+ * The primary button carries whatever step is actually next. It used to be a
+ * Commit button in every state, lit up by nothing more than text in the message
+ * field — including on a clean tree, where its only answer was a notice.
+ */
+describe("SourceControlView — the primary button", () => {
+  const button = (view: { contentEl: HTMLElement }): HTMLButtonElement =>
+    view.contentEl.querySelector(".gs-commit-main-btn") as HTMLButtonElement;
+  const label = (view: { contentEl: HTMLElement }): string =>
+    view.contentEl.querySelector(".gs-commit-btn-label")?.textContent ?? "";
+
+  it("reads Commit and stays disabled while no message is typed", async () => {
+    const { view } = await mount(screenshotStatus());
+    expect(label(view)).toBe("Commit");
+    expect(button(view).disabled).toBe(true);
+  });
+
+  it("turns into a push once the tree is clean and commits are waiting", async () => {
+    const { view } = await mount([], {}, { ...IN_SYNC, ahead: 2 });
+    expect(label(view)).toBe("Push (2)");
+    expect(button(view).disabled).toBe(false);
+  });
+
+  it("offers to publish a branch that was never pushed", async () => {
+    const { view } = await mount(
+      [],
+      {},
+      { ahead: 0, behind: 0, hasUpstream: false, hasCommits: true },
+    );
+    expect(label(view)).toBe("Publish branch");
+    expect(button(view).disabled).toBe(false);
+  });
+
+  it("greys out with nothing to commit and nothing to push", async () => {
+    const { view } = await mount([]);
+    expect(label(view)).toBe("Commit");
+    expect(button(view).disabled).toBe(true);
+  });
+
+  it("keeps committing ahead of pushing while changes are uncommitted", async () => {
+    const { view } = await mount(screenshotStatus(), {}, { ...IN_SYNC, ahead: 2 });
+    expect(label(view)).toBe("Commit");
+  });
+
+  it("follows the repository, not only the message field", async () => {
+    // The button used to be updated on keystrokes alone, so a status refresh
+    // left it saying whatever it said before.
+    const { view, store } = await mount([], {}, { ...IN_SYNC, ahead: 1 });
+    expect(label(view)).toBe("Push (1)");
+    await store.refresh();
+    flushFrames();
+    expect(label(view)).toBe("Push (1)");
+  });
+});
+
+/**
+ * A commit's file list got the changes list's two layouts and its folding
+ * controls: the same question — how do these files belong together — asked
+ * about a different set of files, so it gets the same answer.
+ */
+describe("SourceControlView — a commit's file list layout", () => {
+  const commit = {
+    hash: "57ed234d9c221d077b5df7a53610e1726584b89c",
+    shortHash: "57ed234",
+    parents: [],
+    message: "Bestandsaufnahme",
+    body: "",
+    author: "Chris Oguntolu",
+    authorEmail: "chris@chrisurf.com",
+    date: new Date("2026-08-24T13:06:59Z"),
+    refs: [],
+  } as CommitInfo;
+
+  const nestedFiles = [
+    { path: "Note.md", additions: 4, deletions: 0 },
+    { path: "folder/Nested.md", additions: 4, deletions: 0 },
+    { path: "Projects/Strategy/Plan.md", additions: 8, deletions: 0 },
+    { path: "Projects/Strategy/Deep/Sub.md", additions: 1, deletions: 0 },
+  ];
+
+  const show = async (settingsOverride: Record<string, unknown> = {}) => {
+    const h = await mount(screenshotStatus(), settingsOverride, IN_SYNC, {
+      showCommitFiles: async () => nestedFiles,
+    });
+    h.view.showCommitChanges(commit);
+    await flushAsync();
+    return h;
+  };
+
+  /** Scoped to the commit panel: the changes list has controls of its own. */
+  const panel = (view: { contentEl: HTMLElement }): HTMLElement =>
+    view.contentEl.querySelector(".gs-sg-changes-files") as HTMLElement;
+
+  const names = (view: { contentEl: HTMLElement }): (string | null)[] =>
+    Array.from(panel(view).querySelectorAll(".gs-sg-changes-file-name")).map(
+      (el) => el.textContent,
+    );
+
+  const dirs = (view: { contentEl: HTMLElement }): (string | null)[] =>
+    Array.from(panel(view).querySelectorAll(".gs-tree-dirname")).map((el) => el.textContent);
+
+  const press = (el: Element | null | undefined): void => {
+    el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    flushFrames();
+  };
+
+  const btn = (view: { contentEl: HTMLElement }, label: string): HTMLElement | null =>
+    panel(view).querySelector(`button[aria-label="${label}"]`);
+
+  beforeEach(() => {
+    vaultFiles.clear();
+    openedFiles.length = 0;
+  });
+
+  it("nests the files under their folders in the tree layout", async () => {
+    const { view } = await show({ compactFolders: false });
+    expect(dirs(view)).toEqual(["folder", "Projects", "Strategy", "Deep"]);
+    // Each row carries only its own name; the folder above it says the rest.
+    expect(names(view)).toContain("Nested.md");
+    expect(names(view)).not.toContain("folder/Nested.md");
+  });
+
+  it("shows every file at once with its full path in the list layout", async () => {
+    const { view } = await show({ fileListMode: "list" });
+    expect(dirs(view)).toEqual([]);
+    // Sorted by path, the way the flat changes list sorts.
+    expect(names(view)).toEqual([
+      "folder/Nested.md",
+      "Note.md",
+      "Projects/Strategy/Deep/Sub.md",
+      "Projects/Strategy/Plan.md",
+    ]);
+  });
+
+  it("arrives with every folder open, so a commit never hides its files", async () => {
+    const { view } = await show({ compactFolders: false });
+    expect(names(view)).toHaveLength(nestedFiles.length);
+    expect(btn(view, "Collapse all folders")).not.toBeNull();
+  });
+
+  it("switches layout from its own toolbar", async () => {
+    const { view } = await show();
+    press(btn(view, "View as list"));
+    expect(dirs(view)).toEqual([]);
+    press(btn(view, "View as tree"));
+    expect(dirs(view).length).toBeGreaterThan(0);
+  });
+
+  it("closes and reopens every folder from the toolbar", async () => {
+    const { view } = await show({ compactFolders: false });
+    press(btn(view, "Collapse all folders"));
+    expect(names(view)).toEqual(["Note.md"]);
+    expect(dirs(view)).toEqual(["folder", "Projects"]);
+
+    press(btn(view, "Expand all folders"));
+    expect(names(view)).toHaveLength(nestedFiles.length);
+  });
+
+  it("folds one folder and everything under it, at any depth", async () => {
+    const { view } = await show({ compactFolders: false });
+    const strategy = Array.from(panel(view).querySelectorAll(".gs-tree-dir")).find(
+      (row) => row.querySelector(".gs-tree-dirname")?.textContent === "Strategy",
+    );
+    press(strategy?.querySelector('button[aria-label="Collapse all in folder"]'));
+
+    // "Strategy" stays on screen but is shut, taking the "Deep" folder and
+    // both files under it with it; everything outside is untouched.
+    expect(dirs(view)).toEqual(["folder", "Projects", "Strategy"]);
+    expect(names(view)).toEqual(["Note.md", "Nested.md"]);
+  });
+
+  it("leaves the fold control off a folder that holds nothing but files", async () => {
+    const { view } = await show({ compactFolders: false });
+    const folder = Array.from(panel(view).querySelectorAll(".gs-tree-dir")).find(
+      (row) => row.querySelector(".gs-tree-dirname")?.textContent === "folder",
+    );
+    expect(folder?.querySelector('button[aria-label*="in folder"]')).toBeNull();
+  });
+
+  it("offers nothing to fold while the list is flat", async () => {
+    const { view } = await show({ fileListMode: "list" });
+    const fold = btn(view, "Expand all folders") ?? btn(view, "Collapse all folders");
+    expect(fold?.classList.contains("gs-hidden")).toBe(true);
+  });
+
+  it("folds single-child chains like the changes list does", async () => {
+    const { view } = await show();
+    expect(dirs(view)).toContain("Projects/Strategy");
+  });
+
+  it("keeps opening a file working through the tree", async () => {
+    vaultFiles.add("folder/Nested.md");
+    const { view } = await show({ compactFolders: false });
+    const row = Array.from(panel(view).querySelectorAll(".gs-sg-changes-file-row")).find(
+      (r) => r.querySelector(".gs-sg-changes-file-name")?.textContent === "Nested.md",
+    );
+    press(row);
+    await flushAsync();
+    expect(openedFiles).toEqual(["folder/Nested.md"]);
+  });
+
+  it("keeps the diff stats on the row in either layout", async () => {
+    const { view } = await show();
+    const stats = Array.from(panel(view).querySelectorAll(".gs-stat-add")).map(
+      (el) => el.textContent,
+    );
+    expect(stats).toContain("+8");
+  });
+
+  it("puts the stats last in the row here too, so the two lists stay alike", async () => {
+    const { view } = await show();
+    const row = panel(view).querySelector(".gs-sg-changes-file-row") as HTMLElement;
+    const classes = Array.from(row.children).map((el) => el.className);
+    expect(classes.indexOf("gs-sg-changes-file-stats")).toBe(classes.length - 1);
+    expect(classes.indexOf("gs-cf-actions")).toBeLessThan(
+      classes.indexOf("gs-sg-changes-file-stats"),
+    );
+  });
+
+  it("shares the layout with the changes list, so one preference covers both", async () => {
+    const { view, settings } = await show();
+    press(btn(view, "View as list"));
+    expect(settings.fileListMode).toBe("list");
+    // The changes list follows along rather than keeping a second opinion.
+    expect(view.contentEl.querySelectorAll(".gs-sc-tree .gs-tree-dir")).toHaveLength(0);
+  });
+});
+
+/**
+ * The file list that opens inside the commit list when a commit is clicked —
+ * the one that used to be a flat run of full paths in small grey monospace.
+ * It got the changes list's two layouts and both of its folding controls.
+ */
+describe("SourceControlView — the file list inside an opened commit", () => {
+  const commits = [
+    {
+      hash: "3cd96fa6556b26a1a5c9d0c435a56c7dcee61b8f",
+      shortHash: "3cd96fa",
+      parents: [],
+      message: "test",
+      body: "",
+      author: "Chris Oguntolu",
+      authorEmail: "chris@chrisurf.com",
+      date: new Date(2026, 7, 21),
+      refs: [],
+      stats: { filesChanged: 4, additions: 17, deletions: 0 },
+    },
+  ] as CommitInfo[];
+
+  const files = [
+    { path: "Note.md", additions: 4, deletions: 0 },
+    { path: "folder/Nested.md", additions: 4, deletions: 0 },
+    { path: "Projects/Strategy/Plan.md", additions: 8, deletions: 0 },
+    { path: "Projects/Strategy/Deep/Sub.md", additions: 1, deletions: 0 },
+  ];
+
+  const open = async (settingsOverride: Record<string, unknown> = {}) => {
+    const h = await mount(screenshotStatus(), settingsOverride, IN_SYNC, {
+      showCommitFiles: async () => files,
+    });
+    (h.git as unknown as { log: () => Promise<unknown> }).log = async () => commits;
+    (h.view as unknown as { switchTab: (t: string) => void }).switchTab("graph");
+    await h.store.refreshLog({ all: true, maxCount: 500 });
+    flushFrames();
+
+    const row = h.view.contentEl.querySelector(".gs-sg-row:not(.gs-sg-row-wc)") as HTMLElement;
+    row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await flushAsync();
+    return h;
+  };
+
+  /** Scoped to the opened commit: the other lists have controls of their own. */
+  const detail = (view: { contentEl: HTMLElement }): HTMLElement =>
+    view.contentEl.querySelector(".gs-sg-detail-files") as HTMLElement;
+
+  const names = (view: { contentEl: HTMLElement }): (string | null)[] =>
+    Array.from(detail(view).querySelectorAll(".gs-sg-detail-filename")).map((el) => el.textContent);
+
+  const dirs = (view: { contentEl: HTMLElement }): (string | null)[] =>
+    Array.from(detail(view).querySelectorAll(".gs-tree-dirname")).map((el) => el.textContent);
+
+  const btn = (view: { contentEl: HTMLElement }, label: string): HTMLElement | null =>
+    detail(view).querySelector(`button[aria-label="${label}"]`);
+
+  const press = (el: Element | null | undefined): void => {
+    el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    flushFrames();
+  };
+
+  beforeEach(() => {
+    vaultFiles.clear();
+    openedFiles.length = 0;
+  });
+
+  it("offers the layout toggle next to the file count", async () => {
+    const { view } = await open();
+    expect(btn(view, "View as list")).not.toBeNull();
+    expect(detail(view).querySelector(".gs-sg-detail-files-count")?.textContent).toBe(
+      "4 files changed",
+    );
+  });
+
+  it("nests the files under their folders", async () => {
+    const { view } = await open({ compactFolders: false });
+    expect(dirs(view)).toEqual(["folder", "Projects", "Strategy", "Deep"]);
+    expect(names(view)).toContain("Nested.md");
+    expect(names(view)).not.toContain("folder/Nested.md");
+  });
+
+  it("goes back to full paths in the list layout", async () => {
+    const { view } = await open({ fileListMode: "list" });
+    expect(dirs(view)).toEqual([]);
+    expect(names(view)).toEqual([
+      "folder/Nested.md",
+      "Note.md",
+      "Projects/Strategy/Deep/Sub.md",
+      "Projects/Strategy/Plan.md",
+    ]);
+  });
+
+  it("switches layout from its own toolbar", async () => {
+    const { view } = await open();
+    press(btn(view, "View as list"));
+    expect(dirs(view)).toEqual([]);
+    press(btn(view, "View as tree"));
+    expect(dirs(view).length).toBeGreaterThan(0);
+  });
+
+  it("opens with every folder expanded, hiding nothing that used to show", async () => {
+    const { view } = await open({ compactFolders: false });
+    expect(names(view)).toHaveLength(files.length);
+  });
+
+  it("closes and reopens every folder from the toolbar", async () => {
+    const { view } = await open({ compactFolders: false });
+    press(btn(view, "Collapse all folders"));
+    expect(names(view)).toEqual(["Note.md"]);
+    press(btn(view, "Expand all folders"));
+    expect(names(view)).toHaveLength(files.length);
+  });
+
+  it("folds one folder and everything under it, at any depth", async () => {
+    const { view } = await open({ compactFolders: false });
+    const strategy = Array.from(detail(view).querySelectorAll(".gs-tree-dir")).find(
+      (row) => row.querySelector(".gs-tree-dirname")?.textContent === "Strategy",
+    );
+    press(strategy?.querySelector('button[aria-label="Collapse all in folder"]'));
+    expect(dirs(view)).toEqual(["folder", "Projects", "Strategy"]);
+    expect(names(view)).toEqual(["Note.md", "Nested.md"]);
+  });
+
+  it("does not collapse the commit when a folder inside it is clicked", async () => {
+    const { view } = await open({ compactFolders: false });
+    const folder = Array.from(detail(view).querySelectorAll(".gs-tree-dir")).find(
+      (row) => row.querySelector(".gs-tree-dirname")?.textContent === "folder",
+    );
+    press(folder);
+    // The detail is still open; only the folder shut.
+    expect(view.contentEl.querySelector(".gs-sg-detail")).not.toBeNull();
+    expect(names(view)).not.toContain("Nested.md");
+  });
+
+  it("keeps opening a file working through the tree", async () => {
+    vaultFiles.add("folder/Nested.md");
+    const { view } = await open({ compactFolders: false });
+    const row = Array.from(detail(view).querySelectorAll(".gs-sg-detail-file")).find(
+      (r) => r.querySelector(".gs-sg-detail-filename")?.textContent === "Nested.md",
+    );
+    press(row);
+    await flushAsync();
+    expect(openedFiles).toEqual(["folder/Nested.md"]);
+  });
+
+  it("keeps each file's stats on its row", async () => {
+    const { view } = await open();
+    const adds = Array.from(detail(view).querySelectorAll(".gs-stat-add")).map(
+      (el) => el.textContent,
+    );
+    expect(adds).toContain("+8");
+  });
+
+  /**
+   * The stats sit at the right edge of the row, past the action buttons, so
+   * they read as a column down the list rather than jumping in and out from
+   * behind the buttons.
+   */
+  it("puts the stats last in the row, after the action buttons", async () => {
+    const { view } = await open();
+    const row = detail(view).querySelector(".gs-sg-detail-file") as HTMLElement;
+    const classes = Array.from(row.children).map((el) => el.className);
+    expect(classes.indexOf("gs-sg-detail-filestats")).toBe(classes.length - 1);
+    expect(classes.indexOf("gs-cf-actions")).toBeLessThan(
+      classes.indexOf("gs-sg-detail-filestats"),
+    );
+  });
+
+  it("folds single-child chains like the changes list does", async () => {
+    const { view } = await open();
+    expect(dirs(view)).toContain("Projects/Strategy");
+  });
+
+  it("keeps its folding to itself, apart from the Changes sub-tab's list", async () => {
+    const { view } = await open({ compactFolders: false });
+    press(btn(view, "Collapse all folders"));
+    expect(names(view)).toEqual(["Note.md"]);
+
+    // The same commit, opened in the other list, is untouched by that.
+    view.showCommitChanges(commits[0]);
+    await flushAsync();
+    const other = view.contentEl.querySelector(".gs-sg-changes-files") as HTMLElement;
+    expect(other.querySelectorAll(".gs-sg-changes-file-name")).toHaveLength(files.length);
+  });
+});
+
+/**
+ * The row and folder actions hand git the status entries themselves, so the
+ * service decides which paths an action needs. A failure used to vanish: the
+ * handler threw, nothing listened, and the list was never refreshed.
+ */
+describe("SourceControlView — file actions", () => {
+  const renamed: FileStatus = {
+    path: "moved-to.md",
+    originalPath: "moved.md",
+    indexStatus: "R",
+    workingStatus: "M",
+    staged: true,
+  };
+
+  /** The row of a file in one section; a staged rename that was edited again
+      sits in both. */
+  const rowIn = (
+    view: { contentEl: HTMLElement },
+    section: "Staged Changes" | "Changes",
+    name: string,
+  ): HTMLElement | undefined => {
+    const header = Array.from(view.contentEl.querySelectorAll(".gs-sc-section")).find((el) =>
+      el.textContent?.startsWith(section),
+    );
+    return Array.from(header?.querySelectorAll(".gs-tree-file") ?? []).find(
+      (el) => el.querySelector(".gs-tree-filename")?.textContent === name,
+    ) as HTMLElement | undefined;
+  };
+
+  const click = async (el: Element | null | undefined): Promise<void> => {
+    if (!el) throw new Error("nothing to click");
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await flushAsync();
+    flushFrames();
+  };
+
+  beforeEach(() => {
+    Notice.messages = [];
+  });
+
+  it("hands the clicked entry to stage, old path and all", async () => {
+    const { view, calls } = await mount([renamed]);
+
+    await click(
+      rowIn(view, "Changes", "moved-to.md")?.querySelector('[aria-label="Stage changes"]'),
+    );
+
+    expect(calls.stage).toEqual([[renamed]]);
+  });
+
+  it("hands every entry below a folder to stage", async () => {
+    const notes = [
+      { path: "notes/a.md", indexStatus: ".", workingStatus: "M", staged: false },
+      { path: "notes/b.md", indexStatus: ".", workingStatus: "D", staged: false },
+    ] as FileStatus[];
+    const { view, calls } = await mount(notes);
+
+    await click(view.contentEl.querySelector('[aria-label="Stage all in folder"]'));
+
+    expect(calls.stage.map((files) => files.map((f) => f.path).sort())).toEqual([
+      ["notes/a.md", "notes/b.md"],
+    ]);
+  });
+
+  it("says why staging failed, and refreshes the list anyway", async () => {
+    const { view, calls } = await mount([renamed], {}, IN_SYNC, {
+      stage: async () => {
+        throw new Error("fatal: pathspec 'moved.md' did not match any files");
+      },
+    });
+    const refreshes = calls.status;
+
+    await click(
+      rowIn(view, "Changes", "moved-to.md")?.querySelector('[aria-label="Stage changes"]'),
+    );
+
+    expect(Notice.messages.join("\n")).toContain("did not match any files");
+    expect(calls.status, "the list was not refreshed after the failure").toBeGreaterThan(refreshes);
+  });
+
+  it("says why unstaging failed", async () => {
+    const { view } = await mount([renamed], {}, IN_SYNC, {
+      unstage: async () => {
+        throw new Error("fatal: Unable to create index.lock: File exists.");
+      },
+    });
+
+    await click(
+      rowIn(view, "Staged Changes", "moved-to.md")?.querySelector('[aria-label="Unstage changes"]'),
+    );
+
+    expect(Notice.messages.join("\n")).toContain("index.lock");
+  });
+
+  it("says why discarding failed", async () => {
+    const { view } = await mount([renamed], {}, IN_SYNC, {
+      discard: async () => {
+        throw new Error("error: pathspec did not match");
+      },
+    });
+
+    await click(
+      rowIn(view, "Changes", "moved-to.md")?.querySelector('[aria-label="Discard changes"]'),
+    );
+
+    expect(Notice.messages.join("\n")).toContain("did not match");
+  });
+
+  it("opens the diff of a rename together with the path it came from", async () => {
+    const { view, calls } = await mount([renamed]);
+
+    await click(
+      rowIn(view, "Staged Changes", "moved-to.md")?.querySelector('[aria-label="Open changes"]'),
+    );
+
+    expect(calls.openDiff).toEqual([
+      {
+        path: "moved-to.md",
+        ref: undefined,
+        staged: true,
+        untracked: false,
+        renamedFrom: "moved.md",
+      },
+    ]);
+  });
+});

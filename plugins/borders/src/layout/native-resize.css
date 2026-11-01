@@ -1,0 +1,5 @@
+body .workspace-split:is(.mod-left-split, .mod-right-split) > .workspace-leaf-resize-handle {
+    top: var(--pw-document-header-height, var(--header-height));
+    bottom: 0;
+    height: auto;
+}

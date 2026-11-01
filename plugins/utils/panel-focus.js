@@ -21,8 +21,9 @@ export class PanelFocus {
     }
 
     resolve(target) {
-        return this.entries().find(({ button, leaves }) => button?.contains(target)
-            || leaves.some(leaf => leaf.view.containerEl.contains(target)))?.id;
+        return this.entries().find(({ button, leaves = [], containers = [] }) => button?.contains(target)
+            || leaves.some(leaf => leaf.view.containerEl.contains(target))
+            || containers.some(container => container.contains(target)))?.id;
     }
 
     sync(windowFocused = this.doc.hasFocus()) {

@@ -4,6 +4,7 @@ import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { resolvePluginSource } from "./source-paths.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const projectRoot = resolve(root, "..");
@@ -27,6 +28,7 @@ const { version } = JSON.parse(await readFile(join(root, "package.json"), "utf8"
 if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Invalid shared plugin version.");
 const plugins = Object.keys(config.plugins);
 const ids = new Set();
+const sources = new Map();
 for (const name of plugins) {
   const { manifest } = config.plugins[name];
   if (!/^[a-z0-9-]+$/.test(name) || !/^[a-z0-9-]+$/.test(manifest.id) || ids.has(manifest.id)) {
@@ -34,6 +36,7 @@ for (const name of plugins) {
   }
   if ("version" in manifest) throw new Error("Set the shared version only in plugins/package.json.");
   ids.add(manifest.id);
+  sources.set(name, await resolvePluginSource(root, config.plugins[name]));
 }
 const selected = process.argv.slice(2);
 if (selected.some(name => !plugins.includes(name))) throw new Error("Unknown plugin target.");
@@ -44,16 +47,17 @@ const run = (script, args = []) => {
   if (result.status !== 0) throw new Error(`Command failed: ${script}`);
 };
 
+run(join(root, "scripts/check-module-boundaries.mjs"));
 run(join(projectRoot, "node_modules/typescript/bin/tsc"), ["--project", join(root, "tsconfig.json")]);
 for (const name of targets) {
-  const source = join(root, name);
+  const { source, entry, styles } = sources.get(name);
   const definition = config.plugins[name];
   const manifest = { ...definition.manifest, version };
   const output = join(projectRoot, "dist", "plugins", manifest.id);
   await mkdir(output, { recursive: true });
   await build({
     absWorkingDir: root,
-    entryPoints: [join(source, "src/main.ts")],
+    entryPoints: [entry],
     outfile: join(output, "main.js"),
     bundle: true,
     format: "cjs",
@@ -68,12 +72,41 @@ for (const name of targets) {
     legalComments: "eof",
     sourcemap: false
   });
-  const cssEntry = join(source, definition.styles);
+  const cssEntry = styles;
   await build({ entryPoints: [cssEntry], outfile: join(output, "styles.css"), bundle: true, loader: { ".svg": "dataurl" }, logLevel: "info" });
+  if (name === "content") {
+    const css = await readFile(join(output, "styles.css"), "utf8");
+    for (const selector of [".ped-toolbar", ".pw-document-tab-strip", ".pw-document-top-area"]) {
+      if (!css.includes(selector)) throw new Error(`Power Editor stylesheet is incomplete: missing ${selector}. Check src/styles/index.css imports.`);
+    }
+  }
+  if (name === "borders") {
+    const css = await readFile(join(output, "styles.css"), "utf8");
+    for (const selector of [".pw-window-actions", ".pw-left-panel-actions", ".pw-sidebar-collapse", ".pw-bottom-tools", ".pw-status-path", "--pw-workspace-card-gap"]) {
+      if (!css.includes(selector)) throw new Error(`Borders stylesheet is incomplete: missing ${selector}.`);
+    }
+  }
+  if (name === "project") {
+    const css = await readFile(join(output, "styles.css"), "utf8");
+    for (const selector of [".pw-explorer-controls", ".pw-explorer-context-menu", ".pw-explorer-search-status", "data-pw-menu-style", "data-pw-git-status"]) {
+      if (!css.includes(selector)) throw new Error(`Project stylesheet is incomplete: missing ${selector}.`);
+    }
+  }
+  if (name === "git") {
+    const css = await readFile(join(output, "styles.css"), "utf8");
+    for (const selector of [".pw-git-commit-panel", ".pw-git-log-pane", ".pw-vault-git", ".pw-git-popup", ".pw-git-diff-view", ".pw-tool-tabs"]) {
+      if (!css.includes(selector)) throw new Error(`Git stylesheet is incomplete: missing ${selector}.`);
+    }
+  }
+  if (name === "terminal" || name === "claudian") {
+    const css = await readFile(join(output, "styles.css"), "utf8");
+    const required = name === "terminal" ? [".pw-powershell-session", ".pw-tool-tabs", "data-pw-module"] : [".claudian-container", ".claudian-extension-toolbar", "data-pw-module"];
+    for (const selector of required) if (!css.includes(selector)) throw new Error(`${name} stylesheet is incomplete: ${selector}`);
+  }
   await writeFile(join(output, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
   await cp(join(root, "../LICENSE"), join(output, "LICENSE"));
   run("--check", [join(output, "main.js")]);
-  if (name === "power-editor") {
+  if (name === "content") {
     run(join(root, "scripts/check-power-bundle.mjs"), [output]);
     run(join(root, "scripts/check-power-icons.mjs"), [source]);
   }

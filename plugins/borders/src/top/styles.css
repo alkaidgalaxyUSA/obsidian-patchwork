@@ -1,0 +1,226 @@
+/* The transparent titlebar must not cancel the drag regions beneath it. */
+body.pw-window-actions-enabled:not(.is-mobile):not(.mod-macos) .titlebar {
+    -webkit-app-region: initial;
+}
+
+body.pw-window-actions-enabled:not(.is-mobile):not(.mod-macos) .titlebar-button-container,
+body.pw-window-actions-enabled:not(.is-mobile):not(.mod-macos) .workspace-tabs.mod-top > .workspace-tab-header-container,
+body.pw-window-actions-enabled:not(.is-mobile):not(.mod-macos) .workspace-tabs.mod-top > .workspace-tab-header-container > .workspace-tab-header-container-inner {
+    -webkit-app-region: drag;
+}
+
+body.pw-window-actions-enabled:not(.is-mobile):not(.mod-macos) .titlebar-button,
+body.pw-window-actions-enabled:not(.is-mobile):not(.mod-macos) .workspace-tabs.mod-top > .workspace-tab-header-container .workspace-tab-header,
+body.pw-window-actions-enabled .workspace-sidedock-vault-profile :is(.workspace-drawer-vault-switcher, .clickable-icon) {
+    -webkit-app-region: no-drag;
+}
+
+body.pw-window-actions-enabled .workspace .mod-right-split .workspace-tab-header.pw-window-managed-tab { display: none; }
+
+body .titlebar-button-container > .pw-titlebar-shortcuts {
+    position: relative;
+    top: calc((var(--pw-document-header-height, 46px) - var(--pw-header-action-size, 28px)) / 2 + var(--pw-header-action-offset, 0px));
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 6px;
+    height: var(--pw-header-action-size, 28px);
+    pointer-events: auto;
+    -webkit-app-region: drag;
+}
+
+body .titlebar-button-container > .pw-titlebar-shortcuts:empty { display: none; }
+
+body .pw-titlebar-shortcuts .side-dock-ribbon-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 var(--pw-header-action-size, 28px);
+    width: var(--pw-header-action-size, 28px);
+    height: var(--pw-header-action-size, 28px);
+    margin: 0;
+    padding: 4px;
+    border-radius: var(--radius-s);
+    --icon-color: color-mix(in srgb, var(--text-muted) 85%, var(--color-base-100));
+}
+
+body .pw-titlebar-shortcuts > .side-dock-ribbon-action > svg { width: 20px; height: 20px; }
+
+body .pw-titlebar-shortcuts * { -webkit-app-region: no-drag; }
+
+body .pw-titlebar-shortcuts .side-dock-ribbon-action:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }
+
+body .titlebar-button-container > .pw-window-settings {
+    position: relative;
+    top: calc((var(--pw-document-header-height, 46px) - var(--pw-header-action-size, 28px)) / 2 + var(--pw-header-action-offset, 0px));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 var(--pw-header-action-size, 28px);
+    width: var(--pw-header-action-size, 28px);
+    height: var(--pw-header-action-size, 28px);
+    margin: 0;
+    margin-right: calc(3 * var(--pw-window-control-width, 44px) + (var(--pw-window-control-width, 44px) - var(--pw-header-action-size, 28px)) / 2);
+    margin-left: calc((var(--pw-window-control-width, 44px) - var(--pw-header-action-size, 28px)) / 2);
+    padding: 0;
+    border-radius: var(--radius-s);
+    pointer-events: auto;
+    -webkit-app-region: no-drag;
+}
+
+body .pw-window-settings * { -webkit-app-region: no-drag; }
+
+body .titlebar-button-container > .pw-window-settings > svg { width: 20px; height: 20px; }
+
+body .titlebar-button-container > .pw-window-settings:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
+}
+
+body.pw-window-actions-enabled .workspace .mod-root .workspace-tabs.mod-top.mod-top-right-space > .workspace-tab-header-container {
+    padding-right: var(--pw-window-tools-right-space, var(--frame-right-space));
+}
+
+/* Actual controls own their no-drag rectangles; do not cover the gaps. */
+body.pw-window-actions-enabled.is-hidden-frameless:not(.is-fullscreen):not(.mod-macos) .workspace-tabs.mod-top-right-space .workspace-tab-header-container::after {
+    content: none;
+}
+
+body .workspace-drawer-vault-switcher > .pw-vault-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 20px;
+    height: 20px;
+    border-radius: 5px;
+    background: #a354d7;
+    color: white;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+body.pw-window-actions-enabled > .pw-app-logo {
+    position: fixed;
+    left: 5px;
+    top: calc((var(--pw-document-header-height, 46px) - 20px) / 2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 20px;
+    padding: 0 10px;
+    z-index: 11;
+    cursor: default;
+    user-select: none;
+    background: transparent;
+    -webkit-app-region: drag;
+}
+
+body.pw-window-actions-enabled > .pw-app-logo .logo-full { display: block; width: 20px; height: 20px; }
+
+body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-split .workspace-sidedock-vault-profile .workspace-drawer-vault-switcher {
+    flex: 0 1 auto;
+    width: auto;
+    max-width: 65%;
+    min-width: 0;
+    gap: 6px;
+    height: calc(var(--pw-document-header-height, 46px) - 14px);
+    padding: 4px 15px;
+}
+
+body.pw-window-actions-enabled .workspace-drawer-vault-switcher-icon {
+    order: 2;
+    flex: 0 0 7px;
+    width: 7px;
+    height: 7px;
+    margin: 0 2px;
+    border-right: 1.5px solid var(--text-muted);
+    border-bottom: 1.5px solid var(--text-muted);
+    background: transparent;
+    clip-path: none;
+    transform: translateY(-2px) rotate(45deg);
+}
+
+body.pw-window-actions-enabled .workspace-drawer-vault-switcher-icon svg { display: none; }
+
+body.pw-window-actions-enabled .workspace-drawer-vault-name {
+    color: rgb(from var(--text-normal) calc(r * 1.1) calc(g * 1.1) calc(b * 1.1) / alpha);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.pw-window-actions-enabled .workspace-drawer-vault-actions { margin-inline-start: auto; }
+
+body .mod-root .pw-document-tab-strip.pw-tab-actions-offset { z-index: 3; }
+
+body .mod-root .pw-document-tab-strip > .pw-tab-action-slot {
+    flex: 0 0 auto;
+    pointer-events: none;
+}
+
+body .mod-root .pw-document-tab-strip > .pw-tab-action-slot[hidden] { display: none; }
+
+body .mod-root .pw-document-tab-strip.pw-tab-actions-offset > .pw-tab-action-positioned {
+    position: fixed;
+    left: var(--pw-tab-action-left);
+    top: var(--pw-tab-action-top);
+    height: var(--pw-tab-action-height);
+    margin: 0;
+    padding: 5px;
+    align-items: center;
+    justify-content: center;
+    -webkit-app-region: no-drag;
+}
+
+/* Keep the Settings title row roomy independently of the active theme. */
+body.is-popout-modal:has(> .mod-settings) { --titlebar-height: 44px !important; }
+
+body.is-popout-modal:has(> .mod-settings) .titlebar-button:is(.mod-minimize, .mod-maximize) { display: none; }
+
+body.pw-window-actions-enabled .workspace-drawer-vault-actions .clickable-icon:has(svg.help) { display: none; }
+
+body .pw-header-slot,
+body .pw-header-slot > [data-pw-owner] { display: flex; min-width: 0; align-items: center; }
+
+body .pw-settings-contribution-row { display: block; }
+
+body .pw-settings-contribution-row > :is(.setting-item-info, .setting-item-control) { display: none; }
+
+body .pw-settings-contribution { width: 100%; }
+
+body .pw-window-settings > svg.svg-icon { opacity: 1; }
+
+body .pw-header-slot { margin-left: 20px; }
+
+body.pw-window-actions-enabled:has(:is(.workspace-drawer-vault-switcher, .pw-header-slot [data-pw-owner]):is(:hover, :focus-within)) > .tooltip {
+    top: calc(var(--pw-document-header-height, 46px) + 6px) !important;
+    width: max-content !important;
+    height: auto !important;
+    max-width: calc(100vw - 16px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Native document group wrapper geometry. */
+body .mod-root .pw-document-titlebar-space { display: none; }
+body .mod-root .workspace-tabs.mod-top > .pw-document-titlebar-space {
+    display: block;
+    flex: 0 0 var(--pw-document-header-height, 44px);
+    height: var(--pw-document-header-height, 44px);
+    background: var(--titlebar-background);
+    -webkit-app-region: drag;
+}
+body .mod-root .pw-document-top-area {
+    display: flex;
+    min-width: 0;
+    flex: 0 0 41px;
+    height: 41px;
+    min-height: 41px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    -webkit-app-region: no-drag;
+}
