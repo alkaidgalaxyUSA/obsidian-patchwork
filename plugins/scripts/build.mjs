@@ -16,6 +16,12 @@ for (const file of (await readdir(iconRoot)).sort()) {
   if (key in iconAssets) throw new Error(`Duplicate icon key: ${key}`);
   iconAssets[key] = await readFile(join(iconRoot, file), "utf8");
 }
+iconAssets["idea/expui/general/inspections/inspectionsEye_dark.svg"] = await readFile(join(iconRoot, "idea/expui/general/inspections/inspectionsEye_dark.svg"), "utf8");
+iconAssets["idea/expui/general/edit_dark.svg"] = await readFile(join(iconRoot, "idea/expui/general/edit_dark.svg"), "utf8");
+iconAssets["idea/expui/fileTypes/ignored_dark.svg"] = await readFile(join(iconRoot, "idea/expui/fileTypes/ignored_dark.svg"), "utf8");
+for (const file of ["idea-expui-vcs-push_dark.svg", "idea-expui-vcs-merge_dark.svg"]) {
+  iconAssets[file] = await readFile(join(iconRoot, file), "utf8");
+}
 const iconPlugin = {
   name: "patchwork-icons",
   setup(build) {

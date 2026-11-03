@@ -30,6 +30,7 @@ export class GitController {
         this.changelists = new Changelists(data?.changelists);
         this.draft = { message: typeof data?.message === "string" ? data.message : "", amend: !!data?.amend };
         this.busy = false;
+        this.stashCount = 0;
         this.ready = false;
         this.lastOpenedFile = this.app.workspace.getActiveFile() ?? this.app.workspace.getMostRecentLeaf()?.view.file;
     }
@@ -208,8 +209,9 @@ export class GitController {
     async readStatus() {
         try {
             if (!this.ready) await this.repository.discover();
-            const [entries, branch, ignored, head] = await Promise.all([this.repository.status(), this.repository.branch(), this.repository.ignored(), this.repository.head()]);
+            const [entries, branch, ignored, head, stashes] = await Promise.all([this.repository.status(), this.repository.branch(), this.repository.ignored(), this.repository.head(), this.repository.run(["stash", "list", "--format=%gd"])]);
             if (this.disposed) return;
+            this.stashCount = stashes.trim().split("\n").filter(Boolean).length;
             const changed = JSON.stringify(entries) !== JSON.stringify(this.entries) || this.error || !this.ready;
             const ignoredChanged = JSON.stringify(ignored) !== JSON.stringify(this.ignored);
             for (const entry of entries) if (!this.known.has(entry.path) && !entry.untracked) this.selected.add(entry.path);
@@ -244,9 +246,9 @@ export class GitController {
             return await this.repository.mutate(action);
         } catch (error) { new Notice(`Git: ${error.message}`, 10000); }
         finally {
-            await this.refresh(true);
             this.busy = false;
             if (!this.disposed) this.render();
+            await this.refresh(true);
             this.plugin.history?.invalidate();
         }
     }
@@ -336,9 +338,9 @@ export class GitController {
         });
     }
 
-    showDiff(paths, newTab = false) {
-        if (!paths.length) return;
-        return this.act(async () => {
+    async showDiff(paths, newTab = false) {
+        if (!paths.length || this.disposed || this.busy) return;
+        try {
             const head = await this.repository.head();
             const args = ["diff", "--no-ext-diff", "--no-textconv", "--no-color", ...(head ? ["HEAD"] : ["--cached"]), "--", ...paths];
             const output = [await this.repository.run(args)];
@@ -348,11 +350,12 @@ export class GitController {
                 output.push(await this.repository.run(["diff", "--no-index", "--no-ext-diff", "--no-textconv", "--no-color", "--", "/dev/null", join(this.repository.root, entry.path)], { allowedExitCodes: [1] }));
             }
             const text = output.filter(Boolean).join("\n");
+            if (this.disposed) return;
             if (!newTab) { showOutput(this, "Diff with Working Tree", text); return; }
-            const leaf = this.app.workspace.getLeaf("tab");
+            const leaf = this.app.workspace.getLeaf(newTab === "window" ? "window" : "tab");
             await leaf.setViewState({ type: DIFF_VIEW, active: true, state: { title: paths.length === 1 ? `Diff: ${paths[0]}` : "Git Diff", text, paths, comparison: "working" } });
             await this.app.workspace.revealLeaf(leaf);
-        });
+        } catch (error) { if (!this.disposed) new Notice(`Git: ${error.message}`, 10000); }
     }
 
     showHistory(paths) { return this.openHistory(paths); }

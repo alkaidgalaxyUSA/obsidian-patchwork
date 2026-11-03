@@ -59,12 +59,6 @@
     "plugins/content/src/main.ts",
     "plugins/project/src/explorer/explorer-file-actions.js"
   ],
-  "action-branch-bookmark.svg": [
-    "plugins/git/src/log/git-log-pane.js"
-  ],
-  "action-branch-favorite.svg": [
-    "plugins/git/src/log/git-log-pane.js"
-  ],
   "action-branch-fetch.svg": [
     "plugins/git/src/log/git-log-pane.js"
   ],
@@ -126,12 +120,10 @@
   ],
   "action-chevron-up.svg": [],
   "action-chevrons-down-up.svg": [
-    "plugins/content/src/editor/utils/block-formats.js",
-    "plugins/project/src/explorer/explorer-actions.js"
+    "plugins/content/src/editor/utils/block-formats.js"
   ],
   "action-chevrons-up-down.svg": [
-    "plugins/content/src/editor/note-code-editor.js",
-    "plugins/project/src/explorer/explorer-actions.js"
+    "plugins/content/src/editor/note-code-editor.js"
   ],
   "action-circle-check.svg": [
     "plugins/content/src/editor/note-code-menus.js"
@@ -260,11 +252,8 @@
   "action-eye-closed.svg": [
     "plugins/content/src/editor/note-outline.js"
   ],
-  "action-eye-expand.svg": [
+  "idea/expui/general/inspections/inspectionsEye_dark.svg": [
     "plugins/git/src/commit/commit-view.js"
-  ],
-  "action-eye.svg": [
-    "plugins/content/src/editor/note-outline.js"
   ],
   "action-file-code.svg": [
     "plugins/content/code-editor/src/view.ts",
@@ -309,7 +298,8 @@
     "plugins/git/src/integrations/borders.ts"
   ],
   "action-git-collapse-all.svg": [
-    "plugins/git/src/commit/commit-view.js"
+    "plugins/git/src/commit/commit-view.js",
+    "plugins/project/src/explorer/explorer-actions.js"
   ],
   "action-git-commit.svg": [
     "plugins/git/src/context-menu.js",
@@ -320,7 +310,8 @@
     "plugins/git/src/header/git-popup.js"
   ],
   "action-git-expand-all.svg": [
-    "plugins/git/src/commit/commit-view.js"
+    "plugins/git/src/commit/commit-view.js",
+    "plugins/project/src/explorer/explorer-actions.js"
   ],
   "action-git-rollback.svg": [
     "plugins/git/src/commit/commit-context-menu.js",
@@ -829,5 +820,90 @@
   ],
   "tab-video.svg": [
     "plugins/content/src/styles/theme/tabs.css"
+  ],
+  "action-file-c.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-config.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-cpp.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-csharp.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-css.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-csv.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-docker.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-editorconfig.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-gitignore.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-gradle.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-groovy.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-h.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-html.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-java.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-javascript.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-json.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-markdown.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-patch.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-powershell.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-sql.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-terraform.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-text.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-toml.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-typescript.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-vue.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-xml.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-file-yaml.svg": [
+    "plugins/utils/file-icons.js"
+  ],
+  "action-project-module.svg": [
+    "plugins/git/src/log/changed-files.js",
+    "plugins/project/src/explorer/explorer-tree.js"
   ]
 }

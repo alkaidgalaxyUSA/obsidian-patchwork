@@ -30,7 +30,9 @@ plugins/
   manifest.json             Central plugin manifests and runtime packaging configuration
   scripts/                  Unified TypeScript build and deployment
 scripts/
-  Build-Install.ps1         Compile, package, install and reload in one command
+  Build-Install.ps1         Build, install and reload all plugins sequentially
+  Install.ps1               Per-plugin functions and deployment transaction
+  Reload-Plugins.ps1        Build, install and reload selected plugins
 LICENSE                     Consolidated MIT attributions
 ```
 
@@ -42,7 +44,7 @@ an Obsidian-compatible manifest for each plugin in `dist/plugins/<id>/`, using
 the shared version. Per-plugin source manifests, `package.psd1`, `versions.json`,
 and the legacy deployment guard are no longer used. The theme retains its own
 manifest and packaging metadata. No plugin imports a sibling plugin.
-The single root script contains its packaging and installation helpers. The theme
+Install.ps1 contains the shared packaging and installation helpers. The theme
 has no imports from `plugins/`. Shared appearance values use standard Obsidian
 CSS variables, with optional Patchwork values and native fallbacks.
 
@@ -141,12 +143,13 @@ Run the script from the repository root:
 & .\scripts\Build-Install.ps1
 ```
 
-It compiles all configured plugins and themes, packages them, installs them into
-the configured vault, and reloads the plugins. No separate installation command is needed.
+It calls each plugin installer sequentially: Borders, Project, Content, Git, Terminal,
+Claudian Extension, then Code Editor. Each plugin is compiled, installed and reloaded
+before the next starts. Themes are installed only with `-ThemeOnly`.
 The npm entry point performs the same workflow:
 
 ```powershell
-# From the repository root: build and install every plugin and theme.
+# From the repository root: build, install and reload every plugin.
 npm run build
 
 # From the plugins directory: build and install every plugin, without themes.
@@ -155,7 +158,7 @@ npm run build
 # Temporarily override the shared vault path for this invocation.
 npm run build -- -VaultPath 'E:/Notes'
 
-# Install only one plugin or a selected batch after compilation.
+# Compile, install and reload only one plugin or a selected batch.
 npm run build -- -Plugin content
 npm run build -- -Plugin content,code-editor
 
@@ -163,19 +166,24 @@ npm run build -- -Plugin content,code-editor
 npm run build -- -ThemeOnly
 ```
 
-The root `scripts` directory contains `Build-Install.ps1` and the standalone
-`Repair-ClaudianCodexIdentity.ps1` identity checker. Old build-only
-and install-only scripts, npm deployment commands, compatibility wrappers,
-migration and removal scripts, and the common directory have been removed.
-`plugins/scripts/build.mjs` and its source/bundle check helpers remain internal compiler
-implementation details. Targets are registered in `plugins/manifest.json`;
-the installer also checks an explicit allowlist in `Assert-PatchworkManagedPlugin`
-to prevent changes to third-party plugins.
+For targeted development, use:
 
-With `-Plugin`, compilation checks all configured plugins but only selected
-plugins are packaged and installed. Both source directory names and installed
-plugin IDs are accepted; use comma-separated names for a batch. `-PluginsOnly`
-excludes themes. `-ThemeOnly` cannot be combined with plugin selection.
+```powershell
+pwsh -NoProfile -File scripts/Reload-Plugins.ps1 -Plugin project
+pwsh -NoProfile -File scripts/Reload-Plugins.ps1 -Plugin 'project,git' -WhatIf
+```
+
+`Install.ps1` defines one installer function per plugin and retains the shared
+backup, verified-copy, rollback and reload logic. `Build-Install.ps1` calls these
+functions in the order above; `Reload-Plugins.ps1` calls only those selected by
+name. Both target names and installed IDs are accepted, including comma-separated
+batches. Unknown names are rejected before any plugin is processed. Compilation
+receives only selected targets; shared type and boundary checks still inspect
+the repository. `-WhatIf` performs selection only, without building or connecting
+to Obsidian. Concurrent installation transactions from this checkout are rejected.
+`-PluginsOnly` remains compatible with the full build entry point; `-ThemeOnly`
+cannot be combined with plugin selection. Targets are defined in
+`plugins/manifest.json` and checked against the managed plugin allowlist.
 
 Output:
 
@@ -197,15 +205,12 @@ installation and cleanup are restricted to `patchwork-borders`, `patchwork-proje
 targets. Settings,
 unknown user files and unrelated packages are preserved. Existing enabled states
 are preserved; newly installed packages stay disabled by default. A failed build
-stops before installation. Runtime replacement is staged and backed up as one
-selected set; installation/reload failures restore the previous runtime and enabled
-states. If rollback itself fails, the error identifies the retained recovery backup.
+stops before installation. Each plugin replacement is staged and backed up independently; installation/reload
+failures restore that plugin's previous runtime and enabled state, stop the sequence,
+and leave earlier successful plugins installed. If rollback itself fails, the error identifies the retained recovery backup.
 
-Use `-MigrateModules` to migrate an enabled legacy Content installation. Content,
-Borders, Project and Terminal are included together. Newly introduced modules are
-enabled for that migration; already installed, explicitly disabled modules remain
-disabled. Borders loads before its clients and unloads after them. `data.json` is
-never replaced by runtime installation.
+`-MigrateModules` is rejected by these entry points so selected deployment cannot
+expand into unrelated modules. `data.json` is never replaced by runtime installation.
 
 Keep the target vault open and enable **Settings > General > Advanced > Command
 line interface**. The script verifies the connected vault before copying files.

@@ -1,6 +1,7 @@
 /* ---------- the formatting toolbar ---------- */
 
 .ped-toolbar:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	--background-modifier-border: color-mix(in srgb, var(--pw-divider-color, #4A4D54) 70%, black);
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;
@@ -2025,3 +2026,11 @@ body.ped-no-guides .markdown-rendered.show-indentation-guide li > ol:where([data
 .ped-toolbar.is-handed-over:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
 	display: none;
 }
+/* Empty document leaves remain blank until a file is opened. */
+body .mod-root .workspace-leaf-content[data-type="empty"] > .view-header:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)),
+body .mod-root .workspace-leaf-content[data-type="empty"] .empty-state:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    display: none;
+}
+
+.pw-source-preview-label:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { color: var(--text-muted); font-size: var(--font-ui-small); }
+.pw-source-preview-text:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { white-space: pre; overflow: auto; font-family: var(--font-monospace); user-select: text; }

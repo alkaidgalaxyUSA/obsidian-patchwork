@@ -8,6 +8,7 @@ import { outlineLabel } from "./utils/outline-headings";
 import { scrollDocumentHeading } from "./utils/document-heading-scroll";
 import { DocumentFileLock } from "./document-file-lock";
 import { DocumentEncoding } from "./document-encoding";
+import { openUnindexedDocument } from "./unindexed-document";
 
 /** Own document observation independently of the footer or focused tool panel. */
 export class DocumentState {
@@ -271,7 +272,7 @@ export class DocumentState {
     async open(request) {
         this.context(request);
         const file = this.app.vault.getAbstractFileByPath(request.path);
-        if (!(file instanceof TFile)) throw new Error("This file is no longer available.");
+        if (!(file instanceof TFile)) return openUnindexedDocument(this, request);
         const leaves = this.leaves().filter(leaf => leaf.view.containerEl.ownerDocument === request.document);
         const group = request.groupLeafId && leaves.find(leaf => this.id(leaf) === request.groupLeafId)?.parent;
         if (request.groupLeafId && !group) throw new Error("The document group was closed. Open the navigation again.");

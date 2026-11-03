@@ -8,6 +8,7 @@ export class BranchHeader {
         this.controller = controller; this.doc = context.document;
         this.button = host.createEl("button", { cls: "pw-vault-git", attr: { type: "button", "aria-haspopup": "menu", "aria-expanded": "false", "data-tooltip-position": "bottom" } });
         this.scope = scopeModule(this.button, "git", { contribution: true, surface: "header" });
+        this.button.setAttribute("data-tooltip-delay", "0");
         setIcon(this.button.createSpan(), "git-branch-flipped");
         this.label = this.button.createSpan({ cls: "pw-vault-git-label" }); this.button.createSpan({ cls: "pw-header-chevron" });
         this.button.addEventListener("click", () => {

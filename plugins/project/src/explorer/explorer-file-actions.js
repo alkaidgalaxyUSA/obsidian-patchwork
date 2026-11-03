@@ -6,6 +6,8 @@ import { ModuleUnavailableError } from "../../../utils/module-errors";
 import { createDocumentMenu, createMarkdown, showCreateDialog } from "./explorer-menus";
 import { ExplorerFileClipboard } from "./explorer-file-clipboard";
 import { chooseExplorerFile, showExplorerComparison, showExplorerReplace } from "./explorer-file-dialogs";
+import { scopeModule } from "../../../utils/module-scope";
+import { useAdaptiveMenuPosition } from "../utils/menu-position";
 
 async function reloadExplorerFileFromDisk(app, file) {
     const views = [];
@@ -35,7 +37,7 @@ async function reloadExplorerFileFromDisk(app, file) {
     }
 }
 
-/** Customize native explorer menus without replacing other plugins' actions. */
+/** Assemble the requested explorer menu groups from native and contributed actions. */
 export function installExplorerFileMenus(plugin, contributions) {
     const { app } = plugin;
     let disposed = false;
@@ -63,6 +65,7 @@ export function installExplorerFileMenus(plugin, contributions) {
     };
     const install = (menu, files, source) => {
         if (disposed || source !== "file-explorer-context-menu") return;
+        const reposition = useAdaptiveMenuPosition(menu);
         menus.add(menu); menu.onHide(() => menus.delete(menu));
         const file = files[0];
         if (!file) return;
@@ -113,13 +116,17 @@ export function installExplorerFileMenus(plugin, contributions) {
         action(menu, "Replace in Files...", "replace", () => { track(showExplorerReplace(app, file)); });
         menu.addSeparator();
         if (rename) { rename.setTitle("Rename..."); menu.items.push(rename); }
+        submenu("Refactor", "", target => {
+            const scope = scopeModule(target.dom, "project", { surface: "refactor-menu" });
+            target.onHide(() => scope.dispose());
+        });
         submenu("Bookmarks", "bookmark", target => {
             if (bookmark.length) target.items.push(...bookmark);
             else action(target, "Bookmark", "bookmark", () => {}, true);
             action(target, "Show Bookmarks", "bookmark", () => app.commands.executeCommandById("bookmarks:open"), !app.internalPlugins.plugins.bookmarks?.enabled);
         });
         menu.addSeparator();
-        if (remove) { remove.setTitle("Delete..."); menu.items.push(remove); }
+        if (remove) { remove.setTitle("Delete...").setWarning(false); menu.items.push(remove); }
         menu.addSeparator();
         submenu("Open In", "external-link", target => {
             action(target, "Explorer", "folder", () => app.showInFolder(file.path), !Platform.isDesktopApp);
@@ -166,7 +173,7 @@ export function installExplorerFileMenus(plugin, contributions) {
                 ["new"],
                 ["cut", "copy", "copy path/reference...", "paste"],
                 ["find usages", "find in files...", "replace in files..."],
-                ["rename..."],
+                ["rename...", "refactor", "appearance"],
                 ["bookmarks"],
                 ["delete..."],
                 ["open in"],
@@ -175,9 +182,6 @@ export function installExplorerFileMenus(plugin, contributions) {
             ];
             const items = menu.items.filter(item => item.titleEl);
             const ordered = groups.map(titles => titles.map(title => items.find(item => titleOf(item) === title)).filter(Boolean));
-            const included = new Set(ordered.flat());
-            const extras = items.filter(item => !included.has(item) && !managed.test(titleOf(item)));
-            if (extras.length) ordered.push(extras);
             menu.items = [];
             menu.sections = [];
             for (const [index, entries] of ordered.entries()) {
@@ -188,7 +192,7 @@ export function installExplorerFileMenus(plugin, contributions) {
             }
             const icons = new Map([["cut", "scissors"], ["copy", "copy"], ["paste", "clipboard-paste"],
                 ["reload from disk", "refresh-cw"], ["compare with...", "git-show-diff"]]);
-            // Project styles only its own root and native Open In submenu.
+            // Keep Project presentation scoped away from contributed feature menus.
             menu.dom.classList.add("pw-explorer-context-menu");
             for (const item of menu.items) {
                 if (!item.titleEl) continue;
@@ -200,6 +204,23 @@ export function installExplorerFileMenus(plugin, contributions) {
                 }
             }
             menu.sort();
+            const positionSubmenus = target => {
+                for (const item of target.items) {
+                    if (!item.submenu) continue;
+                    const owner = item.submenu.dom.getAttribute("data-pw-module");
+                    if (!owner || owner === "project") {
+                        if (!owner) {
+                            const scope = scopeModule(item.submenu.dom, "project", { surface: "context-submenu" });
+                            menu.onHide(() => scope.dispose());
+                        }
+                        item.submenu.dom.classList.add("pw-explorer-context-menu", "pw-explorer-context-submenu");
+                    }
+                    useAdaptiveMenuPosition(item.submenu, menu);
+                    positionSubmenus(item.submenu);
+                }
+            };
+            positionSubmenus(menu);
+            reposition();
         });
     };
     plugin.registerEvent(app.workspace.on("file-menu", (menu, file, source) => install(menu, [file], source)));

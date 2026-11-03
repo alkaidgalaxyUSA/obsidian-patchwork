@@ -13,6 +13,10 @@ body .mod-root .pw-document-top-area > .pw-document-tab-strip:where([data-pw-mod
     border: 0;
     -webkit-app-region: no-drag !important;
 }
+/* The card row sits below window controls and needs no titlebar reservation. */
+body .mod-root .workspace-tabs.mod-top-right-space > .pw-document-top-area > .pw-document-tab-strip:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    padding-right: 6px !important;
+}
 body .mod-root .pw-document-top-area .workspace-tab-header-container-inner:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { -webkit-app-region: no-drag !important; }
 body .mod-root .pw-document-tab-strip:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
     isolation: isolate;
@@ -26,7 +30,7 @@ body.theme-light .mod-root .pw-document-tab-strip:where([data-pw-module="content
     --pw-tab-text-muted: color-mix(in srgb, var(--text-normal) 50%, transparent);
 }
 body .mod-root .pw-document-tab-strip .workspace-tab-header-inner-icon:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)),
-body .mod-root .pw-document-tab-strip .workspace-tab-header[data-type="empty"]:only-child:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)),
+body .mod-root .pw-document-tab-strip .workspace-tab-header[data-type="empty"]:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)),
 body .mod-root .pw-document-tab-strip > .workspace-tab-header-new-tab:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)),
 body .mod-root .pw-document-tab-strip > .workspace-tab-header-spacer:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
     display: none;

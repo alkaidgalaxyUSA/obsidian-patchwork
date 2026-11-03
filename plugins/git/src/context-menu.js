@@ -4,7 +4,7 @@ import { renderFileActions } from "../../utils/file-menu-actions";
 /** Git owns action semantics; hosts control only their root menu ordering. */
 export function buildGitFileActions(controller, paths, validate = () => {}) {
     const files = new FileContextActions(controller, paths);
-    const visibleIcons = new Set(["Add", "Show Diff", "Rollback…", "Branches..."]);
+    const visibleIcons = new Set(["Add", "Show Diff", "Show History", "Rollback…", "Push…", "Fetch", "Merge...", "Branches...", "New Branch..."]);
     const actions = [];
     let separator = false;
     const action = (title, icon, callback, disabled = false) => {
@@ -14,7 +14,7 @@ export function buildGitFileActions(controller, paths, validate = () => {}) {
         separator = false;
     };
     action("Commit File...", "git-commit-horizontal", () => controller.openSelection(paths));
-    action("Add", "plus", () => controller.act(() => controller.repository.stage(paths)));
+    action("Add", "plus", () => files.add(), !controller.entries.some(entry => files.includes(entry.path) && (entry.untracked || entry.code[1] !== " ")));
     separator = true;
     action("Annotate with Git Blame", "list", () => files.output("Git Blame", ["blame", "--", ...paths]), paths.length !== 1 || !controller.sourceFile(paths[0])?.extension);
     action("Show Diff", "git-show-diff", () => controller.showDiff(paths));
@@ -23,22 +23,22 @@ export function buildGitFileActions(controller, paths, validate = () => {}) {
     action("Show History", "history", () => controller.showHistory(paths));
     action("Show Current Revision", "git-commit", () => files.output("Current Revision", paths.length === 1 && controller.sourceFile(paths[0])?.extension
         ? ["show", `HEAD:${paths[0]}`] : ["log", "-1", "--format=fuller", "--stat", "--", ...paths]));
-    action("Rollback…", "undo-2", () => controller.rollback(paths));
+    action("Rollback…", "git-rollback", () => controller.rollback(paths));
     separator = true;
-    action("Push…", "arrow-up-right", () => controller.network("push"));
+    action("Push…", "idea-expui-vcs-push_dark.svg", () => controller.network("push"));
     action("Pull…", "arrow-down-left", () => controller.network("pull"));
-    action("Fetch", "download", () => controller.network("fetch"));
+    action("Fetch", "branch-fetch", () => controller.network("fetch"));
     separator = true;
-    action("Merge...", "git-merge", () => files.integrate("merge"));
+    action("Merge...", "idea-expui-vcs-merge_dark.svg", () => files.integrate("merge"));
     action("Rebase...", "git-branch", () => files.integrate("rebase"));
     separator = true;
-    action("Branches...", "git-branch", () => files.branches());
-    action("New Branch...", "git-branch-plus", () => controller.newBranch());
+    action("Branches...", "git-branch-flipped", () => files.branches());
+    action("New Branch...", "plus", () => controller.newBranch());
     action("New Tag...", "tag", () => files.tag());
     action("Reset HEAD...", "undo-2", () => files.reset());
     separator = true;
     action("Stash Changes...", "archive", () => files.stash());
-    action("Unstash Changes...", "archive-restore", () => files.unstash());
+    action("Unstash Changes...", "archive-restore", () => files.unstash(), !controller.stashCount);
     separator = true;
     actions.push({ id: "git:github", label: "GitHub", icon: "github", separatorBefore: separator,
         children: [{ id: "git:github:open", label: "Open Repository in Browser",

@@ -34,7 +34,7 @@ body .pw-window-actions .side-dock-ribbon-action {
     box-shadow: none;
 }
 
-body .pw-window-actions .side-dock-ribbon-action svg { width: 20px; height: 20px; flex-shrink: 0; }
+body .pw-window-actions .side-dock-ribbon-action svg { width: 21px; height: 21px; flex-shrink: 0; }
 
 body .pw-window-actions .side-dock-ribbon-action[aria-pressed="true"] {
     --icon-color: var(--text-normal);
@@ -114,7 +114,7 @@ body button.pw-sidebar-collapse {
     transform: translateY(-50%);
     opacity: 0;
     pointer-events: auto;
-    cursor: pointer;
+    cursor: default;
     touch-action: manipulation;
     transition: opacity 140ms ease, background-color 140ms ease, color 140ms ease;
 }
@@ -132,8 +132,9 @@ body button.pw-sidebar-collapse:focus-visible {
 }
 
 body button.pw-sidebar-collapse svg {
-    width: 12px;
-    height: 16px;
+    width: 13px;
+    height: 17px;
+    flex-shrink: 0;
     pointer-events: none;
 }
 

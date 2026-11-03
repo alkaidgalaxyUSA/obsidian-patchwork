@@ -1,4 +1,8 @@
 body {
+    --menu-background: #26282C;
+    --pw-tooltip-background: #33353B;
+    --pw-tooltip-color: color-mix(in srgb, #f2f2f2 70%, black);
+    --pw-tooltip-radius: 4px;
     /* Dialogs - e.g. small modals, confirmations */
     --dialog-width: 560px;
     --dialog-max-width: 80vw;
@@ -27,4 +31,32 @@ body {
     --prompt-max-height: 70vh;
     --prompt-border-width: var(--border-width);
     --prompt-border-color: var(--color-base-40, var(--background-modifier-border-focus));
+}
+
+/* Native hover hints use a rounded surface without an arrow. */
+body .tooltip {
+    font-family: "Microsoft YaHei UI", var(--font-interface);
+    font-size: 13px;
+    line-height: 1.5;
+    /* A single line is 33.3px tall, down from the native 37px. */
+    padding: 6.9px 12px;
+    background: var(--pw-tooltip-background);
+    color: var(--pw-tooltip-color);
+    border: 0;
+    border-radius: var(--pw-tooltip-radius);
+    box-shadow: none;
+}
+
+body .tooltip .tooltip-arrow {
+    display: none;
+}
+
+/* Keep native menu surfaces consistent despite feature-level background rules. */
+body .menu {
+    background-color: var(--menu-background) !important;
+    border: 0 !important;
+}
+
+body .menu .menu-item {
+    font-size: calc(var(--font-ui-small) - 1px) !important;
 }

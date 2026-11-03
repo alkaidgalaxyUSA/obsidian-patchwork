@@ -954,13 +954,14 @@ body .tooltip.pw-code-tooltip:where([data-pw-module="content"], [data-pw-module=
     width: max-content;
     max-width: none;
     white-space: nowrap;
-    background: #1f1f1f;
-    color: #e5e7eb;
-    border: 1px solid rgb(255 255 255 / 12%);
-    box-shadow: 0 1px 4px -2px rgb(255 255 255 / 12%), 0 2px 8px rgb(255 255 255 / 8%), 0 8px 16px 4px rgb(255 255 255 / 5%);
+    background: var(--pw-tooltip-background, #33353B);
+    color: var(--pw-tooltip-color, #f2f2f2);
+    border: 0;
+    border-radius: var(--pw-tooltip-radius, 4px);
+    box-shadow: none;
 }
 
-body.theme-dark :is(.pw-code-popover, .pw-editor-menu, .pw-editor-suggest, .ped-bubble, .ped-colorpop, .ped-imgbar, .ped-emoji, .ped-tablepop, .tooltip.pw-code-tooltip):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+body.theme-dark :is(.pw-code-popover, .pw-editor-menu, .pw-editor-suggest, .ped-bubble, .ped-colorpop, .ped-imgbar, .ped-emoji, .ped-tablepop):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
     --pw-panel-border: #000;
     border-color: var(--pw-panel-border);
     box-shadow: 0 2px 8px rgb(0 0 0 / 25%), 0 8px 16px 4px rgb(0 0 0 / 20%);

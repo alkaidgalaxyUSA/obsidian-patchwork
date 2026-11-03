@@ -1,11 +1,11 @@
-import { ItemView, Menu, Notice } from "obsidian";
+import { ItemView, Menu, Modal, Notice } from "obsidian";
 import { setIcon } from "../utils/icons";
 import { addCommitMenu } from "./commit-context-menu";
 import { CommitSplitter } from "./commit-splitter";
 import { fileIcon } from "../utils/file-icons";
 import { fileStatus } from "../utils/file-status.js";
 import { scopeModule } from "../../../utils/module-scope";
-import { scopeGitMenu } from "../utils/portals";
+import { openGitDialog, scopeGitMenu } from "../utils/portals";
 import { getServiceRegistry } from "../../../utils/service-registry";
 import { getWindowContext } from "../../../utils/windows";
 
@@ -37,18 +37,29 @@ export class CommitView extends ItemView {
         });
         const header = this.contentEl.createDiv({ cls: "pw-git-commit-header" });
         header.createSpan({ text: "Commit" });
+        const headerActions = header.createDiv({ cls: "pw-git-commit-header-actions" });
+        const more = headerActions.createEl("button", { cls: "clickable-icon", attr: { type: "button", "aria-label": "More Commit Actions", "aria-haspopup": "menu" } });
+        setIcon(more, "git-header-more");
+        this.registerDomEvent(more, "click", () => this.viewOptions(more));
+        const hide = headerActions.createEl("button", { cls: "clickable-icon", attr: { type: "button", "aria-label": "Hide Commit" } });
+        setIcon(hide, "git-header-hide");
+        this.registerDomEvent(hide, "click", () => {
+            const borders = registry.get("borders");
+            if (!borders) { new Notice("Commit panel hiding is unavailable while Patchwork Borders is disabled."); return; }
+            borders.hidePanel("git:commit", getWindowContext(this.contentEl.ownerDocument));
+        });
         const toolbar = this.contentEl.createDiv({ cls: "pw-git-commit-toolbar", attr: { role: "toolbar", "aria-label": "Changes actions" } });
         this.tools = new Map();
-        this.tool(toolbar, "Refresh Changes", "refresh-cw", () => this.controller.refresh());
+        this.tool(toolbar, "Refresh Changes", "git-log-refresh", () => this.controller.refresh());
         this.tool(toolbar, "Rollback", "git-rollback", () => this.controller.rollback(this.selectedPaths()));
         this.tool(toolbar, "Show Diff", "git-show-diff", () => this.controller.showDiff(this.selectedPaths()));
         this.tool(toolbar, "Shelve Silently", "git-shelve", () => this.controller.shelve(this.selectedPaths()));
-        const optionsButton = this.tool(toolbar, "View Options", "eye-expand", () => this.viewOptions(optionsButton));
+        const optionsButton = this.tool(toolbar, "View Options", "idea/expui/general/inspections/inspectionsEye_dark.svg", () => this.viewOptions(optionsButton));
         optionsButton.setAttribute("aria-haspopup", "menu");
         toolbar.createSpan({ cls: "pw-git-toolbar-separator", attr: { "aria-hidden": "true" } });
         this.tool(toolbar, "Select Opened File in Change View", "select-opened-file", () => this.selectOpenedFile());
-        this.tool(toolbar, "Expand All", "chevrons-up-down", () => { this.controller.collapsed.clear(); this.controller.render(); });
-        this.tool(toolbar, "Collapse All", "chevrons-down-up", () => { this.controller.collapsed = new Set([...this.controller.changelists.lists.map(list => list.id), "Unversioned Files"]); this.controller.render(); });
+        this.tool(toolbar, "Expand All", "git-expand-all", () => { this.controller.collapsed.clear(); this.controller.render(); });
+        this.tool(toolbar, "Collapse All", "git-collapse-all", () => { this.controller.collapsed = new Set([...this.controller.changelists.lists.map(list => list.id), "Unversioned Files"]); this.controller.render(); });
         this.status = this.contentEl.createDiv({ cls: "pw-git-panel-status", attr: { role: "status", "aria-live": "polite" } });
         const body = this.contentEl.createDiv({ cls: "pw-git-commit-body" });
         this.files = body.createDiv({ cls: "pw-git-change-list" });
@@ -98,6 +109,11 @@ export class CommitView extends ItemView {
         const actions = footer.createDiv({ cls: "pw-git-commit-actions" });
         this.commitButton = actions.createEl("button", { text: "Commit", cls: "pw-git-commit-button" });
         this.pushButton = actions.createEl("button", { text: "Commit and Push..." });
+        this.commitOptionsButton = actions.createEl("button", { cls: "clickable-icon pw-git-commit-settings", attr: {
+            type: "button", "aria-label": "Show Commit Options", "aria-haspopup": "dialog", "aria-expanded": "false",
+        } });
+        setIcon(this.commitOptionsButton, "settings");
+        this.commitOptionsButton.onclick = () => this.showCommitOptions();
         this.commitButton.onclick = () => void this.controller.commit(false);
         this.pushButton.onclick = () => void this.controller.commit(true);
         this.controller.views.add(this);
@@ -126,6 +142,17 @@ export class CommitView extends ItemView {
         const groupId = changelistId ?? name;
         const section = this.files.createDiv({ cls: "pw-git-change-group" });
         const header = section.createDiv({ cls: "pw-git-change-heading" });
+        header.dataset.groupId = groupId;
+        header.tabIndex = -1;
+        header.onclick = event => {
+            if (event.target.closest("button, input")) return;
+            header.focus({ preventScroll: true });
+        };
+        header.ondblclick = event => {
+            if (event.target.closest("button, input")) return;
+            event.preventDefault();
+            this.toggleGroup(groupId);
+        };
         header.oncontextmenu = event => this.openContextMenu(event, entries.map(entry => entry.path), changelistId);
         const toggle = header.createEl("button", { cls: "clickable-icon", attr: { "aria-label": name, "aria-expanded": String(!this.controller.collapsed.has(groupId)) } });
         const content = header.createDiv({ cls: "pw-git-change-content" });
@@ -145,12 +172,20 @@ export class CommitView extends ItemView {
         };
         const collapsed = this.controller.collapsed.has(groupId);
         setIcon(toggle, collapsed ? "chevron-right" : "chevron-down");
-        toggle.onclick = () => {
-            if (collapsed) this.controller.collapsed.delete(groupId); else this.controller.collapsed.add(groupId);
-            this.render();
+        toggle.onclick = event => {
+            event.stopPropagation();
+            this.toggleGroup(groupId);
         };
         if (collapsed) return;
         for (const entry of entries) this.file(section, entry);
+    }
+
+    toggleGroup(groupId) {
+        if (this.controller.collapsed.has(groupId)) this.controller.collapsed.delete(groupId);
+        else this.controller.collapsed.add(groupId);
+        this.render();
+        [...this.files.querySelectorAll(".pw-git-change-heading")]
+            .find(header => header.dataset.groupId === groupId)?.focus({ preventScroll: true });
     }
 
     file(section, entry) {
@@ -159,7 +194,7 @@ export class CommitView extends ItemView {
         row.tabIndex = -1;
         row.classList.add(`is-${fileStatus(entry)}`);
         const content = row.createDiv({ cls: "pw-git-change-content" });
-        const checkbox = content.createEl("input", { type: "checkbox", attr: { "aria-label": `Include ${entry.path}` } });
+        const checkbox = content.createEl("input", { type: "checkbox" });
         checkbox.checked = this.controller.selected.has(entry.path);
         checkbox.disabled = this.controller.busy;
         checkbox.onchange = () => {
@@ -168,10 +203,14 @@ export class CommitView extends ItemView {
         };
         const parts = entry.path.split("/");
         setIcon(content.createSpan({ cls: "pw-git-file-icon", attr: { "aria-hidden": "true" } }), fileIcon(entry.path));
-        content.createSpan({ cls: "pw-git-file-name", text: parts.pop() });
+        const label = content.createSpan({ cls: "pw-git-file-name", text: parts.pop() });
+        this.fileLabelId = (this.fileLabelId ?? 0) + 1;
+        label.id = `pw-git-file-${this.leaf.id}-${this.fileLabelId}`;
+        checkbox.setAttribute("aria-labelledby", label.id);
+        row.setAttribute("aria-labelledby", label.id);
         const path = parts.join("\\");
         if (this.showPaths) content.createSpan({ cls: "pw-git-file-path", text: path });
-        row.setAttribute("aria-label", `${entry.original ? `${entry.original} → ` : ""}${entry.path} (${entry.code})`);
+        row.setAttribute("aria-description", `${entry.original ? `${entry.original} → ` : ""}${entry.path} (${entry.code})`);
         row.ondblclick = event => { if (event.target !== checkbox) void this.controller.showDiff([entry.path]); };
         row.oncontextmenu = event => this.openContextMenu(event, [entry.path], entry.untracked ? undefined : this.controller.changelists.forPath(entry.path));
     }
@@ -221,6 +260,21 @@ export class CommitView extends ItemView {
     }
 
     selectedPaths() { return this.controller.entries.filter(entry => this.controller.selected.has(entry.path)).map(entry => entry.path); }
+
+    showCommitOptions() {
+        if (this.commitOptionsModal || this.controller.disposed) return;
+        const modal = new Modal(this.app);
+        this.commitOptionsModal = modal;
+        modal.setTitle("Commit Options");
+        modal.contentEl.classList.add("pw-git-commit-options-empty");
+        this.commitOptionsButton.setAttribute("aria-expanded", "true");
+        modal.onClose = () => {
+            this.commitOptionsModal = undefined;
+            this.commitOptionsButton.setAttribute("aria-expanded", "false");
+            if (this.commitOptionsButton.isConnected) this.commitOptionsButton.focus();
+        };
+        openGitDialog(this.controller, modal);
+    }
 
     viewOptions(anchor) {
         const menu = scopeGitMenu(new Menu(), this.contentEl);
@@ -299,6 +353,7 @@ export class CommitView extends ItemView {
     }
 
     async onClose() {
+        this.commitOptionsModal?.close();
         this.splitter?.dispose(); this.menu?.hide(); this.stopBorders?.(); this.stopPanelState?.(); this.scope?.dispose();
         if (this.previousFocused === null) this.contentEl.removeAttribute("data-pw-panel-focused");
         else if (this.previousFocused !== undefined) this.contentEl.setAttribute("data-pw-panel-focused", this.previousFocused);

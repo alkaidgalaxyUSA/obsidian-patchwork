@@ -1,5 +1,9 @@
+import { fileTypeIcon } from "../../../utils/file-icons";
+
 /** Explorer file icons depend on file type, never on note contents. */
 export function explorerFileIcon(path) {
+    const typeIcon = fileTypeIcon(path);
+    if (typeIcon) return typeIcon;
     const extension = path.split(".").pop().toLowerCase();
     if (["mdenc", "encrypted"].includes(extension)) return "file-lock";
     if (["md", "mdx", "markdown", "txt"].includes(extension)) return "file-text";

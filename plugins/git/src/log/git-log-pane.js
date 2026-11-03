@@ -1,5 +1,6 @@
 import { addBranchMenu } from "../branch-menu";
 import { Menu, Notice } from "obsidian";
+import { shell } from "electron";
 import { iconName, setIcon } from "../utils/icons";
 import { scopeModule } from "../../../utils/module-scope";
 import { addHistoryCommitMenu } from "../history/menus";
@@ -29,25 +30,23 @@ export class GitLogPane {
         this.rail.createDiv({ cls: "pw-git-log-rail-separator", attr: { role: "separator" } });
         this.button(this.rail, "New branch", "plus", () => this.action(controller => controller.newBranch()));
         this.button(this.rail, "Update Selected", "branch-update", () => this.selectedBranchAction("update"));
-        this.button(this.rail, "Delete Branch", "trash-2", () => this.selectedBranchAction("delete"));
+        this.button(this.rail, "Delete Branch", "delete", () => this.selectedBranchAction("delete"));
         this.button(this.rail, "Compare with Current", "git-show-diff", () => this.selectedBranchAction("compare"));
-        this.button(this.rail, "Show My Branches", "search", event => this.showMyBranches(event.currentTarget)).setAttribute("aria-pressed", "false");
+        this.button(this.rail, "Show My Branches", "user", event => this.showMyBranches(event.currentTarget)).setAttribute("aria-pressed", "false");
         this.button(this.rail, "Fetch", "branch-fetch", () => this.action(controller => controller.network("fetch")));
-        this.button(this.rail, "Mark/Unmark as Favorite", "branch-favorite", () => {
+        this.button(this.rail, "Mark/Unmark as Favorite", "git-log-favorite", () => {
             const ref = this.selectedRef || "HEAD";
             if (this.favorites.has(ref)) this.favorites.delete(ref); else this.favorites.add(ref);
             this.renderBranches();
         });
-        this.button(this.rail, "Navigate Log to Selected Branch Head", "select-opened-file", () => { this.selectRef(this.selectedRef || "HEAD", this.selectedBranch); });
+        this.button(this.rail, "Navigate Log to Selected Branch Head", "git-log-locate", () => { this.selectRef(this.selectedRef || "HEAD", this.selectedBranch); });
         this.rail.createDiv({ cls: "pw-git-log-rail-separator", attr: { role: "separator" } });
         this.button(this.rail, "Branches Pane Settings", "settings", event => this.settings(event));
         this.rail.createDiv({ cls: "pw-git-log-rail-separator", attr: { role: "separator" } });
         this.button(this.rail, "Group by Directory", "branch-group", event => { this.groupDirectories = !this.groupDirectories; event.currentTarget.setAttribute("aria-pressed", String(this.groupDirectories)); this.renderBranches(); }).setAttribute("aria-pressed", "true");
-        this.button(this.rail, "Expand All", "chevrons-up-down", () => this.tree.querySelectorAll("details").forEach(group => { group.open = true; }));
-        this.button(this.rail, "Collapse All", "chevrons-down-up", () => this.tree.querySelectorAll("details").forEach(group => { group.open = false; }));
+        this.button(this.rail, "Expand All", "git-expand-all", () => this.tree.querySelectorAll("details").forEach(group => { group.open = true; }));
+        this.button(this.rail, "Collapse All", "git-collapse-all", () => this.tree.querySelectorAll("details").forEach(group => { group.open = false; }));
         const sidebar = this.el.createDiv({ cls: "pw-git-log-sidebar" });
-        const branchHeader = sidebar.createDiv({ cls: "pw-log-branch-header" });
-        branchHeader.createSpan({ text: "Branches" });
         this.branchSearch = this.input(sidebar, "Branch or tag", () => this.renderBranches());
         this.tree = sidebar.createDiv({ cls: "pw-git-log-tree" });
         const center = this.el.createDiv({ cls: "pw-git-log-center" });
@@ -55,25 +54,27 @@ export class GitLogPane {
         const searchBox = toolbar.createDiv({ cls: "pw-log-search-box" });
         this.search = this.input(searchBox, "Text or hash", () => this.scheduleRefresh());
         this.search.classList.add("pw-log-search");
-        this.regex = this.toggle(searchBox, ".*", "Regular expression", "regex");
-        this.caseToggle = this.toggle(searchBox, "Cc", "Match case", "caseSensitive");
+        this.regex = this.toggle(searchBox, "git-log-regex", "Regular expression", "regex");
+        this.caseToggle = this.toggle(searchBox, "git-log-match-case", "Match case", "caseSensitive");
         const branchFilter = toolbar.createDiv({ cls: "pw-log-branch-filter" });
         this.refButton = this.filterButton(branchFilter, "HEAD", "Branch filter", event => this.branchFilter(event), false);
-        this.clearRefButton = this.button(branchFilter, "Clear branch filter", "x", () => this.selectRef(""));
+        this.refButton.removeAttribute("aria-label");
+        this.refButton.prepend(this.refButton.createSpan({ cls: "pw-log-filter-prefix", text: "Branch: " }));
+        this.clearRefButton = this.button(branchFilter, "Clear branch filter", "git-log-close", () => this.selectRef(""));
         this.author = { value: "" }; this.date = { value: "" }; this.path = { value: "" };
         this.authorButton = this.filterButton(toolbar, "User", "User filter", event => this.valueFilter(event, "author"));
         this.dateButton = this.filterButton(toolbar, "Date", "Date filter", event => this.valueFilter(event, "since"));
         this.pathButton = this.filterButton(toolbar, "Paths", "Paths filter", event => this.valueFilter(event, "path"));
-        this.button(toolbar, "Commit Sort Order", "arrow-down-wide-narrow", event => {
+        this.button(toolbar, "Commit Sort Order", "git-log-sort", event => {
             const menu = this.createMenu();
             for (const [label, order] of [["Topology", "topo"], ["Date Order", "date"], ["Reverse Order", "reverse"]]) menu.addItem(item => item.setTitle(label).setChecked((this.filter.order || "topo") === order).onClick(() => { this.filter.order = order; void this.refresh(); }));
             menu.showAtMouseEvent(event);
         });
         const actions = toolbar.createDiv({ cls: "pw-log-filter-actions" });
-        this.button(actions, "Navigate to HEAD", "circle-play", () => { this.selectRef("HEAD"); });
-        this.button(actions, "Refresh", "refresh-cw", () => this.refresh());
-        this.button(actions, "Show Branches", "git-branch", () => { this.el.classList.remove("is-branches-hidden"); this.branchSearch.focus(); });
-        this.button(actions, "View Options", "eye-expand", event => this.settings(event));
+        this.button(actions, "Navigate to HEAD", "git-log-locate", () => { this.selectRef("HEAD"); });
+        this.button(actions, "Refresh", "git-log-refresh", () => this.refresh());
+        this.button(actions, "Show Branches", "git-branch-flipped", () => { this.el.classList.remove("is-branches-hidden"); this.branchSearch.focus(); });
+        this.button(actions, "View Options", "git-log-view", event => this.settings(event));
         this.button(actions, "Find", "search", () => this.search.focus());
         this.rows = center.createDiv({ cls: "pw-git-log-rows", attr: { role: "listbox", "aria-label": "Commits", tabindex: "0" } });
         this.rows.addEventListener("keydown", event => this.navigate(event));
@@ -134,20 +135,20 @@ export class GitLogPane {
         menu.addItem(item => item.setTitle("Select...").onClick(() => { this.el.classList.remove("is-branches-hidden"); this.branchSearch.focus(); }));
         menu.addItem(item => item.setTitle("All branches").setChecked(!this.filter.ref).onClick(() => this.selectRef("")));
         menu.addItem(item => item.setTitle("Favorites").setDisabled(true));
-        choose(menu, "HEAD", "HEAD", "branch-favorite");
+        choose(menu, "HEAD", "HEAD", "git-log-favorite");
         const favorites = this.favorites;
         for (const ref of favorites) {
             if (ref === "HEAD") continue;
-            choose(menu, ref.replace(/^refs\/(heads|remotes)\//, ""), ref, "branch-favorite");
+            choose(menu, ref.replace(/^refs\/(heads|remotes)\//, ""), ref, "git-log-favorite");
         }
         menu.addSeparator();
         menu.addItem(item => {
             item.setTitle("Local"); const submenu = this.scopeSubmenu(item, menu);
-            for (const branch of this.snapshot.local) choose(submenu, branch, `refs/heads/${branch}`, branch === this.snapshot.current ? "branch-favorite" : undefined);
+            for (const branch of this.snapshot.local) choose(submenu, branch, `refs/heads/${branch}`, branch === this.snapshot.current ? "git-log-favorite" : undefined);
         });
         for (const remote of this.snapshot.remotes) menu.addItem(item => {
             item.setTitle(`${remote}/...`); const submenu = this.scopeSubmenu(item, menu);
-            for (const branch of this.snapshot.remote.filter(branch => branch.startsWith(remote + "/"))) choose(submenu, branch.slice(remote.length + 1), `refs/remotes/${branch}`, this.favorites.has(`refs/remotes/${branch}`) ? "branch-favorite" : undefined);
+            for (const branch of this.snapshot.remote.filter(branch => branch.startsWith(remote + "/"))) choose(submenu, branch.slice(remote.length + 1), `refs/remotes/${branch}`, this.favorites.has(`refs/remotes/${branch}`) ? "git-log-favorite" : undefined);
         });
         this.showFilter(menu, event.currentTarget);
     }
@@ -209,7 +210,7 @@ export class GitLogPane {
                 folders.get(name).push(branch); continue;
             }
             const ref = prefix + branch;
-            const icon = !remote && branch === this.snapshot.current ? "branch-bookmark" : this.favorites.has(ref) ? "branch-favorite" : "branch-bookmark";
+            const icon = !remote && branch === this.snapshot.current ? "bookmark" : this.favorites.has(ref) ? "git-log-favorite" : "bookmark";
             row(parent, label, ref, icon, remote, branch);
         }
         for (const [name, refs] of folders) {
@@ -279,8 +280,9 @@ export class GitLogPane {
         return input;
     }
 
-    toggle(parent, text, label, key) {
-        const button = parent.createEl("button", { cls: "pw-log-toggle", text, attr: { "aria-label": label, "aria-pressed": "false" } });
+    toggle(parent, icon, label, key) {
+        const button = parent.createEl("button", { cls: "pw-log-toggle", attr: { "aria-label": label, "aria-pressed": "false" } });
+        setIcon(button, icon);
         button.addEventListener("click", () => {
             this.filter[key] = !this.filter[key];
             button.setAttribute("aria-pressed", String(this.filter[key]));
@@ -365,12 +367,17 @@ export class GitLogPane {
             button.createSpan({ text: label });
             button.classList.toggle("is-active", !this.selectedGroup && (this.selectedRef || "HEAD") === ref);
             button.dataset.ref = ref;
-            if (icon === "branch-bookmark" || icon === "branch-favorite") button.classList.add("pw-log-ref-marker");
+            if (icon === "bookmark" || icon === "git-log-favorite") button.classList.add("pw-log-ref-marker");
             button.addEventListener("click", () => {
                 this.selectedRef = ref; this.selectedBranch = branch; this.selectedRemote = remote; this.selectedGroup = undefined;
                 for (const other of this.tree.querySelectorAll(".pw-log-branch")) other.classList.toggle("is-active", other === button);
                 for (const summary of this.tree.querySelectorAll("summary")) summary.classList.remove("is-selected-group");
                 this.updateBranchTools();
+            });
+            button.addEventListener("dblclick", () => this.selectRef(ref, branch));
+            button.addEventListener("keydown", event => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
                 this.selectRef(ref, branch);
             });
             button.addEventListener("contextmenu", event => {
@@ -396,11 +403,12 @@ export class GitLogPane {
                 for (const branch of this.tree.querySelectorAll(".pw-log-branch")) branch.classList.remove("is-active");
                 for (const other of this.tree.querySelectorAll("summary")) other.classList.toggle("is-selected-group", other === summary);
             });
-            if (folder) setIcon(summary.createSpan(), "folder");
+            setIcon(summary.createSpan({ cls: "pw-log-group-chevron", attr: { "aria-hidden": "true" } }), "chevron-right");
+            if (folder) setIcon(summary.createSpan({ cls: key.startsWith("remote/") ? "pw-log-remote-icon" : "", attr: { "aria-hidden": "true" } }), "folder");
             summary.createSpan({ text: name });
             return details;
         };
-        if (matches("HEAD Current Branch")) row(this.tree, "HEAD (Current Branch)", "HEAD", "branch-bookmark");
+        if (matches("HEAD Current Branch")) row(this.tree, "HEAD (Current Branch)", "HEAD");
         const local = this.snapshot.local.filter(branch => matches(branch) && (!this.onlyMyBranches || this.myBranches?.has(branch)));
         if (local.length) {
             const parent = group(this.tree, "Local", "local");
@@ -419,7 +427,7 @@ export class GitLogPane {
         const tags = this.snapshot.tags.filter(matches);
         if (this.showTags && tags.length) {
             const parent = group(this.tree, "Tags", "tags");
-            for (const tag of tags) row(parent, tag, `refs/tags/${tag}`, "tag");
+            for (const tag of tags) row(parent, tag, `refs/tags/${tag}`, "git-log-tag");
         }
         if (focusedRef) [...this.tree.querySelectorAll(".pw-log-branch")].find(row => row.dataset.ref === focusedRef)?.focus({ preventScroll: true });
         else if (focusedGroup) [...this.tree.querySelectorAll("summary")].find(row => row.dataset.groupKey === focusedGroup)?.focus({ preventScroll: true });
@@ -449,7 +457,7 @@ export class GitLogPane {
 
     renderVisibleRows() {
         if (this.disposed || !this.commits || !this.graphLayout) return;
-        const height = 25;
+        const height = this.graphLayout.height;
         this.rows.scrollTop = Math.min(this.rows.scrollTop, Math.max(0, this.commits.length * height - this.rows.clientHeight));
         const start = Math.max(0, Math.floor(this.rows.scrollTop / height) - 12);
         const end = Math.min(this.commits.length, Math.ceil((this.rows.scrollTop + this.rows.clientHeight) / height) + 12);
@@ -493,7 +501,7 @@ export class GitLogPane {
         refs.forEach((ref, index) => {
             const marker = stack.createSpan({ cls: "pw-log-ref-bookmark" });
             marker.style.color = colors[index % colors.length];
-            setIcon(marker, ref.type === "tag" ? "tag" : "log-bookmark");
+            setIcon(marker, ref.type === "tag" ? "git-log-tag" : "git-branch-flipped");
         });
         const names = [...new Set(refs.map(ref => ref.name))];
         const current = refs.find(ref => ref.current)?.name;
@@ -505,8 +513,8 @@ export class GitLogPane {
     drawGraph(row, graph, width, head = false) {
         const doc = row.ownerDocument;
         const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("width", String(width)); svg.setAttribute("height", "25");
-        svg.setAttribute("viewBox", `0 ${graph.offset} ${width} 25`);
+        svg.setAttribute("width", String(width)); svg.setAttribute("height", String(this.graphLayout.height));
+        svg.setAttribute("viewBox", `0 ${graph.offset} ${width} ${this.graphLayout.height}`);
         svg.classList.add("pw-log-graph");
         const colors = ["#7875d7", "#b59648", "#62a78b", "#4788ff", "#bd77ad"];
         for (const edge of graph.paths) {
@@ -542,7 +550,7 @@ export class GitLogPane {
             row.classList.toggle("is-selected", active);
             row.setAttribute("aria-selected", String(active));
         }
-        if (this.changedFiles.commit?.hash !== commit.hash) this.changedFiles.clear("Loading changes…");
+        if (this.changedFiles.commit?.hash !== commit.hash) this.changedFiles.clear("");
         this.details.empty();
         try {
             const detail = await readCommit(this.history, commit);
@@ -554,7 +562,16 @@ export class GitLogPane {
             const time = date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
             const meta = this.details.createDiv({ cls: "pw-log-meta" });
             meta.createSpan({ cls: "pw-log-revision", text: commit.hash.slice(0, 8), attr: { title: commit.hash } });
-            meta.createSpan({ text: ` ${commit.author} <${commit.authorEmail}> on ${day} at ${time}` });
+            meta.createSpan({ text: ` ${commit.author} <` });
+            const email = meta.createEl("a", { cls: "pw-log-email", text: commit.authorEmail,
+                attr: { href: `mailto:${encodeURIComponent(commit.authorEmail)}` } });
+            email.addEventListener("click", event => {
+                event.preventDefault();
+                void shell.openExternal(email.href).catch(error => {
+                    if (!this.disposed) new Notice(error.message);
+                });
+            });
+            meta.createSpan({ text: `> on ${day} at ${time}` });
             this.details.createDiv({ cls: "pw-log-meta pw-log-containing-branches", text: `In ${detail.branches.length} ${detail.branches.length === 1 ? "branch" : "branches"}: ${detail.branches.join(", ") || "None"}` });
         } catch (error) { if (!this.disposed && revision === this.selectionRevision) this.changedFiles.clear(error.message); }
     }
@@ -584,9 +601,10 @@ export class GitLogPane {
         event.preventDefault();
         const index = this.commits.findIndex(commit => commit.hash === this.selected?.hash);
         const next = Math.max(0, Math.min(this.commits.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)));
-        const top = next * 25;
+        const height = this.graphLayout.height;
+        const top = next * height;
         if (top < this.rows.scrollTop) this.rows.scrollTop = top;
-        else if (top + 25 > this.rows.scrollTop + this.rows.clientHeight) this.rows.scrollTop = top + 25 - this.rows.clientHeight;
+        else if (top + height > this.rows.scrollTop + this.rows.clientHeight) this.rows.scrollTop = top + height - this.rows.clientHeight;
         this.renderVisibleRows();
         void this.selectCommit(this.commits[next]);
     }

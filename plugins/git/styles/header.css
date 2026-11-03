@@ -1,5 +1,14 @@
+/* Dim header artwork and text without changing the button's hover surface. */
+body .pw-vault-git > span:not(.pw-vault-git-label):where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) {
+    filter: brightness(calc(0.6 * var(--pw-borders-focus-gain, 1)));
+}
+body .pw-vault-git > .pw-vault-git-label:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) {
+    filter: brightness(calc(0.7 * var(--pw-borders-focus-gain, 1)));
+}
+
 body .pw-vault-git:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) {
-    font-family: var(--font-interface);
+    font-family: "Microsoft YaHei UI", var(--font-interface);
+    font-weight: 400;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -13,7 +22,7 @@ body .pw-vault-git:where([data-pw-module="git"], [data-pw-module="git"] *):not(:
     background: transparent;
     box-shadow: none;
     color: var(--text-muted);
-    font-size: calc(var(--font-ui-small) - 1px);
+    font-size: 13px;
     -webkit-app-region: no-drag;
 }
 body .pw-vault-git:hover:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)),

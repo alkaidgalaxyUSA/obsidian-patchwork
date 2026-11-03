@@ -3,9 +3,11 @@ import { getServiceRegistry } from "../../utils/service-registry";
 import { ModuleUnavailableError } from "../../utils/module-errors";
 import { isMarkdownView, isEncryptedNote } from "./utils/markdown-views";
 import { DocumentState } from "./editor/document-state";
+import { UNINDEXED_DOCUMENT_VIEW, UnindexedDocumentView } from "./editor/unindexed-document";
 import type PatchworkEditorPlugin from "./main";
 
 export function installContentApi(plugin: PatchworkEditorPlugin, attachments: { open(): void }): void {
+    plugin.registerView(UNINDEXED_DOCUMENT_VIEW, leaf => new UnindexedDocumentView(leaf));
     const state = new DocumentState(plugin);
     const api: ContentApi = {
         version: 1,

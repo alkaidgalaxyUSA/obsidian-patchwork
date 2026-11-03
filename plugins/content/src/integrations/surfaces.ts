@@ -11,9 +11,10 @@ export function installContentSurfaces(plugin: Plugin): void {
         if (disposed) return;
         const current = new Set<HTMLElement>();
         plugin.app.workspace.iterateAllLeaves(leaf => {
-            if (!isMarkdownView(leaf.view)) return;
+            const empty = leaf.view.getViewType() === "empty" && !!leaf.view.containerEl.closest(".mod-root");
+            if (!isMarkdownView(leaf.view) && !empty) return;
             const root = leaf.view.containerEl; current.add(root);
-            if (!roots.has(root)) roots.set(root, scopeModule(root, "content", { surface: "markdown" }));
+            if (!roots.has(root)) roots.set(root, scopeModule(root, "content", { surface: empty ? "empty" : "markdown" }));
         });
         for (const [root, scope] of roots) if (!current.has(root)) { scope.dispose(); roots.delete(root); }
         refreshContentPortals();

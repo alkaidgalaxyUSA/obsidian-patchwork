@@ -3,6 +3,8 @@ import { getWindowContext } from "../../utils/windows";
 import { scopeModule } from "../../utils/module-scope";
 import { NativeWorkspace } from "./utils/native-workspace";
 import { WindowActions } from "./top/window-actions";
+import { TooltipDelays } from "./top/tooltip-delays";
+import { AppFocus } from "./top/app-focus";
 import { TabActionsPosition } from "./top/tab-actions-position";
 import { SettingsHost } from "./top/settings-host";
 import { LeftActions } from "./left/left-actions";
@@ -24,6 +26,8 @@ export class BordersRuntime {
         this.panels = new Map(); this.headers = new Map(); this.tabs = new Map(); this.windows = new Map();
         this.listeners = new Set(); this.queues = new Map();
         this.settings = new SettingsHost(this.app);
+        this.appFocus = new AppFocus(this.app.workspace.containerEl.ownerDocument.defaultView);
+        plugin.register(() => this.appFocus.dispose());
         installAboutTab(plugin); installSettingsLifecycle(plugin);
         for (const event of ["layout-change", "active-leaf-change", "file-open", "window-open"]) {
             plugin.registerEvent(this.app.workspace.on(event, () => this.schedule()));
@@ -55,6 +59,9 @@ export class BordersRuntime {
                 shell = { context, top: new WindowActions(this.app, doc), footer: new DocumentStatusBar(this.plugin, doc), states: new Map(), cleanups: [],
                     originalEnabled: doc.body.classList.contains("pw-window-actions-enabled") };
                 this.windows.set(context.windowId, shell);
+                shell.cleanups.push(this.appFocus.add(doc));
+                const tooltipDelays = new TooltipDelays(doc);
+                shell.cleanups.push(() => tooltipDelays.dispose());
                 doc.body.classList.add("pw-window-actions-enabled"); doc.body.dataset.pwBordersEnabled = "true";
                 const interact = event => { shell.focused = this.resolveFocus(shell, event.target); this.updateStates(shell); };
                 const resize = () => this.schedule();

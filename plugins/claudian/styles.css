@@ -52,6 +52,27 @@ body .claudian-container .claudian-message-content blockquote:not(.callout):not(
     color: var(--blockquote-color);
 }
 
+/* De-emphasize process details while preserving code and status colors. */
+body .claudian-container .claudian-messages :is(
+    .claudian-thinking-label,
+    .claudian-thinking-hint,
+    .claudian-thinking-content,
+    .claudian-thinking-content :is(p, li, strong, em, h1, h2, h3, h4, h5, h6):not(pre *, code *, .callout *),
+    .claudian-tool-name,
+    .claudian-tool-summary
+):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    color: var(--text-muted);
+}
+
+/* Use Markdown structure to emphasize answers, without guessing their meaning. */
+body .claudian-container .claudian-message-assistant .claudian-message-content :is(h1, h2, h3, h4, h5, h6):not(:where(.claudian-thinking-block *, .claudian-tool-call *, .claudian-subagent-list *, pre *, code *, .callout *)):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    color: color-mix(in srgb, var(--color-blue) 75%, var(--text-normal));
+}
+
+body .claudian-container .claudian-message-assistant .claudian-message-content strong:not(:where(.claudian-thinking-block *, .claudian-tool-call *, .claudian-subagent-list *, pre *, code *, .callout *, blockquote *, a *, h1 *, h2 *, h3 *, h4 *, h5 *, h6 *)):where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
+    color: color-mix(in srgb, var(--color-orange) 70%, var(--text-normal));
+}
+
 /* Keep task checkboxes inside the message and their checkmarks inside the box. */
 body .claudian-container .claudian-message-content li.task-list-item:where([data-pw-module="claudian"], [data-pw-module="claudian"] *):not(:where([data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]), [data-pw-module="claudian"] [data-pw-module]:not([data-pw-module="claudian"]) *)) {
     list-style: none;
@@ -83,6 +104,7 @@ body .claudian-container .claudian-message-content input.task-list-item-checkbox
 body .claudian-container :is(
     .claudian-message-content pre,
     .claudian-message-content code,
+    .claudian-tool-call-bash .claudian-tool-summary,
     .claudian-tool-bash-command,
     .claudian-tool-lines,
     .claudian-tool-result-text,

@@ -49,7 +49,7 @@ body .pw-left-ribbon-shortcuts .side-dock-ribbon-action {
     --icon-color: color-mix(in srgb, var(--text-muted) 85%, var(--color-base-100));
 }
 
-body .pw-left-ribbon-shortcuts > .side-dock-ribbon-action > svg { width: 20px; height: 20px; }
+body .pw-left-ribbon-shortcuts > .side-dock-ribbon-action > svg { width: 21px; height: 21px; flex-shrink: 0; }
 
 body .pw-left-ribbon-shortcuts .side-dock-ribbon-action:hover { background-color: var(--background-modifier-hover); color: var(--icon-color-hover); }
 
@@ -67,7 +67,7 @@ body .pw-left-panel-actions > .pw-left-sidebar-toggle {
     box-shadow: none;
 }
 
-body .pw-left-panel-actions > .pw-left-sidebar-toggle > svg { width: 20px; height: 20px; flex-shrink: 0; }
+body .pw-left-panel-actions > .pw-left-sidebar-toggle > svg { width: 21px; height: 21px; flex-shrink: 0; }
 
 body .pw-left-panel-actions > .pw-left-sidebar-toggle {
     flex-basis: var(--pw-left-action-size, 31px);
@@ -136,8 +136,8 @@ body.pw-window-actions-enabled .workspace-ribbon.mod-primary > .pw-bottom-tool-a
     padding: 8px 0;
     width: 40px;
 }
-body .pw-bottom-tool-actions > button { width: 32px; height: 32px; padding: 6px; border-radius: 4px; color: var(--icon-color); }
-body .pw-bottom-tool-actions > button > svg { width: 20px; height: 20px; }
+body .pw-bottom-tool-actions > button { width: 32px; height: 32px; padding: 5.5px; border-radius: 4px; color: var(--icon-color); }
+body .pw-bottom-tool-actions > button > svg { width: 21px; height: 21px; flex-shrink: 0; }
 body .pw-bottom-tool-actions > button:is(:hover, [aria-pressed="true"]) { background: var(--background-modifier-hover); color: var(--icon-color-hover); }
 
 body .pw-left-panel-actions { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
@@ -149,7 +149,7 @@ body.pw-window-actions-enabled:not(.is-mobile) .workspace-ribbon.mod-primary > .
 
 
 body .pw-left-panel-actions > .pw-git-ribbon-action { display: flex; align-items: center; justify-content: center; flex: 0 0 var(--pw-left-action-size, 31px); width: var(--pw-left-action-size, 31px); height: var(--pw-left-action-size, 31px); box-sizing: border-box; border: 0; margin: 0; padding: 4.5px; border-radius: 4px; --icon-color: color-mix(in srgb, var(--text-muted) 85%, var(--color-base-100)); }
-body .pw-left-panel-actions > .pw-git-ribbon-action > svg.svg-icon { width: 20px; height: 20px; position: relative; top: -0.5px; opacity: 1; }
+body .pw-left-panel-actions > .pw-git-ribbon-action > svg.svg-icon { width: 21px; height: 21px; flex-shrink: 0; position: relative; top: 0; opacity: 1; }
 body .pw-git-ribbon-action[aria-pressed="false"] { background: transparent; }
 body .pw-git-ribbon-action[aria-pressed="true"] { --icon-color: var(--text-normal); --icon-color-hover: var(--text-normal); color: var(--text-normal); background: color-mix(in srgb, color-mix(in srgb, var(--background-secondary-alt) 65%, var(--color-base-100)) 40%, transparent); }
 body .pw-git-ribbon-action[aria-pressed="true"][data-pw-panel-focused="true"] { --icon-color: white; --icon-color-hover: white; color: white; background: #3574f0; }

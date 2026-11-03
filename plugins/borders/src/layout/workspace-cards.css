@@ -15,6 +15,7 @@ body.pw-window-actions-enabled:not(.is-mobile) {
 
 /* Use the same deeper black for dark-mode cards while keeping the canvas separate. */
 body.theme-dark.pw-window-actions-enabled:not(.is-mobile) {
+    --pw-workspace-canvas: hsl(from var(--background-secondary) h s calc(l * 1.2));
     --pw-workspace-card: #191A1C;
     --pw-left-panel-surface: var(--pw-workspace-card);
 }
@@ -79,6 +80,15 @@ body.pw-window-actions-enabled:not(.is-mobile) .workspace-tabs > .workspace-tab-
     background: var(--pw-workspace-card);
     box-shadow: none;
     overflow: hidden;
+}
+
+/* Include the cards' bottom gutter in the footer's visual centering area. */
+body.pw-window-actions-enabled.pw-document-footer-enabled:not(.is-mobile) .status-bar {
+    --pw-footer-card-gutter: calc(var(--pw-workspace-card-gap) - var(--pw-workspace-card-offset-y));
+    flex-basis: calc(24px + var(--pw-footer-card-gutter));
+    height: calc(24px + var(--pw-footer-card-gutter));
+    min-height: calc(24px + var(--pw-footer-card-gutter));
+    margin-top: calc(-1 * var(--pw-footer-card-gutter));
 }
 
 /* Preserve view-specific backgrounds and every view's existing inner layout. */

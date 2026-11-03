@@ -2,7 +2,7 @@ import { installExplorerTree } from "./explorer-tree";
 import { canEnhanceExplorer, hideExplorerSearch } from "../utils/native-explorer";
 import { getServiceRegistry } from "../../../utils/service-registry";
 import { getWindowContext } from "../../../utils/windows";
-import { Notice, TFile, TFolder } from "obsidian";
+import { Menu, Notice, TFile, TFolder } from "obsidian";
 import { setIcon } from "../utils/icons";
 import { createDocumentMenu, createExplorerMenu, createMarkdown, showCreateDialog } from "./explorer-menus.js";
 import { installExplorerSearch } from "./explorer-search.js";
@@ -81,6 +81,7 @@ export function installExplorerActions(plugin, runtime) {
         next.showAtPosition({ x: bounds.left, y: bounds.bottom + 4 });
     };
     const restore = (entry) => {
+        if (entry.controls.includes(menuAnchor)) closeMenu();
         entry.enabled = false;
         entry.disposeSearch();
         entry.restoreSearch();
@@ -143,6 +144,18 @@ export function installExplorerActions(plugin, runtime) {
         view.getSortedFolderItems = entry.sorted;
         view.containerEl.classList.add("pw-explorer-controls");
         entry.treeControls = installExplorerTree(plugin, view, runtime);
+        const project = button("Project", "chevron-down", () => openMenu(project, () => {
+            const choices = new Menu();
+            const scope = scopeModule(choices.dom, "project", { surface: "view-menu" });
+            choices.onHide(() => { scope.dispose(); project.setAttribute("aria-expanded", "false"); });
+            choices.addItem(item => item.setTitle("Project").onClick(() => project.focus()));
+            project.setAttribute("aria-expanded", "true");
+            return choices;
+        }));
+        project.classList.add("pw-project-view-selector");
+        project.setAttribute("aria-haspopup", "menu");
+        project.setAttribute("aria-expanded", "false");
+        project.prepend(doc.createTextNode("Project"));
         const create = button("New", "explorer-create", () => openMenu(create, () => {
             const folder = creationFolder();
             return createDocumentMenu(plugin.app, view, (ext, label) => {
@@ -181,7 +194,7 @@ export function installExplorerActions(plugin, runtime) {
             }
             reveal();
         });
-        const expand = button("Expand Select", "chevrons-up-down", () => {
+        const expand = button("Expand Select", "git-expand-all", () => {
             entry.treeControls.expand();
             void expandExplorerSelection(view).catch(error => new Notice(`Could not expand selection: ${error.message}`));
         });
@@ -192,9 +205,9 @@ export function installExplorerActions(plugin, runtime) {
         const minimize = button("Hide files", "explorer-minimize", toggleCollapsed);
         minimize.classList.add("pw-explorer-minimize");
         // Keep Collapse fixed; native state updates may still change the hidden control.
-        host.prepend(create, divider, select);
+        host.prepend(project, create, divider, select);
         host.append(more, minimize);
-        const collapse = button("Collapse All", "chevrons-down-up", () => {
+        const collapse = button("Collapse All", "git-collapse-all", () => {
             view.tree.isAllCollapsed = false;
             view.tree.setCollapseAll(true);
             entry.treeControls.collapse();
@@ -208,7 +221,7 @@ export function installExplorerActions(plugin, runtime) {
         const nativeAnchor = entry.nativeCollapse?.parentElement === host ? entry.nativeCollapse : more;
         host.insertBefore(expand, nativeAnchor);
         host.insertBefore(collapse, nativeAnchor);
-        entry.controls.push(create, divider, select, expand, collapse, more, minimize);
+        entry.controls.push(project, create, divider, select, expand, collapse, more, minimize);
         entries.set(leaf, entry);
         view.sort();
     };

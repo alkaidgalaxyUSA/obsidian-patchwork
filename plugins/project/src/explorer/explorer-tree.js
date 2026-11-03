@@ -13,7 +13,7 @@ export function installExplorerTree(plugin, view, runtime) {
     const root = host.createDiv({ cls: "pw-project-vault-root", attr: { role: "treeitem", tabindex: "0", "aria-level": "1", "aria-expanded": "true", "aria-selected": "false" } });
     const arrow = root.createSpan({ cls: "pw-project-vault-arrow", attr: { "aria-hidden": "true" } });
     setIcon(arrow, "chevron-down");
-    setIcon(root.createSpan({ cls: "pw-project-vault-icon", attr: { "aria-hidden": "true" } }), "folder-outline");
+    setIcon(root.createSpan({ cls: "pw-project-vault-icon", attr: { "aria-hidden": "true" } }), "project-module");
     root.createEl("strong", { text: plugin.app.vault.getName() });
     const path = plugin.app.vault.adapter.getBasePath?.() ?? plugin.app.vault.getName();
     root.createSpan({ cls: "pw-project-vault-path", text: path });
@@ -75,7 +75,7 @@ export function installExplorerTree(plugin, view, runtime) {
                 icon.setAttribute("aria-hidden", "true");
                 icons.set(row, icon);
             }
-            const name = row.matches(".nav-folder-title") ? "folder-outline" : explorerFileIcon(row.dataset.path);
+            const name = row.matches(".nav-folder-title") ? "folder" : explorerFileIcon(row.dataset.path);
             if (icon.dataset.icon !== name) { setIcon(icon, name); icon.dataset.icon = name; }
             const label = row.querySelector(".nav-file-title-content, .nav-folder-title-content");
             if (label && icon.nextSibling !== label) row.insertBefore(icon, label);

@@ -136,25 +136,28 @@ export function createDocumentMenu(app, view, onCreate, folder, menu = new Menu(
     // Obsidian maps mouse height to scrollTop in long menus. This list scrolls
     // only through the wheel, scrollbar, touch, or keyboard navigation.
     useManualMenuScroll(menu);
-    const search = menu.dom.createDiv({ cls: "pw-explorer-menu-search" });
-    menu.dom.insertBefore(search, menu.dom.querySelector(".menu-scroll"));
-    const input = search.createEl("input", { type: "search", attr: { placeholder: "Search file types...", "aria-label": "Search file types" } });
-    // Keep native input focus/editing instead of the menu's mouse and key handling.
-    input.addEventListener("mousedown", (event) => event.stopPropagation());
-    input.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") return;
-        event.stopPropagation();
-        if (event.isComposing) return;
-        if (event.key === "ArrowDown") menu.onArrowDown(event);
-        if (event.key === "ArrowUp") menu.onArrowUp(event);
-        if (event.key === "Enter") {
-            event.preventDefault();
-            if (Number.isInteger(menu.selected) && menu.selected >= 0) menu.onEnter(event);
-        }
-    });
+    const search = contextMenu ? null : menu.dom.createDiv({ cls: "pw-explorer-menu-search" });
+    let input;
+    if (search) {
+        menu.dom.insertBefore(search, menu.dom.querySelector(".menu-scroll"));
+        input = search.createEl("input", { type: "search", attr: { placeholder: "Search file types...", "aria-label": "Search file types" } });
+        // Keep native input focus/editing instead of the menu's mouse and key handling.
+        input.addEventListener("mousedown", (event) => event.stopPropagation());
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") return;
+            event.stopPropagation();
+            if (event.isComposing) return;
+            if (event.key === "ArrowDown") menu.onArrowDown(event);
+            if (event.key === "ArrowUp") menu.onArrowUp(event);
+            if (event.key === "Enter") {
+                event.preventDefault();
+                if (Number.isInteger(menu.selected) && menu.selected >= 0) menu.onEnter(event);
+            }
+        });
+    }
     const entries = [];
     const add = (title, icon, color, action, keywords = "") => menu.addItem((item) => {
-        item.setTitle(title).setIcon(iconName(icon)).onClick(action);
+        item.setTitle(contextMenu ? title.replace(/^New /, "").replace(/ \(\./, "(.") : title).setIcon(iconName(icon)).onClick(action);
         item.dom.querySelector(".menu-item-icon")?.style.setProperty("color", color);
         entries.push({ item, text: `${title} ${keywords}`.toLowerCase() });
     });
@@ -176,7 +179,7 @@ export function createDocumentMenu(app, view, onCreate, folder, menu = new Menu(
         }, id.includes("excalidraw") ? ".excalidraw" : "encryption");
     }
     formats.filter(([ext]) => ext !== "md").forEach(addFormat);
-    input.addEventListener("input", () => {
+    input?.addEventListener("input", () => {
         const words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
         const matches = entries.filter(({ text }) => words.every((word) => text.includes(word)));
         menu.unselect();

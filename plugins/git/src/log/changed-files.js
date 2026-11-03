@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { addHistoryFileMenu } from "../history/menus";
 import { confirm } from "../dialogs";
 import { setIcon } from "../utils/icons";
@@ -14,11 +15,13 @@ export class ChangedFiles {
         this.diffButton = pane.button(toolbar, "Show Diff", "git-show-diff", () => this.showDiff());
         this.revertButton = pane.button(toolbar, "Revert Selected Changes", "git-rollback", () => this.revert());
         this.historyButton = pane.button(toolbar, "History Up to Here", "history", () => this.showHistory());
-        pane.button(toolbar, "View Options", "eye-expand", event => this.options(event));
+        pane.button(toolbar, "View Options", "git-log-view", event => this.options(event));
         const right = toolbar.createDiv({ cls: "pw-log-files-expand" });
-        pane.button(right, "Expand All", "chevrons-up-down", () => this.expand(true));
-        pane.button(right, "Collapse All", "chevrons-down-up", () => this.expand(false));
-        this.title = host.createDiv({ cls: "pw-log-section-title" });
+        pane.button(right, "Expand All", "git-expand-all", () => this.expand(true));
+        pane.button(right, "Collapse All", "git-collapse-all", () => this.expand(false));
+        const project = host.createDiv({ cls: "pw-git-project-heading" });
+        setIcon(project.createSpan({ attr: { "aria-hidden": "true" } }), "project-module");
+        this.projectName = project.createSpan();
         this.tree = host.createDiv({ cls: "pw-log-files-tree", attr: { role: "tree", "aria-label": "Changed files", "aria-multiselectable": "true" } });
         this.clear();
     }
@@ -27,7 +30,8 @@ export class ChangedFiles {
         this.commit = undefined;
         this.files = [];
         this.selected.clear();
-        this.title.setText("Changed files");
+        this.tree.setAttribute("aria-label", "Changed files");
+        this.projectName.setText(basename(this.pane.controller.repository.root));
         this.tree.setText(message);
         this.updateActions();
     }
@@ -35,8 +39,9 @@ export class ChangedFiles {
     setCommit(commit, files) {
         const same = this.commit?.hash === commit.hash;
         this.commit = commit; this.files = files;
+        this.tree.setAttribute("aria-label", `Changed files (${files.length})${commit.parents.length > 1 ? " · first parent" : ""}`);
         this.selected = new Set(same ? [...this.selected].filter(file => files.some(next => next.path === file.path)).map(file => files.find(next => next.path === file.path)) : []);
-        this.title.setText(`Changed files (${files.length})${commit.parents.length > 1 ? " · first parent" : ""}`);
+        this.projectName.setText(basename(this.pane.controller.repository.root));
         this.render();
     }
 

@@ -1,5 +1,7 @@
 import { isAbsolute } from "node:path";
 import { choose, confirm, prompt, showOutput } from "./dialogs";
+import { GitRemotesModal } from "./remotes-modal";
+import { openGitDialog } from "./utils/portals";
 
 /** File history and repository operations used by the explorer context menu. */
 export class FileContextActions {
@@ -14,6 +16,19 @@ export class FileContextActions {
         const ref = await prompt(this.controller, title, "Revision, branch or tag", initial);
         if (!ref) return;
         return (await this.repository.run(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`])).trim();
+    }
+
+    includes(path) {
+        return this.paths.some(selected => selected === "." || path === selected || path.startsWith(`${selected}/`));
+    }
+
+    add() {
+        return this.controller.act(async () => {
+            const entries = await this.repository.status();
+            const paths = entries.filter(entry => this.includes(entry.path) && (entry.untracked || entry.code[1] !== " ")).map(entry => entry.path);
+            if (!paths.length) throw new Error("No unstaged changes in the selected files.");
+            await this.repository.stage(paths);
+        });
     }
 
     output(title, args) {
@@ -79,16 +94,7 @@ export class FileContextActions {
     }
 
     remotes() {
-        return this.controller.act(async () => {
-            const remotes = (await this.repository.run(["remote"])).trim().split("\n").filter(Boolean);
-            const choice = await choose(this.controller, "Manage Remotes", [{ name: "Add Remote...", add: true }, ...remotes.map(name => ({ name }))]);
-            if (!choice) return;
-            const name = choice.add ? await prompt(this.controller, "Add Remote", "Remote name", "origin") : choice.name;
-            if (!name || name.startsWith("-")) return;
-            const initial = choice.add ? "" : (await this.repository.run(["remote", "get-url", "--", name])).trim();
-            const url = await prompt(this.controller, "Remote URL", "Repository URL", initial);
-            if (url) await this.repository.run(choice.add ? ["remote", "add", "--", name, url] : ["remote", "set-url", "--", name, url]);
-        });
+        openGitDialog(this.controller, new GitRemotesModal(this.controller));
     }
 
     clone() {

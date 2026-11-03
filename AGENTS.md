@@ -4,8 +4,8 @@
 
 - Change only code directly related to the requested task. Preserve unrelated working-tree changes, including icon edits and pending moves.
 - Prefer the existing structure, naming, dependencies, UI patterns and code style. Avoid speculative abstractions, unrelated formatting and broad refactors.
-- Do not install development tools, change machine configuration, run project builds, or add or modify tests without explicit user authorization. Reuse declared dependencies. Explain a necessary new runtime dependency before introducing it.
-- Build, installation, reload and restart authorization is session-specific. Do not interpret a previous session's deployment as standing permission.
+- Do not install development tools, change machine configuration, or add or modify tests without explicit user authorization. Plugin builds are authorized only within the targeted completion workflow below. Reuse declared dependencies. Explain a necessary new runtime dependency before introducing it.
+- The targeted completion workflow below provides standing authorization to build, install and reload plugins modified by the current task, including development sessions running in IDEA. Application restarts, theme deployment and deployment of unrelated plugins still require explicit user authorization.
 - Read-only inspection and relevant syntax or type checks are appropriate for code changes. Report exactly which checks ran; do not claim a runtime fix from static checks alone.
 - Do not force-stop Obsidian without authorization: unsaved work can be lost. Back up affected installed files before deployment.
 - All new or modified documentation, including filenames, headings and frontmatter, must be English unless the user explicitly requests another language.
@@ -93,11 +93,25 @@ This is a multi-plugin project. Source nesting does not imply a shared installed
 
 ## Packaging and validation
 
+### Completion build, installation and reload workflow
+
+- Complete plugin development in this order: modify source, run relevant checks, build, install, then reload the modified plugin. This workflow is standing authorization; do not ask separately for build, installation or targeted reload permission.
+- Select only plugins whose source or runtime assets this agent changed for the current task, using target names from `plugins/manifest.json`. For a Project-only change, select `project`; for a Git-only change, select `git`. Use a comma-separated list only when this task actually modifies multiple plugins. Never derive the deployment scope from all dirty files in the shared workspace or include plugins being developed by unrelated sessions.
+- Run `pwsh -NoProfile -File scripts/Reload-Plugins.ps1 -Plugin '<modified-targets>'` to compile, install and reload only the selected plugins. Always supply an explicit, nonempty `-Plugin` selection. Do not omit it, use the all-plugin `-PluginsOnly` option, or add `-MigrateModules` to widen deployment. Do not install the theme as part of plugin-only work.
+- Only explicitly selected plugins are compiled, packaged, installed and reloaded. Shared type and module-boundary checks may inspect the whole repository without compiling unrelated plugins. The full `Build-Install.ps1` entry point invokes all seven plugin functions sequentially and must not be used without a selection during targeted development. Shared infrastructure changes require identifying the plugins affected by this task; do not automatically select every consumer.
+- Use the build/install script's existing backup, verified-copy and reload lifecycle. Preserve settings, user data and previous enabled states. Disabled plugins remain disabled; report them rather than enabling them. `claudian` means the companion `claudian-extension`, not the upstream chat plugin.
+- Both entry points call the per-plugin functions in `scripts/Install.ps1`, which owns compilation, backup, installation, verification and reload. Successful installation includes loading and verifying the new runtime; do not reload it a second time unnecessarily.
+- Skip build, installation and reload for documentation-only changes. If deployment or reload would interrupt known active work, such as Terminal processes or an in-progress operation, defer the affected target and report why. Keep Obsidian open; never force-stop it.
+- Both entry points support `-WhatIf` to inspect scope without compiling, changing files or connecting to Obsidian. Installation transactions are serialized per checkout with a named mutex. If another deployment is running, retry after it finishes. On timeout, inspect application state before retrying because the in-app operation may still be running.
+- Verify installed bytes against the intended output and confirm the selected previously enabled plugins loaded successfully. Report built, installed and reloaded targets, disabled targets, deferred targets and failures. If deployment fails or is deferred, explicitly state that the source changes are not yet live. A successful reload confirms lifecycle completion, not visual or functional acceptance.
+
+### Build and deployment
+
 - `plugins/manifest.json` owns plugin targets, source paths, installed IDs, style entries and runtime-file lists. `plugins/package.json` owns the shared plugin version; the root `package.json` owns npm dependencies.
 - Each plugin produces its own `main.js`, `styles.css`, `manifest.json` and license. `dist/plugins/<id>` contains build outputs; `dist/obsidian-patchwork` contains installer packages.
 - Never fix generated `dist` files or installed bundles as the primary implementation. Change source and use the authorized build/deployment path.
 - Run `node plugins/scripts/check-module-boundaries.mjs` for ownership, reference and CSS changes. Use `npm run typecheck` and `node --check <file>` as relevant; TypeScript currently does not type-check JavaScript bodies.
-- When explicitly authorized, use `pwsh -NoProfile -File scripts/Build-Install.ps1 -Plugin 'borders,claudian'` with the affected targets. The script may build all plugin artifacts but installs only selected packages. Keep destination/profile configuration isolated in `scripts/Deployment.psd1`.
+- Follow the targeted completion workflow above for plugin builds and deployment. Always pass only the current task's modified plugin targets to `scripts/Reload-Plugins.ps1 -Plugin`. Keep destination/profile configuration isolated in `scripts/Deployment.psd1`.
 - Verify that installed bytes match the intended output and confirm the plugin is enabled. Source checks alone do not prove a deployed runtime is fixed.
 - For interaction changes, check console errors, physical clicks, repeated toggles, provider disable/re-enable, animation completion and UI responsiveness. Add tests only with authorization.
 - CLI calls use the configured `Obsidian.com`. A discovery failure may indicate sandbox/IPC isolation even when Obsidian is open; investigate permissions before concluding the application is closed.

@@ -8320,6 +8320,255 @@
       "source": "platform/icons/src/xml/html5.svg",
       "sha": "8c352d606bc00fd1632ca39ad3204332ddd97558",
       "replaced": false
+    },
+    {
+      "file": "action-file-markdown.svg",
+      "source": "platform/icons/src/expui/fileTypes/markdown_dark.svg",
+      "sha": "2d86cd368ccb5f99afdd7ba53aee3facc2d1c384",
+      "replaced": false
+    },
+    {
+      "file": "action-file-text.svg",
+      "source": "platform/icons/src/expui/fileTypes/text_dark.svg",
+      "sha": "86468276b483b81361604f9077d9c9d61ddb34ce",
+      "replaced": false
+    },
+    {
+      "file": "action-file-javascript.svg",
+      "source": "platform/icons/src/expui/fileTypes/javaScript_dark.svg",
+      "sha": "1886170768729e47890ff014c6c039c771440137",
+      "replaced": false
+    },
+    {
+      "file": "action-file-typescript.svg",
+      "source": "platform/icons/src/expui/fileTypes/typeScript_dark.svg",
+      "sha": "5c74ff7f71caab33351dad62d216bff5f7615519",
+      "replaced": false
+    },
+    {
+      "file": "action-file-java.svg",
+      "source": "platform/icons/src/expui/fileTypes/java_dark.svg",
+      "sha": "155295f592c101dea4464449f145c853a5711222",
+      "replaced": false
+    },
+    {
+      "file": "action-file-html.svg",
+      "source": "platform/icons/src/expui/fileTypes/html_dark.svg",
+      "sha": "9e10d57f169bc2a24dbb3a86024bcf8d6c5692d8",
+      "replaced": false
+    },
+    {
+      "file": "action-file-css.svg",
+      "source": "platform/icons/src/expui/fileTypes/css_dark.svg",
+      "sha": "f541ee8c7707afbb3971294add79837ae63d1c1d",
+      "replaced": false
+    },
+    {
+      "file": "action-file-json.svg",
+      "source": "platform/icons/src/expui/fileTypes/json_dark.svg",
+      "sha": "29371ab71af610b8c703b095db19dc307f308bb0",
+      "replaced": false,
+      "aliases": [
+        "platform/icons/src/expui/fileTypes/sourceMap_dark.svg"
+      ]
+    },
+    {
+      "file": "action-file-yaml.svg",
+      "source": "platform/icons/src/expui/fileTypes/yaml_dark.svg",
+      "sha": "b173b95d99f72a335c39cf5e9c439aed32d81eb1",
+      "replaced": false
+    },
+    {
+      "file": "action-file-toml.svg",
+      "source": "platform/icons/src/expui/fileTypes/toml_dark.svg",
+      "sha": "b9e6aea69d9e98767640b80fab715c6418d15b27",
+      "replaced": false
+    },
+    {
+      "file": "action-file-xml.svg",
+      "source": "platform/icons/src/expui/fileTypes/xml_dark.svg",
+      "sha": "8a2eb779d6d72bec3e43e19f93f4e0ecb36395d7",
+      "replaced": false
+    },
+    {
+      "file": "action-file-config.svg",
+      "source": "platform/icons/src/expui/fileTypes/config_dark.svg",
+      "sha": "a5c20a8ab0e2610d818103d8c94374596eef6874",
+      "replaced": false
+    },
+    {
+      "file": "action-file-sql.svg",
+      "source": "platform/icons/src/expui/fileTypes/sql_dark.svg",
+      "sha": "57d62ee804dbc450f64abd8602a9c2613ab39c22",
+      "replaced": false
+    },
+    {
+      "file": "action-file-csv.svg",
+      "source": "platform/icons/src/expui/fileTypes/csv_dark.svg",
+      "sha": "d038177a9d6c39560af2320c4faa84c55eb43414",
+      "replaced": false
+    },
+    {
+      "file": "action-file-vue.svg",
+      "source": "platform/icons/src/expui/fileTypes/vue.svg",
+      "sha": "8625428aa9d7759ee51be0bf580ef3120ae52123",
+      "replaced": false
+    },
+    {
+      "file": "action-file-c.svg",
+      "source": "platform/icons/src/expui/fileTypes/c_dark.svg",
+      "sha": "af54552504335d68934c836cc006f499d7702e6e",
+      "replaced": false
+    },
+    {
+      "file": "action-file-cpp.svg",
+      "source": "platform/icons/src/expui/fileTypes/cpp_dark.svg",
+      "sha": "3c4442388753762637398ec35ad8f9d0884f202d",
+      "replaced": false
+    },
+    {
+      "file": "action-file-h.svg",
+      "source": "platform/icons/src/expui/fileTypes/h_dark.svg",
+      "sha": "935071870be3f386e8995251d7e0573e54d56d65",
+      "replaced": false
+    },
+    {
+      "file": "action-file-csharp.svg",
+      "source": "platform/icons/src/expui/fileTypes/Csharp_dark.svg",
+      "sha": "c0b2a9df326cabb5b775cdb78876da6e008676e5",
+      "replaced": false
+    },
+    {
+      "file": "action-file-groovy.svg",
+      "source": "platform/icons/src/expui/fileTypes/groovy_dark.svg",
+      "sha": "0dfe6a46228a4da10ff026bfd06007ad65af749c",
+      "replaced": false
+    },
+    {
+      "file": "action-file-gradle.svg",
+      "source": "platform/icons/src/expui/fileTypes/gradle_dark.svg",
+      "sha": "37c055abf2cba13842d30d27dcbbff10bb69d2ac",
+      "replaced": false
+    },
+    {
+      "file": "action-file-patch.svg",
+      "source": "platform/icons/src/expui/fileTypes/patch_dark.svg",
+      "sha": "e6d13133ef0b9bebdce44f09eb7f126f1ed298c6",
+      "replaced": false
+    },
+    {
+      "file": "action-file-terraform.svg",
+      "source": "platform/icons/src/expui/fileTypes/terraform_dark.svg",
+      "sha": "4c4d9bfeea936cf74a39dc627d193ca9d2a92a1b",
+      "replaced": false
+    },
+    {
+      "file": "action-file-docker.svg",
+      "source": "platform/icons/src/expui/fileTypes/docker_dark.svg",
+      "sha": "5369a264a74a922eca541c1ec1b95eaa57426fd6",
+      "replaced": false
+    },
+    {
+      "file": "action-file-gitignore.svg",
+      "source": "platform/icons/src/expui/fileTypes/gitignore.svg",
+      "sha": "86228c6177d98666f6df0fb077c65f6e31b7483b",
+      "replaced": false
+    },
+    {
+      "file": "action-file-editorconfig.svg",
+      "source": "platform/icons/src/expui/fileTypes/editorConfig_dark.svg",
+      "sha": "528d02ebe429a50c5bb6a5c3380e7aac0c1a4f04",
+      "replaced": false
+    },
+    {
+      "file": "action-git-log-refresh.svg",
+      "source": "platform/icons/src/expui/general/refresh_dark.svg",
+      "sha": "3362992af4e89f0ffb03bcc5d54c5ee577b1c495",
+      "replaced": false
+    },
+    {
+      "file": "action-git-log-close.svg",
+      "source": "platform/icons/src/expui/general/closeSmall_dark.svg",
+      "sha": "237d6d45d220e17617a9e053dc2e7c0393908319",
+      "replaced": false
+    },
+    {
+      "file": "action-git-log-sort.svg",
+      "source": "platform/icons/src/expui/general/sortBy_dark.svg",
+      "sha": "dffda7f3272735a2c0e2d41e91a1579710ab61b4",
+      "replaced": false
+    },
+    {
+      "file": "action-git-log-locate.svg",
+      "source": "platform/icons/src/expui/general/locate_dark.svg",
+      "sha": "a2ba607aa5bf57b6e04b9e9979a068a02001b260",
+      "replaced": false
+    },
+    {
+      "file": "action-git-log-view.svg",
+      "source": "platform/icons/src/expui/general/show_dark.svg",
+      "sha": "f1943369abe68a7fd3178103d39083a701c703bd",
+      "replaced": false
+    },
+    {
+      "file": "action-git-log-favorite.svg",
+      "source": "platform/icons/src/nodes/favorite.svg",
+      "sha": "aa7a7165a31efdcf89b7027f18e9077f859d8c42",
+      "replaced": false
+    },
+    {
+      "file": "action-git-log-tag.svg",
+      "source": "platform/icons/src/expui/nodes/tag_dark.svg",
+      "sha": "6187965aea15d706779a8e0b36708ddc7ea1a283",
+      "replaced": false
+    },
+    {
+      "file": "action-git-log-checkout.svg",
+      "source": "platform/icons/src/actions/checkOut_dark.svg",
+      "sha": "e2182f36a9498a69f6ed5f60bf7a59b004d661ee",
+      "replaced": false
+    },
+    {
+      "file": "action-git-log-regex.svg",
+      "source": "platform/icons/src/expui/inline/regex_dark.svg",
+      "sha": "ab8f9305d230b0a81bc5b46ea6c3886cf11383cf",
+      "replaced": false
+    },
+    {
+      "file": "action-git-log-match-case.svg",
+      "source": "platform/icons/src/expui/inline/matchCase_dark.svg",
+      "sha": "7e24712e4e291f233f982de69a011837c10b2966",
+      "replaced": false
+    },
+    {
+      "file": "action-git-file.svg",
+      "source": "platform/icons/src/expui/fileTypes/unknown_dark.svg",
+      "sha": "01fa4f60a8090872477e365a9f163a84549d7440",
+      "replaced": false
+    },
+    {
+      "file": "action-project-module.svg",
+      "source": "platform/icons/src/expui/nodes/module_dark.svg",
+      "sha": "10c4673640012fe40cc61c73a27471c74c3bcb35",
+      "replaced": false
+    },
+    {
+      "file": "action-explorer-minimize.svg",
+      "source": "platform/icons/src/general/hideToolWindow_dark.svg",
+      "sha": "e8bba2b4d7f36cb7065454a11bd0df02254425d0",
+      "replaced": true
+    },
+    {
+      "file": "action-select-opened-file.svg",
+      "source": "platform/icons/src/expui/general/locate_dark.svg",
+      "sha": "a2ba607aa5bf57b6e04b9e9979a068a02001b260",
+      "replaced": true
+    },
+    {
+      "file": "action-explorer-more.svg",
+      "source": "platform/icons/src/expui/general/moreVertical_dark.svg",
+      "sha": "7f5e14b5c2bdb09ea3350a868109db30315b7a27",
+      "replaced": true
     }
   ],
   "variantPolicy": "One asset per normalized icon name. Prefer New UI and its default 16px source; omit redundant Classic, directory and size variants. Keep distinct state names. Use dark variants where available."

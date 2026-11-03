@@ -1,4 +1,4 @@
-import { Notice } from "obsidian";
+import { Notice, setTooltip } from "obsidian";
 import { scopeModule } from "../../../utils/module-scope";
 import { setIcon } from "../utils/icons";
 import { SidebarHandle } from "./sidebar-handle";
@@ -20,6 +20,7 @@ export class RightActions {
             if (!button) {
                 button = this.toolbar.createEl("button", { cls: "clickable-icon side-dock-ribbon-action", attr: { type: "button", "aria-label": definition.label, "data-tooltip-position": "left" } });
                 setIcon(button, definition.icon);
+                setTooltip(button, definition.label, { placement: "left", delay: 0 });
                 button.addEventListener("click", () => {
                     void this.toggle(definition.id, { context: this.context, focus: true }).catch(error => new Notice(error.message));
                 });

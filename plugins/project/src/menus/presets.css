@@ -95,7 +95,7 @@ body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([
     color: var(--pw-menu-folder, var(--pw-menu-text)) !important;
 }
 body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-folder .collapse-icon svg:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
-    width: 16px !important; height: 16px !important;
+    width: 17px !important; height: 17px !important;
     transform: none !important;
     translate: none !important;
     background: currentColor !important;

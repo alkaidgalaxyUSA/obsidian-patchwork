@@ -7,13 +7,14 @@
 
 /* Keep structural outlines consistent across workspace panels and popups. */
 body.theme-dark {
-  --background-modifier-border: #000;
-  --divider-color: #000;
-  --tab-outline-color: #000;
-  --titlebar-border-color: #000;
-  --modal-border-color: #000;
-  --prompt-border-color: #000;
-  --status-bar-border-color: #000;
+  --pw-divider-color: #4A4D54;
+  --background-modifier-border: var(--pw-divider-color);
+  --divider-color: var(--pw-divider-color);
+  --tab-outline-color: var(--pw-divider-color);
+  --titlebar-border-color: var(--pw-divider-color);
+  --modal-border-color: var(--pw-divider-color);
+  --prompt-border-color: var(--pw-divider-color);
+  --status-bar-border-color: var(--pw-divider-color);
 }
 
 .theme-dark {

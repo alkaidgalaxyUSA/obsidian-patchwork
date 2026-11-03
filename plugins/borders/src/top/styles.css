@@ -1,3 +1,37 @@
+/* Public chrome presentation token also consumed by contributed header controls. */
+body.pw-window-actions-enabled { --pw-borders-focus-gain: 1; }
+body.pw-window-actions-enabled[data-pw-app-focused="true"] { --pw-borders-focus-gain: 2; }
+
+/* Dim icon artwork without dimming the controls' hover or active backgrounds. */
+body.pw-window-actions-enabled :is(.pw-window-settings, .titlebar-button, .workspace-drawer-vault-switcher) > svg,
+body.pw-window-actions-enabled [data-pw-border] svg:where([data-pw-module="borders"] *):not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]), [data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) {
+    filter: brightness(calc(0.6 * var(--pw-borders-focus-gain, 1)));
+}
+
+/* Keep badge and chevron artwork dimmer than the vault label. */
+body.pw-window-actions-enabled .workspace-drawer-vault-switcher > :is(.pw-vault-badge, .workspace-drawer-vault-switcher-icon) {
+    filter: brightness(calc(0.6 * var(--pw-borders-focus-gain, 1)));
+}
+body.pw-window-actions-enabled .workspace-drawer-vault-switcher > .workspace-drawer-vault-name {
+    filter: brightness(calc(0.7 * var(--pw-borders-focus-gain, 1)));
+}
+
+body.pw-window-actions-enabled .titlebar-button:not(.mod-logo) > svg { width: 13px; height: 13px; }
+
+/* Chrome controls keep the desktop arrow cursor, including while hovered. */
+body.pw-window-actions-enabled :is(.pw-window-settings, .titlebar-button, .workspace-drawer-vault-switcher),
+body.pw-window-actions-enabled :is(button, .clickable-icon, [role="button"]):where([data-pw-module="borders"], [data-pw-module="borders"] *):not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]), [data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) {
+    cursor: default;
+}
+
+/* Hover feedback is shared by chrome icons, even when their panel is active. */
+body.pw-window-actions-enabled :is(.pw-window-settings, .pw-titlebar-shortcuts > .side-dock-ribbon-action):hover,
+body.pw-window-actions-enabled :is(.clickable-icon, button):where([data-pw-module="borders"], [data-pw-module="borders"] *):not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]), [data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)):hover:not(:disabled) {
+    background-color: #4a4d54 !important;
+    color: #f2f2f2;
+    --icon-color-hover: #f2f2f2;
+}
+
 /* The transparent titlebar must not cancel the drag regions beneath it. */
 body.pw-window-actions-enabled:not(.is-mobile):not(.mod-macos) .titlebar {
     -webkit-app-region: initial;
@@ -44,7 +78,7 @@ body .pw-titlebar-shortcuts .side-dock-ribbon-action {
     --icon-color: color-mix(in srgb, var(--text-muted) 85%, var(--color-base-100));
 }
 
-body .pw-titlebar-shortcuts > .side-dock-ribbon-action > svg { width: 20px; height: 20px; }
+body .pw-titlebar-shortcuts > .side-dock-ribbon-action > svg { width: 21px; height: 21px; flex-shrink: 0; }
 
 body .pw-titlebar-shortcuts * { -webkit-app-region: no-drag; }
 
@@ -70,7 +104,7 @@ body .titlebar-button-container > .pw-window-settings {
 
 body .pw-window-settings * { -webkit-app-region: no-drag; }
 
-body .titlebar-button-container > .pw-window-settings > svg { width: 20px; height: 20px; }
+body .titlebar-button-container > .pw-window-settings > svg { width: 21px; height: 21px; flex-shrink: 0; }
 
 body .titlebar-button-container > .pw-window-settings:focus-visible {
     outline: 2px solid var(--interactive-accent);
@@ -116,7 +150,7 @@ body.pw-window-actions-enabled > .pw-app-logo {
     -webkit-app-region: drag;
 }
 
-body.pw-window-actions-enabled > .pw-app-logo .logo-full { display: block; width: 20px; height: 20px; }
+body.pw-window-actions-enabled > .pw-app-logo .logo-full { display: block; width: 21px; height: 21px; flex-shrink: 0; }
 
 body.pw-window-actions-enabled:not(.is-mobile) .workspace-split.mod-primary-split .workspace-sidedock-vault-profile .workspace-drawer-vault-switcher {
     flex: 0 1 auto;
@@ -144,6 +178,11 @@ body.pw-window-actions-enabled .workspace-drawer-vault-switcher-icon {
 body.pw-window-actions-enabled .workspace-drawer-vault-switcher-icon svg { display: none; }
 
 body.pw-window-actions-enabled .workspace-drawer-vault-name {
+    --vault-profile-font-weight: 400;
+    --vault-profile-font-size: 13px;
+    font-family: "Microsoft YaHei UI", var(--font-interface);
+    font-size: 13px;
+    font-weight: 400;
     color: rgb(from var(--text-normal) calc(r * 1.1) calc(g * 1.1) calc(b * 1.1) / alpha);
     min-width: 0;
     overflow: hidden;
