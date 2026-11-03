@@ -3,6 +3,7 @@ import { Menu, Notice } from "obsidian";
 import { iconName, setIcon } from "../utils/icons";
 import { GitHeaderActions } from "./actions";
 import { scopeModule } from "../../../utils/module-scope";
+import { GitPopupResize } from "../utils/popup-resize";
 
 const ACTIONS = [
     ["pull", "Update Project…", "arrow-down-left"],
@@ -53,6 +54,7 @@ export class GitPopup {
         });
         this.settingsButton = this.tool(header, "Settings", "settings", () => this.showSettings());
         this.content = this.el.createDiv({ cls: "pw-git-popup-content" });
+        this.resize = new GitPopupResize(this);
         this.content.addEventListener("scroll", () => this.branchMenu?.hide());
         this.content.addEventListener("pointerover", event => {
             const row = event.target.closest(".pw-git-row");
@@ -118,7 +120,7 @@ export class GitPopup {
         option("groupByPrefix", "Group by Prefix");
         option("showRecent", "Show Recent Branches");
         option("showTags", "Show Tags");
-        menu.addItem(item => item.setTitle("Restore Popup Size").setDisabled(true));
+        menu.addItem(item => item.setTitle("Restore Popup Size").setDisabled(!this.resize.size).onClick(() => this.resize.restore()));
         this.settingsButton.setAttribute("aria-expanded", "true");
         menu.onHide(() => {
             if (this.settingsMenu === menu) this.settingsMenu = undefined;
@@ -266,7 +268,11 @@ export class GitPopup {
 
     branch(ref, remote, label = ref) {
         const current = !remote && ref === this.data.current;
-        const button = this.row(label, current ? "git-current-branch" : "git-branch-flipped", () => this.branchActions(button, ref, remote));
+        const favorites = this.controller.plugin.settingsStore.preferences.logFavorites;
+        const favorite = Array.isArray(favorites) && favorites.includes(`${remote ? "refs/remotes/" : "refs/heads/"}${ref}`);
+        const icon = current ? favorite ? "idea/dvcs/currentBranchFavoriteLabel_dark.svg" : "idea/dvcs/currentBranchLabel_dark.svg"
+            : favorite ? "idea/expui/nodes/star_dark.svg" : "git-branch-flipped";
+        const button = this.row(label, icon, () => this.branchActions(button, ref, remote));
         button.classList.add("pw-git-branch");
         button.classList.add(remote ? "pw-git-remote-branch" : "pw-git-local-branch");
         button.dataset.ref = ref;
@@ -353,6 +359,7 @@ export class GitPopup {
         this.closed = true;
         this.branchMenu?.hide();
         this.settingsMenu?.hide();
+        this.resize?.dispose();
         this.doc.removeEventListener("pointerdown", this.outside, true);
         this.doc.defaultView.removeEventListener("resize", this.reposition);
         this.scope?.dispose();

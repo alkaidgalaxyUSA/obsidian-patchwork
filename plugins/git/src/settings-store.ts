@@ -30,6 +30,7 @@ function popupValues(value: unknown): Partial<GitPopupOptions> {
 export class GitSettingsStore {
     private pending: Promise<void> = Promise.resolve();
     readonly popup: GitPopupOptions = { ...defaults };
+    preferences: SettingsRecord = {};
     constructor(private readonly plugin: Plugin) {}
 
     async load(): Promise<SettingsRecord> {
@@ -39,6 +40,7 @@ export class GitSettingsStore {
             select: donor => ({ gitPopupOptions: popupValues(donor.gitPopupOptions) }),
         });
         Object.assign(this.popup, defaults, popupValues(data.gitPopupOptions));
+        this.preferences = record(data.gitPreferences);
         return data;
     }
 
@@ -47,9 +49,20 @@ export class GitSettingsStore {
         return this.enqueue(latest => ({ ...latest, gitPopupOptions: { ...record(latest.gitPopupOptions), [key]: value } }));
     }
 
-    saveDraft(message: string, amend: boolean, changelists: unknown): Promise<void> {
-        const snapshot = structuredClone({ message, amend, changelists });
-        return this.enqueue(latest => ({ ...latest, ...snapshot }));
+    saveDraft(message: string, amend: boolean, changelists: unknown, commitMode: "working" | "staged", root: string): Promise<void> {
+        const snapshot = structuredClone({ message, amend, changelists, commitMode });
+        const drafts = record(this.preferences.repositoryDrafts);
+        this.preferences.repositoryDrafts = { ...drafts, [root]: snapshot };
+        return this.enqueue(latest => {
+            const preferences = record(latest.gitPreferences);
+            return { ...latest, ...snapshot, draftRepository: root, gitPreferences: { ...preferences, repositoryDrafts: { ...record(preferences.repositoryDrafts), [root]: snapshot } } };
+        });
+    }
+
+    savePreferences(values: SettingsRecord): Promise<void> {
+        const snapshot = structuredClone(values);
+        Object.assign(this.preferences, snapshot);
+        return this.enqueue(latest => ({ ...latest, gitPreferences: { ...record(latest.gitPreferences), ...snapshot } }));
     }
 
     private enqueue(merge: (latest: SettingsRecord) => SettingsRecord): Promise<void> {

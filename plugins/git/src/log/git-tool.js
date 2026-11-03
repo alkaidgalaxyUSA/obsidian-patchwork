@@ -1,10 +1,12 @@
 import { ToolTabs } from "../../../utils/tool-tabs";
 import { GitLogPane } from "./git-log-pane";
+import { setIcon } from "../utils/icons";
 
 export class GitTool {
     constructor(controller, host, hide) {
         this.controller = controller;
         this.tabs = new ToolTabs(host, "git", "Git", () => this.add(), hide);
+        setIcon(this.tabs.actions.querySelector("button"), "git-header-hide");
         controller.logTools.set(host.ownerDocument, this);
     }
 
@@ -15,6 +17,7 @@ export class GitTool {
             tab.label = label; tab.title.setText(label);
         });
         tab = this.tabs.append("Log", pane);
+        setIcon(tab.el.querySelector("button"), "git-log-close");
         return pane;
     }
 

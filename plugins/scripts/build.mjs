@@ -19,7 +19,14 @@ for (const file of (await readdir(iconRoot)).sort()) {
 iconAssets["idea/expui/general/inspections/inspectionsEye_dark.svg"] = await readFile(join(iconRoot, "idea/expui/general/inspections/inspectionsEye_dark.svg"), "utf8");
 iconAssets["idea/expui/general/edit_dark.svg"] = await readFile(join(iconRoot, "idea/expui/general/edit_dark.svg"), "utf8");
 iconAssets["idea/expui/fileTypes/ignored_dark.svg"] = await readFile(join(iconRoot, "idea/expui/fileTypes/ignored_dark.svg"), "utf8");
-for (const file of ["idea-expui-vcs-push_dark.svg", "idea-expui-vcs-merge_dark.svg"]) {
+for (const file of [
+  "idea-expui-vcs-push_dark.svg", "idea-expui-vcs-merge_dark.svg",
+  "idea-expui-vcs-changelist_dark.svg", "idea-vcs-branchNode.svg",
+  "idea/expui/general/remove_dark.svg", "idea/general/gearPlain_dark.svg",
+  "idea/expui/general/moveUp_dark.svg", "idea/expui/general/moveDown_dark.svg",
+  "idea/dvcs/currentBranchLabel_dark.svg", "idea/dvcs/currentBranchFavoriteLabel_dark.svg", "idea/dvcs/branchLabel_dark.svg",
+  "idea/expui/nodes/star_dark.svg", "idea/expui/toolwindows/commit_dark.svg", "idea/expui/toolwindows/vcs_dark.svg",
+]) {
   iconAssets[file] = await readFile(join(iconRoot, file), "utf8");
 }
 const iconPlugin = {

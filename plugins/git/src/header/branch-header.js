@@ -10,7 +10,8 @@ export class BranchHeader {
         this.scope = scopeModule(this.button, "git", { contribution: true, surface: "header" });
         this.button.setAttribute("data-tooltip-delay", "0");
         setIcon(this.button.createSpan(), "git-branch-flipped");
-        this.label = this.button.createSpan({ cls: "pw-vault-git-label" }); this.button.createSpan({ cls: "pw-header-chevron" });
+        this.label = this.button.createSpan({ cls: "pw-vault-git-label" });
+        setIcon(this.button.createSpan({ cls: "pw-header-chevron" }), "chevron-down");
         this.button.addEventListener("click", () => {
             if (this.menu) { this.menu.close(); return; }
             if (this.disposed || controller.disposed) return;

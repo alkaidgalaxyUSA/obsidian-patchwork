@@ -6,6 +6,12 @@ import { scopeModule } from "../../../utils/module-scope";
 import { addHistoryCommitMenu } from "../history/menus";
 import { ChangedFiles } from "./changed-files";
 import { readLog, layoutGraph, readCommit } from "./utils/git-log-data";
+import { PanelSplitter } from "../utils/panel-splitter";
+import { confirm, prompt } from "../dialogs";
+import { topologicalCommits } from "../history/utils/graph-layout";
+import { renderRefIcon } from "./utils/ref-icon";
+import { readMyBranches } from "./utils/my-branches";
+import { isProtectedRemoteBranch } from "../utils/branch-protection";
 
 export class GitLogPane {
     constructor(controller, parent, rename) {
@@ -20,8 +26,13 @@ export class GitLogPane {
         this.selectionRevision = 0;
         this.el = parent.createDiv({ cls: "pw-git-log-pane" });
         this.scope = scopeModule(this.el, "git", { surface: "log" });
-        this.favorites = new Set(["HEAD"]);
-        this.groupDirectories = true;
+        const preferences = controller.plugin.settingsStore.preferences;
+        this.favorites = new Set(Array.isArray(preferences.logFavorites) ? preferences.logFavorites : ["HEAD"]);
+        this.initializedFavorites = Array.isArray(preferences.logFavorites);
+        this.groupDirectories = preferences.logGroupDirectories !== false;
+        this.showTags = !!preferences.logShowTags;
+        this.selectedHashes = new Set();
+        this.splitters = [];
         this.rail = this.el.createDiv({ cls: "pw-git-log-rail" });
         const hideBranches = () => this.el.classList.add("is-branches-hidden");
         this.collapsedRail = this.el.createEl("button", { cls: "pw-log-collapsed-branches", text: "Branches", attr: { "aria-label": "Show Git Branches", "aria-expanded": "false", type: "button" } });
@@ -32,23 +43,25 @@ export class GitLogPane {
         this.button(this.rail, "Update Selected", "branch-update", () => this.selectedBranchAction("update"));
         this.button(this.rail, "Delete Branch", "delete", () => this.selectedBranchAction("delete"));
         this.button(this.rail, "Compare with Current", "git-show-diff", () => this.selectedBranchAction("compare"));
-        this.button(this.rail, "Show My Branches", "user", event => this.showMyBranches(event.currentTarget)).setAttribute("aria-pressed", "false");
+        this.myBranchesButton = this.button(this.rail, "Show My Branches", "search", () => this.showMyBranches());
+        this.myBranchesButton.setAttribute("aria-pressed", "false");
         this.button(this.rail, "Fetch", "branch-fetch", () => this.action(controller => controller.network("fetch")));
-        this.button(this.rail, "Mark/Unmark as Favorite", "git-log-favorite", () => {
+        this.button(this.rail, "Mark/Unmark as Favorite", "idea/expui/nodes/star_dark.svg", () => {
             const ref = this.selectedRef || "HEAD";
             if (this.favorites.has(ref)) this.favorites.delete(ref); else this.favorites.add(ref);
+            this.savePreferences({ logFavorites: [...this.favorites] });
             this.renderBranches();
         });
         this.button(this.rail, "Navigate Log to Selected Branch Head", "git-log-locate", () => { this.selectRef(this.selectedRef || "HEAD", this.selectedBranch); });
         this.rail.createDiv({ cls: "pw-git-log-rail-separator", attr: { role: "separator" } });
-        this.button(this.rail, "Branches Pane Settings", "settings", event => this.settings(event));
-        this.rail.createDiv({ cls: "pw-git-log-rail-separator", attr: { role: "separator" } });
-        this.button(this.rail, "Group by Directory", "branch-group", event => { this.groupDirectories = !this.groupDirectories; event.currentTarget.setAttribute("aria-pressed", String(this.groupDirectories)); this.renderBranches(); }).setAttribute("aria-pressed", "true");
+        this.button(this.rail, "Branches Pane Settings", "settings", event => this.branchSettings(event));
         this.button(this.rail, "Expand All", "git-expand-all", () => this.tree.querySelectorAll("details").forEach(group => { group.open = true; }));
         this.button(this.rail, "Collapse All", "git-collapse-all", () => this.tree.querySelectorAll("details").forEach(group => { group.open = false; }));
         const sidebar = this.el.createDiv({ cls: "pw-git-log-sidebar" });
         this.branchSearch = this.input(sidebar, "Branch or tag", () => this.renderBranches());
         this.tree = sidebar.createDiv({ cls: "pw-git-log-tree" });
+        const leftGrip = this.el.createDiv({ cls: "pw-git-log-left-grip" });
+        this.splitters.push(new PanelSplitter(this.el, leftGrip, sidebar, "x", preferences.logSidebarWidth || 220, size => this.savePreferences({ logSidebarWidth: size })));
         const center = this.el.createDiv({ cls: "pw-git-log-center" });
         const toolbar = center.createDiv({ cls: "pw-git-log-filters" });
         const searchBox = toolbar.createDiv({ cls: "pw-log-search-box" });
@@ -75,18 +88,29 @@ export class GitLogPane {
         this.button(actions, "Refresh", "git-log-refresh", () => this.refresh());
         this.button(actions, "Show Branches", "git-branch-flipped", () => { this.el.classList.remove("is-branches-hidden"); this.branchSearch.focus(); });
         this.button(actions, "View Options", "git-log-view", event => this.settings(event));
-        this.button(actions, "Find", "search", () => this.search.focus());
-        this.rows = center.createDiv({ cls: "pw-git-log-rows", attr: { role: "listbox", "aria-label": "Commits", tabindex: "0" } });
+        this.button(actions, "Go to Hash or Reference", "search", () => this.goToRef());
+        this.rows = center.createDiv({ cls: "pw-git-log-rows", attr: { role: "listbox", "aria-label": "Commits", "aria-multiselectable": "true", tabindex: "0" } });
         this.rows.addEventListener("keydown", event => this.navigate(event));
         this.rows.addEventListener("scroll", () => this.scheduleRows());
         this.resizeObserver = new ResizeObserver(() => this.scheduleRows());
         this.resizeObserver.observe(this.rows);
         this.more = center.createEl("button", { cls: "pw-git-log-more", text: "Load more" });
-        this.more.addEventListener("click", () => { this.limit += 200; void this.refresh(); });
+        this.more.addEventListener("click", () => void this.loadMore());
+        const rightGrip = this.el.createDiv();
         const right = this.el.createDiv({ cls: "pw-git-log-right" });
+        this.splitters.push(new PanelSplitter(this.el, rightGrip, right, "x", preferences.logDetailsWidth || 260, size => this.savePreferences({ logDetailsWidth: size }), true));
         this.files = right.createDiv({ cls: "pw-git-log-files" });
         this.changedFiles = new ChangedFiles(this, this.files);
+        const detailsGrip = right.createDiv();
         this.details = right.createDiv({ cls: "pw-git-log-details" });
+        this.splitters.push(new PanelSplitter(right, detailsGrip, this.details, "y", preferences.logDetailsHeight || 140, size => this.savePreferences({ logDetailsHeight: size }), true));
+        this.detailsGrip = detailsGrip;
+        this.showDetails = preferences.logShowDetails !== false;
+        this.details.hidden = this.detailsGrip.hidden = !this.showDetails;
+        this.showAuthor = preferences.logShowAuthor !== false;
+        this.showDate = preferences.logShowDate !== false;
+        this.el.classList.toggle("is-author-hidden", !this.showAuthor);
+        this.el.classList.toggle("is-date-hidden", !this.showDate);
         this.clearSelection();
         const changed = () => {
             this.needsRefresh = true;
@@ -94,7 +118,7 @@ export class GitLogPane {
         };
         this.stopHistory = this.history.onChange(changed);
         this.stopSnapshots = controller.snapshots.subscribe(snapshot => {
-            this.updateBranchTools();
+            this.updateBranchTools(); this.changedFiles.updateActions();
             const signature = JSON.stringify([snapshot.ready, snapshot.branch, snapshot.error]);
             if (signature === this.repositorySignature) return;
             this.repositorySignature = signature;
@@ -135,20 +159,20 @@ export class GitLogPane {
         menu.addItem(item => item.setTitle("Select...").onClick(() => { this.el.classList.remove("is-branches-hidden"); this.branchSearch.focus(); }));
         menu.addItem(item => item.setTitle("All branches").setChecked(!this.filter.ref).onClick(() => this.selectRef("")));
         menu.addItem(item => item.setTitle("Favorites").setDisabled(true));
-        choose(menu, "HEAD", "HEAD", "git-log-favorite");
+        choose(menu, "HEAD", "HEAD", "idea/expui/nodes/star_dark.svg");
         const favorites = this.favorites;
         for (const ref of favorites) {
             if (ref === "HEAD") continue;
-            choose(menu, ref.replace(/^refs\/(heads|remotes)\//, ""), ref, "git-log-favorite");
+            choose(menu, ref.replace(/^refs\/(heads|remotes)\//, ""), ref, "idea/expui/nodes/star_dark.svg");
         }
         menu.addSeparator();
         menu.addItem(item => {
             item.setTitle("Local"); const submenu = this.scopeSubmenu(item, menu);
-            for (const branch of this.snapshot.local) choose(submenu, branch, `refs/heads/${branch}`, branch === this.snapshot.current ? "git-log-favorite" : undefined);
+            for (const branch of this.snapshot.local) choose(submenu, branch, `refs/heads/${branch}`, branch === this.snapshot.current ? "idea/expui/nodes/star_dark.svg" : undefined);
         });
         for (const remote of this.snapshot.remotes) menu.addItem(item => {
             item.setTitle(`${remote}/...`); const submenu = this.scopeSubmenu(item, menu);
-            for (const branch of this.snapshot.remote.filter(branch => branch.startsWith(remote + "/"))) choose(submenu, branch.slice(remote.length + 1), `refs/remotes/${branch}`, this.favorites.has(`refs/remotes/${branch}`) ? "git-log-favorite" : undefined);
+            for (const branch of this.snapshot.remote.filter(branch => branch.startsWith(remote + "/"))) choose(submenu, branch.slice(remote.length + 1), `refs/remotes/${branch}`, this.favorites.has(`refs/remotes/${branch}`) ? "idea/expui/nodes/star_dark.svg" : undefined);
         });
         this.showFilter(menu, event.currentTarget);
     }
@@ -210,7 +234,9 @@ export class GitLogPane {
                 folders.get(name).push(branch); continue;
             }
             const ref = prefix + branch;
-            const icon = !remote && branch === this.snapshot.current ? "bookmark" : this.favorites.has(ref) ? "git-log-favorite" : "bookmark";
+            const favorite = this.favorites.has(ref), current = !remote && branch === this.snapshot.current;
+            const icon = current ? favorite ? "idea/dvcs/currentBranchFavoriteLabel_dark.svg" : "idea/dvcs/currentBranchLabel_dark.svg"
+                : favorite ? "idea/expui/nodes/star_dark.svg" : "git-branch-flipped";
             row(parent, label, ref, icon, remote, branch);
         }
         for (const [name, refs] of folders) {
@@ -220,16 +246,31 @@ export class GitLogPane {
     }
 
     updateBranchTools() {
-        const local = this.snapshot?.local.includes(this.selectedBranch);
-        const valid = this.selectedRef && this.selectedRef !== "HEAD" && !this.selectedRef.startsWith("refs/tags/");
-        for (const [label, disabled] of [
-            ["Update Selected", !valid || local && !this.snapshot.upstreams.get(this.selectedBranch)],
-            ["Delete Branch", !local || this.selectedBranch === this.snapshot?.current],
-            ["Compare with Current", !valid || this.selectedBranch === this.snapshot?.current],
-        ]) {
+        const available = this.controller.ready && !this.controller.busy && !this.disposed && this.el.ownerDocument === this.app.workspace.containerEl.ownerDocument;
+        const hasRemotes = !!this.snapshot?.remotes.length;
+        const local = !this.selectedGroup && !this.selectedRemote && this.snapshot?.local.includes(this.selectedBranch);
+        const remote = !this.selectedGroup && this.selectedRemote && this.snapshot?.remote.includes(this.selectedBranch);
+        const valid = !!(local || remote) && this.selectedRef !== "HEAD";
+        const current = local && this.selectedBranch === this.snapshot?.current;
+        const protectedRemote = remote && isProtectedRemoteBranch(this.controller, this.selectedBranch, this.snapshot.remotes);
+        const states = [
+            ["Show My Branches", true, "Requires an available repository."],
+            ["New branch", !!this.controller.head, "Requires an existing commit."],
+            ["Update Selected", local && !!this.snapshot?.upstreams.get(this.selectedBranch), "Select a local branch with a configured upstream.", !hasRemotes],
+            ["Delete Branch", valid && !current && !protectedRemote, protectedRemote ? "This remote branch is protected by repository Git settings." : "Select a branch other than the current local branch."],
+            ["Compare with Current", valid && !current, "Select another branch."],
+            ["Fetch", hasRemotes, "No remotes are configured.", !hasRemotes],
+            ["Mark/Unmark as Favorite", valid, "Select a branch."],
+            ["Navigate Log to Selected Branch Head", valid || !this.selectedGroup && this.selectedRef === "HEAD", "Select a branch or HEAD."],
+        ];
+        for (const [label, enabled, reason, hidden = false] of states) {
             const button = this.rail.querySelector(`[aria-label="${label}"]`);
-            if (button) button.disabled = !!disabled || this.controller.busy;
+            if (!button) continue;
+            const operationBlocked = !!this.controller.operation && ["New branch", "Update Selected", "Delete Branch"].includes(label);
+            button.hidden = hidden; button.disabled = !available || !enabled || operationBlocked;
+            button.title = !available ? "Git is busy or unavailable." : operationBlocked ? "Finish or abort the current Git operation first." : enabled ? label : reason;
         }
+        if (this.myBranchesRequest) this.myBranchesButton.title = "Checking complete local history; click to cancel.";
     }
 
     selectedBranchAction(id) {
@@ -237,21 +278,42 @@ export class GitLogPane {
         return this.action(controller => controller.branchActions.run(id, this.selectedBranch, this.snapshot.current, this.selectedRemote));
     }
 
-    async showMyBranches(button) {
+    async showMyBranches() {
         this.onlyMyBranches = !this.onlyMyBranches;
-        button.setAttribute("aria-pressed", String(this.onlyMyBranches));
-        if (this.onlyMyBranches) {
-            try {
-                const email = (await this.controller.repository.run(["config", "user.email"])).trim();
-                const refs = await this.controller.repository.run(["for-each-ref", "--format=%(refname:short)%09%(authoremail)", "refs/heads"]);
-                if (this.disposed) return;
-                this.myBranches = new Set(refs.split(/\r?\n/).filter(line => line.split("\t")[1] === `<${email}>`).map(line => line.split("\t")[0]));
-            } catch (error) {
-                this.onlyMyBranches = false; button.setAttribute("aria-pressed", "false");
-                if (!this.disposed) new Notice(`Could not find your branches: ${error.message}`);
+        this.myBranchesButton.setAttribute("aria-pressed", String(this.onlyMyBranches));
+        if (!this.onlyMyBranches) {
+            this.myBranchesRequest?.abort();
+            this.renderBranches();
+            this.updateBranchTools();
+            return;
+        }
+        await this.loadMyBranches();
+    }
+
+    async loadMyBranches() {
+        this.myBranchesRequest?.abort();
+        const request = new AbortController();
+        this.myBranchesRequest = request;
+        this.myBranches = undefined;
+        this.tree.setText("Checking exclusive commit authors… Click Show My Branches again to cancel.");
+        this.myBranchesButton.setAttribute("aria-busy", "true");
+        this.myBranchesButton.title = "Checking complete local history; click to cancel.";
+        try {
+            const refs = await readMyBranches(this.controller.repository, request.signal);
+            if (this.disposed || request.signal.aborted) return;
+            this.myBranches = refs;
+        } catch (error) {
+            if (this.disposed || request.signal.aborted) return;
+            this.onlyMyBranches = false;
+            this.myBranchesButton.setAttribute("aria-pressed", "false");
+            new Notice(error.message);
+        } finally {
+            if (!this.disposed && this.myBranchesRequest === request) {
+                this.myBranchesButton.removeAttribute("aria-busy");
+                this.myBranchesRequest = undefined;
+                this.renderBranches(); this.updateBranchTools();
             }
         }
-        this.renderBranches();
     }
 
     createMenu() {
@@ -293,12 +355,35 @@ export class GitLogPane {
 
     scheduleRefresh() { if (this.disposed) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.refresh(), 250); }
 
+    savePreferences(values) { void this.controller.plugin.settingsStore.savePreferences(values).catch(error => { if (!this.disposed) new Notice(error.message); }); }
+
+    async loadMore() {
+        if (this.loadingMore || !this.commits || this.filter.order === "reverse") {
+            if (this.filter.order === "reverse") { this.limit += 200; void this.refresh(); }
+            return;
+        }
+        const revision = this.revision, root = this.controller.repository.root;
+        this.loadingMore = true; this.more.disabled = true;
+        try {
+            const next = await readLog(this.history, this.filter, 200, this.commits.length);
+            if (this.disposed || revision !== this.revision || root !== this.controller.repository.root) return;
+            const known = new Set(this.commits.map(commit => commit.hash));
+            this.commits.push(...next.filter(commit => !known.has(commit.hash)));
+            this.limit = this.commits.length; this.more.hidden = next.length < 200;
+            this.renderRows();
+        } catch (error) { if (!this.disposed) new Notice(error.message); }
+        finally { this.loadingMore = false; if (!this.disposed) this.more.disabled = false; }
+    }
+
     async refresh() {
         if (this.disposed) return;
         clearTimeout(this.timer);
         this.needsRefresh = false;
         const revision = ++this.revision;
         const git = this.controller;
+        const root = git.repository.root;
+        if (this.repositoryRoot && this.repositoryRoot !== root) { this.filter.ref = "HEAD"; this.refLabel = undefined; this.limit = 200; this.clearSelection(); }
+        this.repositoryRoot = root;
         if (!git.ready || git.disposed) {
             this.rows.setText("Git repository is unavailable. Enable Patchwork Git and initialize a repository.");
             this.more.hidden = true;
@@ -312,8 +397,10 @@ export class GitLogPane {
         this.rows.setAttribute("aria-busy", "true");
         try {
             const [snapshot, commits] = await Promise.all([git.repository.snapshot(), readLog(this.history, this.filter, this.limit)]);
-            if (this.disposed || revision !== this.revision) return;
+            if (this.disposed || revision !== this.revision || root !== git.repository.root) return;
             this.snapshot = snapshot;
+            if (this.onlyMyBranches) await this.loadMyBranches();
+            if (this.disposed || revision !== this.revision || root !== git.repository.root) return;
             if (!this.initializedFavorites) {
                 this.initializedFavorites = true;
                 this.favorites.add(`refs/heads/${snapshot.current}`);
@@ -334,7 +421,7 @@ export class GitLogPane {
             this.more.hidden = commits.length < this.limit;
             this.loaded = true;
             const previous = commits.find(commit => commit.hash === this.selected?.hash);
-            if (previous) void this.selectCommit(previous);
+            if (previous) void this.selectCommit(previous, { preserve: true });
             else this.clearSelection();
         } catch (error) {
             if (this.disposed || revision !== this.revision) return;
@@ -343,6 +430,18 @@ export class GitLogPane {
             this.more.hidden = true;
             this.clearSelection();
         } finally { if (revision === this.revision) this.rows.removeAttribute("aria-busy"); }
+    }
+
+    async goToRef() {
+        const root = this.controller.repository.root;
+        const ref = await prompt(this.controller, "Go to Hash or Reference", "Commit hash, branch or tag");
+        if (!ref || this.disposed) return;
+        const hash = (await this.controller.repository.run(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`])).trim();
+        if (this.disposed || root !== this.controller.repository.root) throw new Error("The repository changed. Reopen navigation.");
+        const index = this.commits?.findIndex(commit => commit.hash === hash) ?? -1;
+        if (index < 0) { this.selectRef(hash, ref); return; }
+        this.rows.scrollTop = index * this.graphLayout.height; this.renderRows();
+        await this.selectCommit(this.commits[index]); this.rows.focus();
     }
 
     selectRef(ref, label) {
@@ -354,6 +453,7 @@ export class GitLogPane {
 
     renderBranches() {
         if (this.disposed || !this.snapshot) return;
+        if (this.onlyMyBranches && this.myBranchesRequest && !this.myBranches) return;
         const active = this.el.ownerDocument.activeElement;
         const focusedRef = this.tree.contains(active) ? active.dataset.ref : undefined;
         const focusedGroup = this.tree.contains(active) ? active.dataset.groupKey : undefined;
@@ -367,7 +467,7 @@ export class GitLogPane {
             button.createSpan({ text: label });
             button.classList.toggle("is-active", !this.selectedGroup && (this.selectedRef || "HEAD") === ref);
             button.dataset.ref = ref;
-            if (icon === "bookmark" || icon === "git-log-favorite") button.classList.add("pw-log-ref-marker");
+            if (icon === "idea/expui/nodes/star_dark.svg") button.classList.add("pw-log-ref-marker");
             button.addEventListener("click", () => {
                 this.selectedRef = ref; this.selectedBranch = branch; this.selectedRemote = remote; this.selectedGroup = undefined;
                 for (const other of this.tree.querySelectorAll(".pw-log-branch")) other.classList.toggle("is-active", other === button);
@@ -400,6 +500,7 @@ export class GitLogPane {
             summary.classList.toggle("is-selected-group", this.selectedGroup === key);
             summary.addEventListener("click", () => {
                 this.selectedGroup = key;
+                this.updateBranchTools();
                 for (const branch of this.tree.querySelectorAll(".pw-log-branch")) branch.classList.remove("is-active");
                 for (const other of this.tree.querySelectorAll("summary")) other.classList.toggle("is-selected-group", other === summary);
             });
@@ -408,13 +509,13 @@ export class GitLogPane {
             summary.createSpan({ text: name });
             return details;
         };
-        if (matches("HEAD Current Branch")) row(this.tree, "HEAD (Current Branch)", "HEAD");
-        const local = this.snapshot.local.filter(branch => matches(branch) && (!this.onlyMyBranches || this.myBranches?.has(branch)));
+        if ((!this.onlyMyBranches || this.myBranches?.has(`refs/heads/${this.snapshot.current}`)) && matches("HEAD Current Branch")) row(this.tree, "HEAD (Current Branch)", "HEAD");
+        const local = this.snapshot.local.filter(branch => matches(branch) && (!this.onlyMyBranches || this.myBranches?.has(`refs/heads/${branch}`)));
         if (local.length) {
             const parent = group(this.tree, "Local", "local");
             this.branchRows(parent, local, "refs/heads/", false, row, group);
         }
-        const remotes = this.onlyMyBranches ? [] : this.snapshot.remote.filter(matches);
+        const remotes = this.snapshot.remote.filter(branch => matches(branch) && (!this.onlyMyBranches || this.myBranches?.has(`refs/remotes/${branch}`)));
         if (remotes.length) {
             const parent = group(this.tree, "Remote", "remote");
             for (const remote of this.snapshot.remotes) {
@@ -425,9 +526,14 @@ export class GitLogPane {
             }
         }
         const tags = this.snapshot.tags.filter(matches);
-        if (this.showTags && tags.length) {
+        if (!this.onlyMyBranches && this.showTags && tags.length) {
             const parent = group(this.tree, "Tags", "tags");
-            for (const tag of tags) row(parent, tag, `refs/tags/${tag}`, "git-log-tag");
+            for (const tag of tags) row(parent, tag, `refs/tags/${tag}`, "idea/dvcs/branchLabel_dark.svg");
+        }
+        if (!this.tree.childElementCount) this.tree.setText(this.onlyMyBranches ? "No branches have exclusive commits entirely authored by you." : "No matching branches.");
+        if (this.selectedRef && ![...this.tree.querySelectorAll(".pw-log-branch")].some(row => row.dataset.ref === this.selectedRef)) {
+            this.selectedRef = undefined; this.selectedBranch = undefined; this.selectedRemote = false;
+            this.updateBranchTools();
         }
         if (focusedRef) [...this.tree.querySelectorAll(".pw-log-branch")].find(row => row.dataset.ref === focusedRef)?.focus({ preventScroll: true });
         else if (focusedGroup) [...this.tree.querySelectorAll("summary")].find(row => row.dataset.groupKey === focusedGroup)?.focus({ preventScroll: true });
@@ -470,7 +576,7 @@ export class GitLogPane {
         for (let index = start; index < end; index++) {
             const commit = this.commits[index];
             const row = this.rows.createDiv({ cls: "pw-log-row", attr: { role: "option", "aria-selected": "false", "data-hash": commit.hash } });
-            const selected = this.selected?.hash === commit.hash;
+            const selected = this.selectedHashes.has(commit.hash);
             row.classList.toggle("is-selected", selected);
             row.setAttribute("aria-selected", String(selected));
             this.drawGraph(row, this.graphLayout.row(index), this.graphLayout.width, /(?:^|, )HEAD(?: ->|,|$)/.test(commit.refs));
@@ -478,11 +584,17 @@ export class GitLogPane {
             this.renderRefs(row, commit);
             row.createSpan({ cls: "pw-log-author-name", text: commit.author });
             row.createSpan({ cls: "pw-log-date", text: new Date(commit.date).toLocaleString(undefined, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) });
-            row.addEventListener("click", () => this.selectCommit(commit));
+            row.addEventListener("click", event => this.selectCommit(commit, event));
             row.addEventListener("contextmenu", event => {
                 event.preventDefault();
-                void this.selectCommit(commit);
+                if (!this.selectedHashes.has(commit.hash)) void this.selectCommit(commit);
                 const menu = this.createMenu();
+                if (this.selectedHashes.size > 1) {
+                    menu.addItem(item => item.setTitle("Compare Selected Commits…").setDisabled(this.selectedHashes.size !== 2).onClick(() => this.compareSelection()));
+                    menu.addItem(item => item.setTitle("Cherry-pick Selected…").onClick(() => void this.batch("cherry-pick")));
+                    menu.addItem(item => item.setTitle("Revert Selected…").onClick(() => void this.batch("revert")));
+                    menu.addSeparator();
+                }
                 addHistoryCommitMenu(menu, this, commit);
                 menu.showAtMouseEvent(event);
             });
@@ -497,12 +609,7 @@ export class GitLogPane {
         const host = row.createSpan({ cls: "pw-log-refs", attr: { "aria-label": commit.refs } });
         host.title = commit.refs;
         const stack = host.createSpan({ cls: "pw-log-ref-stack", attr: { "aria-hidden": "true" } });
-        const colors = ["#b18ae8", "#79b8d7", "#e5c160"];
-        refs.forEach((ref, index) => {
-            const marker = stack.createSpan({ cls: "pw-log-ref-bookmark" });
-            marker.style.color = colors[index % colors.length];
-            setIcon(marker, ref.type === "tag" ? "git-log-tag" : "git-branch-flipped");
-        });
+        renderRefIcon(stack, refs);
         const names = [...new Set(refs.map(ref => ref.name))];
         const current = refs.find(ref => ref.current)?.name;
         const remote = current && names.find(name => this.snapshot.remotes.some(remote => name === `${remote}/${current}`));
@@ -526,7 +633,7 @@ export class GitLogPane {
         const x = column => 12 + column * 14;
         if (head) {
             const ring = doc.createElementNS(svg.namespaceURI, "circle");
-            for (const [key, value] of Object.entries({ cx: x(graph.column), cy: graph.y, r: 6, fill: "#191b1d", stroke: colors[graph.color % colors.length], "stroke-width": 1.5 })) ring.setAttribute(key, String(value));
+            for (const [key, value] of Object.entries({ cx: x(graph.column), cy: graph.y, r: 6, fill: "var(--background-primary)", stroke: colors[graph.color % colors.length], "stroke-width": 1.5 })) ring.setAttribute(key, String(value));
             svg.append(ring);
         }
         const dot = doc.createElementNS(svg.namespaceURI, "circle");
@@ -537,24 +644,40 @@ export class GitLogPane {
     clearSelection() {
         ++this.selectionRevision;
         this.selected = undefined;
+        this.selectedHashes.clear();
         this.changedFiles.clear(); this.details.empty();
         this.details.createDiv({ cls: "pw-log-empty", text: "Commit details" });
     }
 
-    async selectCommit(commit) {
+    async selectCommit(commit, event = {}) {
         if (this.disposed) return;
         const revision = ++this.selectionRevision;
+        if (!event.preserve) {
+            if (event.shiftKey && this.selectionAnchor) {
+                const start = this.commits.findIndex(item => item.hash === this.selectionAnchor), end = this.commits.findIndex(item => item.hash === commit.hash);
+                this.selectedHashes = new Set(this.commits.slice(Math.max(0, Math.min(start, end)), Math.max(start, end) + 1).map(item => item.hash));
+            } else if (event.ctrlKey || event.metaKey) {
+                if (this.selectedHashes.has(commit.hash)) this.selectedHashes.delete(commit.hash); else this.selectedHashes.add(commit.hash);
+            } else this.selectedHashes = new Set([commit.hash]);
+            if (!event.shiftKey) this.selectionAnchor = commit.hash;
+        } else this.selectedHashes = new Set([...this.selectedHashes].filter(hash => this.commits.some(item => item.hash === hash)));
         this.selected = commit;
         for (const row of this.rows.querySelectorAll(".pw-log-row")) {
-            const active = row.dataset.hash === commit.hash;
+            const active = this.selectedHashes.has(row.dataset.hash);
             row.classList.toggle("is-selected", active);
             row.setAttribute("aria-selected", String(active));
         }
         if (this.changedFiles.commit?.hash !== commit.hash) this.changedFiles.clear("");
         this.details.empty();
+        if (this.selectedHashes.size !== 1) {
+            this.changedFiles.clear(`${this.selectedHashes.size} commits selected`);
+            this.details.createEl("strong", { text: `${this.selectedHashes.size} commits selected` });
+            const compare = this.details.createEl("button", { text: "Compare Selected" }); compare.disabled = this.selectedHashes.size !== 2; compare.onclick = () => this.compareSelection();
+            return;
+        }
         try {
             const detail = await readCommit(this.history, commit);
-            if (this.disposed || revision !== this.selectionRevision) return;
+            if (this.disposed || revision !== this.selectionRevision || this.repositoryRoot !== this.controller.repository.root) return;
             this.changedFiles.setCommit(commit, detail.files);
             this.details.createDiv({ cls: "pw-log-message", text: detail.message });
             const date = new Date(commit.date);
@@ -606,12 +729,37 @@ export class GitLogPane {
         if (top < this.rows.scrollTop) this.rows.scrollTop = top;
         else if (top + height > this.rows.scrollTop + this.rows.clientHeight) this.rows.scrollTop = top + height - this.rows.clientHeight;
         this.renderVisibleRows();
-        void this.selectCommit(this.commits[next]);
+        void this.selectCommit(this.commits[next], event);
+    }
+
+    branchSettings(event) {
+        const menu = this.createMenu();
+        menu.addItem(item => item.setTitle("Group by Directory").setChecked(this.groupDirectories).onClick(() => {
+            this.groupDirectories = !this.groupDirectories; this.savePreferences({ logGroupDirectories: this.groupDirectories }); this.renderBranches();
+        }));
+        menu.addItem(item => item.setTitle("Show Tags").setChecked(this.showTags).onClick(() => { this.showTags = !this.showTags; this.savePreferences({ logShowTags: this.showTags }); this.renderBranches(); }));
+        menu.showAtMouseEvent(event);
     }
 
     settings(event) {
         const menu = this.createMenu();
-        menu.addItem(item => item.setTitle("Show Tags").setChecked(!!this.showTags).onClick(() => { this.showTags = !this.showTags; this.renderBranches(); }));
+        for (const [title, key, preference] of [["Author", "showAuthor", "logShowAuthor"], ["Date", "showDate", "logShowDate"]]) {
+            menu.addItem(item => item.setTitle(`Show ${title} Column`).setChecked(this[key]).onClick(() => {
+                this[key] = !this[key]; this.savePreferences({ [preference]: this[key] });
+                this.el.classList.toggle(key === "showAuthor" ? "is-author-hidden" : "is-date-hidden", !this[key]);
+            }));
+        }
+        menu.addItem(item => item.setTitle("Show Commit Details").setChecked(this.showDetails).onClick(() => {
+            this.showDetails = !this.showDetails; this.details.hidden = this.detailsGrip.hidden = !this.showDetails;
+            this.savePreferences({ logShowDetails: this.showDetails });
+        }));
+        menu.addItem(item => item.setTitle("Filter Settings…").onClick(() => this.filterSettings(event)));
+        menu.showAtMouseEvent(event);
+    }
+
+    filterSettings(event) {
+        const menu = this.createMenu();
+        menu.addItem(item => item.setTitle("Show Tags").setChecked(!!this.showTags).onClick(() => { this.showTags = !this.showTags; this.savePreferences({ logShowTags: this.showTags }); this.renderBranches(); }));
         menu.addItem(item => item.setTitle("Reset filters").onClick(() => {
             this.search.value = ""; this.author.value = ""; this.path.value = ""; this.date.value = "";
             this.setFilterText(this.authorButton, "User"); this.setFilterText(this.pathButton, "Paths"); this.setFilterText(this.dateButton, "Date");
@@ -635,10 +783,28 @@ export class GitLogPane {
     }
 
     focus() { if (!this.loaded || this.needsRefresh) void this.refresh(); else this.scheduleRows(); }
+    compareSelection() {
+        const commits = this.commits.filter(commit => this.selectedHashes.has(commit.hash));
+        if (commits.length === 2) this.controller.compare(commits[1].hash, commits[0].hash);
+    }
+    async batch(operation) {
+        const selected = this.commits.filter(commit => this.selectedHashes.has(commit.hash));
+        if (!selected.length || selected.some(commit => commit.parents.length > 1)) { new Notice("Select ordinary commits; merge commits require choosing a mainline parent."); return; }
+        const chronological = topologicalCommits(selected).reverse();
+        const hashes = (operation === "revert" ? [...chronological].reverse() : chronological).map(commit => commit.hash);
+        const root = this.controller.repository.root, head = await this.controller.repository.head();
+        if (!await confirm(this.controller, `${operation} selected commits`, `Apply ${operation} to ${hashes.length} commits in the displayed sequence? Resolve any conflicts from Commit.`, "Continue")) return;
+        await this.action(controller => controller.act(async () => {
+            if (root !== controller.repository.root || head !== await controller.repository.head()) throw new Error("The repository changed. Select commits again.");
+            await controller.repository.assertNoOperation();
+            await controller.repository.run([operation, ...hashes], { env: { GIT_EDITOR: "true" } });
+        }));
+    }
     dispose() {
-        this.disposed = true; ++this.revision; ++this.selectionRevision; clearTimeout(this.timer);
+        this.disposed = true; this.myBranchesRequest?.abort(); ++this.revision; ++this.selectionRevision; clearTimeout(this.timer);
         if (this.rowFrame !== undefined) this.el.ownerDocument.defaultView.cancelAnimationFrame(this.rowFrame);
         this.resizeObserver?.disconnect(); this.stopHistory?.(); this.stopSnapshots?.();
+        for (const splitter of this.splitters) splitter.dispose();
         for (const menu of this.menus) menu.hide(); this.menus.clear(); this.scope.dispose(); this.el.remove();
     }
 }

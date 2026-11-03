@@ -1,7 +1,8 @@
 import { ItemView, Menu, Modal, Notice } from "obsidian";
-import { setIcon } from "../utils/icons";
+import { iconName, setIcon } from "../utils/icons";
 import { addCommitMenu } from "./commit-context-menu";
 import { CommitSplitter } from "./commit-splitter";
+import { OperationPanel } from "./operation-panel";
 import { fileIcon } from "../utils/file-icons";
 import { fileStatus } from "../utils/file-status.js";
 import { scopeModule } from "../../../utils/module-scope";
@@ -12,10 +13,10 @@ import { getWindowContext } from "../../../utils/windows";
 export const COMMIT_VIEW = "patchwork-git-commit";
 
 export class CommitView extends ItemView {
-    constructor(leaf, controller) { super(leaf); this.controller = controller; this.showPaths = true; this.sortByPath = false; }
+    constructor(leaf, controller) { super(leaf); this.controller = controller; this.showPaths = true; this.sortByPath = false; this.actionSelection = new Set(); }
     getViewType() { return COMMIT_VIEW; }
     getDisplayText() { return "Commit"; }
-    getIcon() { return "git-commit-horizontal"; }
+    getIcon() { return iconName("idea/expui/toolwindows/commit_dark.svg"); }
 
     async onOpen() {
         this.contentEl.empty();
@@ -53,20 +54,36 @@ export class CommitView extends ItemView {
         this.tool(toolbar, "Refresh Changes", "git-log-refresh", () => this.controller.refresh());
         this.tool(toolbar, "Rollback", "git-rollback", () => this.controller.rollback(this.selectedPaths()));
         this.tool(toolbar, "Show Diff", "git-show-diff", () => this.controller.showDiff(this.selectedPaths()));
+        const listsButton = this.tool(toolbar, "Changelists", "idea-expui-vcs-changelist_dark.svg", () => this.changelistMenu(listsButton));
+        listsButton.setAttribute("aria-haspopup", "menu");
+        this.tool(toolbar, "Stage Selected", "plus", () => this.controller.stageSelection(this.selectedPaths()));
+        this.tool(toolbar, "Unstage Selected", "idea/expui/general/remove_dark.svg", () => this.controller.stageSelection(this.selectedPaths(), true));
         this.tool(toolbar, "Shelve Silently", "git-shelve", () => this.controller.shelve(this.selectedPaths()));
-        const optionsButton = this.tool(toolbar, "View Options", "idea/expui/general/inspections/inspectionsEye_dark.svg", () => this.viewOptions(optionsButton));
+        const optionsButton = this.tool(toolbar, "View Options", "git-log-view", () => this.viewOptions(optionsButton));
         optionsButton.setAttribute("aria-haspopup", "menu");
         toolbar.createSpan({ cls: "pw-git-toolbar-separator", attr: { "aria-hidden": "true" } });
         this.tool(toolbar, "Select Opened File in Change View", "select-opened-file", () => this.selectOpenedFile());
         this.tool(toolbar, "Expand All", "git-expand-all", () => { this.controller.collapsed.clear(); this.controller.render(); });
         this.tool(toolbar, "Collapse All", "git-collapse-all", () => { this.controller.collapsed = new Set([...this.controller.changelists.lists.map(list => list.id), "Unversioned Files"]); this.controller.render(); });
         this.status = this.contentEl.createDiv({ cls: "pw-git-panel-status", attr: { role: "status", "aria-live": "polite" } });
+        this.operationPanel = new OperationPanel(this.controller, this.contentEl);
         const body = this.contentEl.createDiv({ cls: "pw-git-commit-body" });
         this.files = body.createDiv({ cls: "pw-git-change-list" });
         this.files.oncontextmenu = event => this.openContextMenu(event, this.selectedPaths());
         const separator = body.createDiv({ cls: "pw-git-commit-splitter" });
         this.splitter = new CommitSplitter(body, separator);
         const footer = body.createDiv({ cls: "pw-git-commit-footer" });
+        const mode = footer.createEl("label", { cls: "pw-git-commit-mode", text: "Commit source" });
+        this.commitMode = mode.createEl("select");
+        this.commitMode.createEl("option", { value: "staged", text: "All staged changes" });
+        this.commitMode.createEl("option", { value: "working", text: "Checked files: all changes" });
+        this.commitMode.value = this.controller.commitMode;
+        this.commitMode.onchange = () => {
+            this.controller.commitMode = this.commitMode.value;
+            this.controller.validationRequested = false;
+            this.controller.saveDraft(); this.controller.render();
+        };
+        this.commitHint = footer.createDiv({ cls: "pw-git-commit-hint" });
         const options = footer.createDiv({ cls: "pw-git-commit-options" });
         const amend = options.createEl("label", { cls: "pw-git-amend" });
         this.amend = amend.createEl("input", { type: "checkbox" });
@@ -94,7 +111,7 @@ export class CommitView extends ItemView {
             this.showMenu(menu, this.lastCommit);
         };
         this.historyButton = options.createEl("button", { cls: "clickable-icon pw-git-message-history", attr: { type: "button", "aria-label": "Commit message history", "aria-haspopup": "menu", "aria-expanded": "false" } });
-        setIcon(this.historyButton, "clock");
+        setIcon(this.historyButton, "history");
         this.historyButton.onclick = () => void this.showMessageHistory();
         this.selectionSummary = options.createDiv({ cls: "pw-git-selection-summary", attr: { "aria-live": "polite" } });
         this.message = footer.createEl("textarea", { cls: "pw-git-commit-message", attr: {
@@ -124,6 +141,10 @@ export class CommitView extends ItemView {
     render() {
         if (!this.files) return;
         this.status.textContent = this.controller.error || (this.controller.busy ? "Git operation in progress…" : "");
+        this.operationPanel.render();
+        if (this.selectionRoot !== this.controller.repository.root) { this.actionSelection.clear(); this.selectionAnchor = undefined; this.selectionRoot = this.controller.repository.root; }
+        const focusedPath = this.files.contains(this.files.ownerDocument.activeElement) ? this.files.ownerDocument.activeElement.closest("[data-path]")?.dataset.path : undefined;
+        this.actionSelection = new Set([...this.actionSelection].filter(path => this.controller.entries.some(entry => entry.path === path)));
         this.files.empty();
         const entries = [...this.controller.entries].sort((a, b) => {
             const key = entry => this.sortByPath ? entry.path : entry.path.split("/").pop();
@@ -135,7 +156,8 @@ export class CommitView extends ItemView {
         const unversioned = entries.filter(entry => entry.untracked);
         if (unversioned.length) this.group("Unversioned Files", unversioned, false);
         if (!entries.length && !this.controller.error) this.files.createDiv({ cls: "pw-git-panel-empty", text: this.controller.ready ? "No changes" : "Loading repository…" });
-        this.updateButtons();
+        this.updateActionSelection();
+        if (focusedPath) [...this.files.querySelectorAll(".pw-git-change-file")].find(row => row.dataset.path === focusedPath)?.focus({ preventScroll: true });
     }
 
     group(name, entries, bold, changelistId) {
@@ -146,6 +168,7 @@ export class CommitView extends ItemView {
         header.tabIndex = -1;
         header.onclick = event => {
             if (event.target.closest("button, input")) return;
+            this.actionSelection = new Set(entries.map(entry => entry.path)); this.updateActionSelection();
             header.focus({ preventScroll: true });
         };
         header.ondblclick = event => {
@@ -156,7 +179,7 @@ export class CommitView extends ItemView {
         header.oncontextmenu = event => this.openContextMenu(event, entries.map(entry => entry.path), changelistId);
         const toggle = header.createEl("button", { cls: "clickable-icon", attr: { "aria-label": name, "aria-expanded": String(!this.controller.collapsed.has(groupId)) } });
         const content = header.createDiv({ cls: "pw-git-change-content" });
-        const checkbox = content.createEl("input", { type: "checkbox", attr: { "aria-label": `Include ${name}` } });
+        const checkbox = content.createEl("input", { type: "checkbox", attr: { "aria-label": `Select ${name}` } });
         content.createEl(bold ? "strong" : "span", { text: name });
         content.createSpan({ cls: "pw-git-file-count", text: `${entries.length} ${entries.length === 1 ? "file" : "files"}` });
         const chosen = entries.filter(entry => this.controller.selected.has(entry.path)).length;
@@ -191,7 +214,7 @@ export class CommitView extends ItemView {
     file(section, entry) {
         const row = section.createDiv({ cls: "pw-git-change-file" });
         row.dataset.path = entry.path;
-        row.tabIndex = -1;
+        row.tabIndex = 0;
         row.classList.add(`is-${fileStatus(entry)}`);
         const content = row.createDiv({ cls: "pw-git-change-content" });
         const checkbox = content.createEl("input", { type: "checkbox" });
@@ -210,9 +233,26 @@ export class CommitView extends ItemView {
         row.setAttribute("aria-labelledby", label.id);
         const path = parts.join("\\");
         if (this.showPaths) content.createSpan({ cls: "pw-git-file-path", text: path });
+        if (entry.staged && !entry.conflict) content.createSpan({ cls: "pw-git-stage-label", text: entry.code[1] !== " " ? "Partly staged" : "Staged" });
         row.setAttribute("aria-description", `${entry.original ? `${entry.original} → ` : ""}${entry.path} (${entry.code})`);
+        row.onclick = event => {
+            if (event.target.closest("input")) return;
+            this.selectActionFile(entry.path, event); row.focus({ preventScroll: true });
+        };
+        row.onkeydown = event => {
+            if (event.target.closest("input")) return;
+            if (event.key === "Enter") { event.preventDefault(); this.selectActionFile(entry.path); void this.controller.showDiff(this.selectedPaths()); return; }
+            const rows = [...this.files.querySelectorAll(".pw-git-change-file")];
+            const delta = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+            if (!delta) return;
+            event.preventDefault(); const next = rows[Math.max(0, Math.min(rows.length - 1, rows.indexOf(row) + delta))];
+            this.selectActionFile(next.dataset.path, event); next.focus();
+        };
         row.ondblclick = event => { if (event.target !== checkbox) void this.controller.showDiff([entry.path]); };
-        row.oncontextmenu = event => this.openContextMenu(event, [entry.path], entry.untracked ? undefined : this.controller.changelists.forPath(entry.path));
+        row.oncontextmenu = event => {
+            if (!this.actionSelection.has(entry.path)) this.selectActionFile(entry.path);
+            this.openContextMenu(event, this.selectedPaths(), entry.untracked ? undefined : this.controller.changelists.forPath(entry.path));
+        };
     }
 
     openContextMenu(event, paths, changelistId) {
@@ -230,22 +270,42 @@ export class CommitView extends ItemView {
     }
 
     updateButtons() {
-        const disabled = this.controller.busy || !this.controller.ready || !!this.controller.error || this.controller.entries.some(entry => entry.conflict);
-        this.commitButton.disabled = disabled; this.pushButton.disabled = disabled;
-        this.amend.disabled = this.controller.busy;
+        const disabled = this.controller.busy || !this.controller.ready || !!this.controller.error || !!this.controller.operation || this.controller.entries.some(entry => entry.conflict);
+        const hasChanges = this.controller.commitMode === "staged" ? this.controller.entries.some(entry => entry.staged && !entry.conflict)
+            : this.controller.entries.some(entry => this.controller.selected.has(entry.path));
+        const canAmend = this.controller.draft.amend && !!this.controller.head;
+        this.commitButton.disabled = disabled || !hasChanges && !canAmend; this.pushButton.disabled = this.commitButton.disabled;
+        this.amend.disabled = this.controller.busy || !!this.controller.operation || !this.controller.head;
+        this.commitMode.disabled = this.controller.busy || !!this.controller.operation;
+        this.commitMode.value = this.controller.commitMode;
+        const staged = this.controller.commitMode === "staged";
+        this.commitButton.textContent = "Commit";
+        this.commitButton.title = staged ? "Commit all staged changes" : "Commit checked files";
+        this.commitHint.textContent = staged
+            ? "Only staged changes are committed."
+            : "All changes in checked files are committed.";
+        this.commitHint.title = "Select rows for toolbar actions. Checkboxes determine checked-file commits. Use staged mode for partial commits.";
         this.lastCommit.disabled = this.controller.busy;
         this.historyButton.disabled = this.loadingMessages || this.controller.busy || !this.controller.ready;
         this.message.disabled = this.controller.busy;
         this.validation.textContent = this.controller.validationRequested ? this.controller.commitValidation() : "";
-        const selected = this.controller.entries.filter(entry => this.controller.selected.has(entry.path));
+        const selected = this.controller.entries.filter(entry => this.actionSelection.has(entry.path));
         for (const [name, button] of this.tools) {
             button.disabled = this.controller.busy;
             if (["Rollback", "Show Diff", "Shelve Silently"].includes(name)) button.disabled ||= !this.controller.ready || !selected.length;
+            if (["Stage Selected", "Unstage Selected"].includes(name)) button.disabled ||= !this.controller.ready || !selected.length || selected.some(entry => entry.conflict);
+            if (["Stage Selected", "Unstage Selected"].includes(name)) button.hidden = !staged;
+            if (name === "Stage Selected") button.disabled ||= !selected.some(entry => entry.untracked || entry.code[1] !== " ");
+            if (name === "Changelists") button.disabled ||= !this.controller.ready;
+            if (name === "Select Opened File in Change View") button.disabled ||= !this.controller.ready || !this.controller.entries.length;
+            if (name === "Unstage Selected") button.disabled ||= !selected.some(entry => entry.staged);
             if (name === "Shelve Silently") button.disabled ||= selected.some(entry => entry.untracked || entry.conflict);
-            if (name === "Rollback") button.disabled ||= selected.every(entry => entry.untracked);
+            if (name === "Rollback") button.disabled ||= selected.every(entry => entry.untracked) || selected.some(entry => entry.conflict || entry.original || entry.code.includes("A"));
+            button.title = button.disabled ? `${name} — ${this.controller.busy ? "Git is busy" : "Unavailable for the current repository or selection"}` : name;
         }
-        const added = selected.filter(entry => entry.untracked).length;
-        const modified = selected.length - added;
+        const included = staged ? this.controller.entries.filter(entry => entry.staged && !entry.conflict) : this.controller.entries.filter(entry => this.controller.selected.has(entry.path));
+        const added = included.filter(entry => entry.untracked || entry.code[0] === "A").length;
+        const modified = included.length - added;
         this.selectionSummary.empty();
         if (added) this.selectionSummary.createSpan({ cls: "pw-git-selected-added", text: `${added} added` });
         if (modified) this.selectionSummary.createSpan({ cls: "pw-git-selected-modified", text: `${modified} modified` });
@@ -259,14 +319,59 @@ export class CommitView extends ItemView {
         return button;
     }
 
-    selectedPaths() { return this.controller.entries.filter(entry => this.controller.selected.has(entry.path)).map(entry => entry.path); }
+    selectedPaths() { return this.controller.entries.filter(entry => this.actionSelection.has(entry.path)).map(entry => entry.path); }
+
+    selectActionFile(path, event = {}) {
+        const paths = [...this.files.querySelectorAll(".pw-git-change-file")].map(row => row.dataset.path);
+        if (event.shiftKey && paths.includes(this.selectionAnchor)) {
+            const first = paths.indexOf(this.selectionAnchor), last = paths.indexOf(path);
+            this.actionSelection = new Set(paths.slice(Math.min(first, last), Math.max(first, last) + 1));
+        } else if (event.ctrlKey || event.metaKey) {
+            if (this.actionSelection.has(path)) this.actionSelection.delete(path); else this.actionSelection.add(path);
+        } else this.actionSelection = new Set([path]);
+        if (!event.shiftKey) this.selectionAnchor = path;
+        this.updateActionSelection();
+    }
+
+    updateActionSelection() {
+        for (const row of this.files.querySelectorAll(".pw-git-change-file")) row.classList.toggle("is-selected", this.actionSelection.has(row.dataset.path));
+        this.updateButtons();
+    }
+
+    changelistMenu(anchor) {
+        const menu = scopeGitMenu(new Menu(), this.contentEl);
+        menu.addItem(item => item.setTitle("New Changelist…").onClick(() => this.controller.newChangelist()));
+        const paths = this.selectedPaths();
+        menu.addItem(item => item.setTitle("Move to Another Changelist…").setDisabled(!paths.length).onClick(() => this.controller.moveToChangelist(paths)));
+        const ids = new Set(this.controller.entries.filter(entry => paths.includes(entry.path) && !entry.untracked).map(entry => this.controller.changelists.forPath(entry.path)));
+        menu.addItem(item => item.setTitle("Edit Changelist…").setDisabled(ids.size !== 1).onClick(() => this.controller.editChangelist([...ids][0])));
+        this.showMenu(menu, anchor);
+    }
 
     showCommitOptions() {
         if (this.commitOptionsModal || this.controller.disposed) return;
         const modal = new Modal(this.app);
         this.commitOptionsModal = modal;
         modal.setTitle("Commit Options");
-        modal.contentEl.classList.add("pw-git-commit-options-empty");
+        modal.contentEl.createEl("p", { text: "Commit scope" });
+        const select = modal.contentEl.createEl("select", { attr: { "aria-label": "Commit scope" } });
+        for (const [value, text] of [["staged", "All staged changes"], ["working", "All changes in checked files"]]) select.createEl("option", { value, text });
+        select.value = this.controller.commitMode;
+        select.onchange = () => { this.controller.commitMode = select.value; this.controller.saveDraft(); this.controller.render(); };
+        const checkLabel = modal.contentEl.createEl("label", { cls: "pw-git-amend" });
+        const whitespace = checkLabel.createEl("input", { type: "checkbox" });
+        whitespace.checked = this.controller.plugin.settingsStore.preferences.checkWhitespace === true;
+        checkLabel.createSpan({ text: "Check whitespace errors and newly added conflict markers before commit" });
+        whitespace.onchange = async () => {
+            const enabled = whitespace.checked;
+            whitespace.disabled = true;
+            try { await this.controller.plugin.settingsStore.savePreferences({ checkWhitespace: enabled }); }
+            catch (error) { new Notice(error.message); }
+            finally { if (whitespace.isConnected) whitespace.disabled = false; }
+        };
+        modal.contentEl.createEl("p", { text: "Staged mode commits the index, including selected hunks. Checked-file mode includes unstaged changes in each checked file. Git hooks and repository signing settings remain active." });
+        const settings = modal.contentEl.createEl("button", { text: "Git identity and signing settings" });
+        settings.onclick = () => { modal.close(); this.app.setting.open(); this.app.setting.openTabById(this.controller.plugin.manifest.id); };
         this.commitOptionsButton.setAttribute("aria-expanded", "true");
         modal.onClose = () => {
             this.commitOptionsModal = undefined;
@@ -282,6 +387,9 @@ export class CommitView extends ItemView {
         menu.addItem(item => item.setTitle("Sort by Path").setChecked(this.sortByPath).onClick(() => { this.sortByPath = !this.sortByPath; this.render(); }));
         menu.addSeparator();
         menu.addItem(item => item.setTitle("Shelved Changes…").setIcon("archive").setDisabled(!this.controller.ready).onClick(() => void this.showShelves(anchor)));
+        for (const [name, title] of [["stashes", "Stashes and Shelves…"], ["worktrees", "Worktrees…"], ["tags", "Tags…"], ["rebase", "Interactive Rebase…"], ["reset", "Reset HEAD…"], ["repositories", "Repository and Submodules…"]]) {
+            menu.addItem(item => item.setTitle(title).setDisabled(this.controller.busy || !this.controller.ready).onClick(() => this.controller.openManager(name)));
+        }
         this.showMenu(menu, anchor);
     }
 
@@ -307,6 +415,7 @@ export class CommitView extends ItemView {
         const entry = this.controller.entries.find(entry => entry.path === path);
         if (!entry) { new Notice("The opened file has no Git changes."); return; }
         this.controller.collapsed.delete(entry.untracked ? "Unversioned Files" : this.controller.changelists.forPath(entry.path));
+        this.actionSelection = new Set([path]);
         this.render();
         const row = [...this.files.querySelectorAll(".pw-git-change-file")].find(row => row.dataset.path === path);
         row?.focus({ preventScroll: true });

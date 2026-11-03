@@ -1,22 +1,42 @@
 import { Notice, normalizePath } from "obsidian";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { isAbsolute, relative, resolve } from "node:path";
 import { getServiceRegistry } from "../../utils/service-registry";
 import { getWindowContext } from "../../utils/windows";
 import { Repository } from "./repository";
 import { COMMIT_VIEW, CommitView } from "./commit/commit-view";
 import { addGitMenu } from "./context-menu";
-import { choose, confirm, prompt, showOutput } from "./dialogs";
+import { choose, confirm, prompt } from "./dialogs";
 import { GitSettings } from "./settings";
 import { GitSnapshots } from "./status";
 import { Changelists } from "./changelists";
 import { DIFF_VIEW, DiffView } from "./diff-view";
 import { BranchActions } from "./branch-actions";
+import { GitOperations } from "./operations";
+import { GitNetworkModal } from "./network-modal";
+import { GitCompareModal } from "./compare-modal";
+import { GitConflictModal } from "./conflict-modal";
+import { GitStashModal } from "./stash-modal";
+import { GitWorktreeModal } from "./worktree-modal";
+import { GitTagsModal } from "./tags-modal";
+import { GitRebaseModal } from "./rebase-modal";
+import { GitRebaseAmendModal } from "./rebase-amend-modal";
+import { GitResetModal } from "./reset-modal";
+import { GitRepositoriesModal } from "./repositories-modal";
+import { openGitDialog } from "./utils/portals";
 
 export class GitController {
     constructor(plugin, vaultPath, data) {
         this.plugin = plugin;
         this.app = plugin.app;
-        this.repository = new Repository(vaultPath);
+        this.repository = new Repository(vaultPath, typeof plugin.settingsStore.preferences.executable === "string" ? plugin.settingsStore.preferences.executable : "git");
+        const activeRepository = plugin.settingsStore.preferences.activeRepository;
+        if (typeof activeRepository === "string" && isAbsolute(activeRepository)) {
+            const inside = relative(vaultPath, activeRepository), parent = relative(activeRepository, vaultPath);
+            const outside = path => isAbsolute(path) || path === ".." || path.startsWith("../") || path.startsWith("..\\");
+            if (!outside(inside) || !outside(parent)) this.repository.discoveryPath = activeRepository;
+        }
+        this.operations = new GitOperations(this.repository);
+        this.commitMode = data?.commitMode === "working" ? "working" : "staged";
         this.branchActions = new BranchActions(this);
         this.snapshots = new GitSnapshots(this);
         this.ignored = [];
@@ -32,6 +52,7 @@ export class GitController {
         this.busy = false;
         this.stashCount = 0;
         this.ready = false;
+        this.initialDraftRepository = data?.draftRepository;
         this.lastOpenedFile = this.app.workspace.getActiveFile() ?? this.app.workspace.getMostRecentLeaf()?.view.file;
     }
 
@@ -48,6 +69,7 @@ export class GitController {
             ["push", "Push…", () => this.network("push")],
             ["create-branch", "New Branch…", () => this.newBranch()],
             ["init-repo", "Initialize Repository…", () => this.initialize()],
+            ...["stashes", "worktrees", "tags", "rebase", "reset", "repositories"].map(name => [`manage-${name}`, `Manage ${name}…`, () => this.openManager(name)]),
         ];
         for (const [id, name, callback] of commands) plugin.addCommand({ id, name, callback: () => { void callback(); } });
         plugin.registerEvent(this.app.workspace.on("file-menu", (menu, file, source) => this.fileMenu(menu, [file], source)));
@@ -101,6 +123,8 @@ export class GitController {
 
     async openSelection(paths) {
         await this.refresh();
+        this.commitMode = "working";
+        this.saveDraft();
         this.selected = new Set(this.entries.filter(entry => paths.some(path => path === "." || entry.path === path || entry.path.startsWith(`${path}/`))).map(entry => entry.path));
         await this.open(); this.render();
         for (const view of this.views) view.message.focus();
@@ -196,7 +220,10 @@ export class GitController {
 
     scheduleRefresh() {
         clearTimeout(this.refreshTimer);
-        this.refreshTimer = setTimeout(() => void this.refresh(), 500);
+        this.refreshTimer = setTimeout(() => {
+            void this.refresh();
+            this.plugin.history?.invalidate();
+        }, 500);
     }
 
     refresh(force = false) {
@@ -208,11 +235,25 @@ export class GitController {
 
     async readStatus() {
         try {
-            if (!this.ready) await this.repository.discover();
-            const [entries, branch, ignored, head, stashes] = await Promise.all([this.repository.status(), this.repository.branch(), this.repository.ignored(), this.repository.head(), this.repository.run(["stash", "list", "--format=%gd"])]);
+            if (!this.ready) {
+                await this.repository.discover();
+                if (this.initialDraftRepository && this.initialDraftRepository !== this.repository.root) {
+                    const draft = this.plugin.settingsStore.preferences.repositoryDrafts?.[this.repository.root] || {};
+                    this.draft = { message: draft.message || "", amend: !!draft.amend };
+                    this.commitMode = draft.commitMode === "working" ? "working" : "staged";
+                    this.changelists = new Changelists(draft.changelists);
+                    for (const view of this.views) { view.message.value = this.draft.message; view.amend.checked = this.draft.amend; }
+                }
+                this.initialDraftRepository = undefined;
+            }
+            const [entries, branch, ignored, head, stashes, operation, refs] = await Promise.all([this.repository.status(), this.repository.branch(), this.repository.ignored(), this.repository.head(), this.repository.run(["stash", "list", "--format=%gd"]),
+                this.operations.state(), this.repository.run(["for-each-ref", "--format=%(refname)%09%(objectname)%09%(upstream)"])]);
             if (this.disposed) return;
             this.stashCount = stashes.trim().split("\n").filter(Boolean).length;
-            const changed = JSON.stringify(entries) !== JSON.stringify(this.entries) || this.error || !this.ready;
+            const changed = JSON.stringify(entries) !== JSON.stringify(this.entries) || JSON.stringify(operation) !== JSON.stringify(this.operation) || this.error || !this.ready;
+            const historyChanged = this.head !== head || this.refs !== refs;
+            this.operation = operation;
+            this.head = head; this.refs = refs;
             const ignoredChanged = JSON.stringify(ignored) !== JSON.stringify(this.ignored);
             for (const entry of entries) if (!this.known.has(entry.path) && !entry.untracked) this.selected.add(entry.path);
             const paths = new Set(entries.map(entry => entry.path));
@@ -220,13 +261,13 @@ export class GitController {
             this.known = paths;
             this.entries = entries; this.error = ""; this.ready = true;
             this.ignored = ignored;
-            if (this.head !== head) { this.head = head; this.plugin.history?.invalidate(); }
-            if (this.branch !== branch || changed || ignoredChanged) {
+            if (this.branch !== branch || changed || ignoredChanged || historyChanged) {
                 this.branch = branch;
                 this.app.workspace.trigger("patchwork-git:refreshed");
             }
             this.snapshots.publish();
             if (changed) this.render();
+            if (changed || historyChanged) this.plugin.history?.invalidate();
         } catch (error) {
             if (this.disposed) return;
             this.error = error.message; this.ready = false; this.render();
@@ -238,13 +279,16 @@ export class GitController {
 
     render() { for (const view of this.views) view.render(); this.snapshots.publish(); }
 
-    async act(action) {
-        if (this.busy || this.disposed) return;
+    async act(action, rethrow = false) {
+        if (this.busy || this.disposed) {
+            if (rethrow) throw new Error("Git is busy or unavailable. Try again when the operation finishes.");
+            return;
+        }
         this.busy = true; this.render();
         try {
             await this.refreshing;
             return await this.repository.mutate(action);
-        } catch (error) { new Notice(`Git: ${error.message}`, 10000); }
+        } catch (error) { if (rethrow) throw error; new Notice(`Git: ${error.message}`, 10000); }
         finally {
             this.busy = false;
             if (!this.disposed) this.render();
@@ -257,9 +301,18 @@ export class GitController {
         if (this.busy) return;
         this.validationRequested = true;
         if (this.commitValidation()) { this.render(); return; }
-        if (this.draft.amend && !await confirm(this, "Amend commit", "Replace the latest commit with the checked working-tree changes and this message? If it was pushed, a normal push may be rejected; this plugin never force-pushes.", "Amend")) return;
+        const mode = this.commitMode;
+        const message = this.draft.message, amend = this.draft.amend;
+        const selected = new Set(this.selected);
+        const root = this.repository.root, head = this.head;
+        const checks = { checkWhitespace: this.plugin.settingsStore.preferences.checkWhitespace === true };
+        if (mode === "working" && this.entries.some(entry => selected.has(entry.path) && entry.staged && entry.code[1] !== " ")
+            && !await confirm(this, "Commit all changes in checked files", "Some checked files are partly staged. This mode also commits their unstaged changes. To commit only staged hunks, cancel and choose All staged changes.", "Commit all file changes")) return;
+        if (amend && !await confirm(this, "Amend commit", `Replace the latest commit using ${mode === "staged" ? "all staged changes" : "all working-tree changes in the checked files"} and this message? If it was pushed, a normal push may be rejected.`, "Amend")) return;
         await this.act(async () => {
-            const result = await this.repository.commit(new Set(this.selected), this.draft.message, this.draft.amend);
+            if (this.repository.root !== root || await this.repository.head() !== head) throw new Error("The repository or HEAD changed. Review the commit again.");
+            const result = mode === "staged" ? await this.repository.commitStaged(message, amend, checks)
+                : await this.repository.commit(selected, message, amend, checks);
             this.draft = { message: "", amend: false };
             this.validationRequested = false;
             for (const view of this.views) { view.message.value = ""; view.amend.checked = false; }
@@ -267,24 +320,86 @@ export class GitController {
             if (result.warning) { new Notice(result.warning, 15000); return; }
             new Notice("Commit created.");
             if (!push || this.disposed) return;
-            try { await this.repository.run(["push"]); new Notice("Push completed."); }
-            catch (error) { new Notice(`Commit created; push failed. Use Push to retry without committing again.\n${error.message}`, 15000); }
+            this.network("push");
         });
     }
 
     commitValidation() {
-        const hasFiles = this.entries.some(entry => this.selected.has(entry.path));
+        if (this.operation) return "Finish or abort the active Git operation using the controls above.";
+        const hasFiles = this.commitMode === "staged" ? this.entries.some(entry => entry.staged && !entry.conflict)
+            : this.entries.some(entry => this.selected.has(entry.path));
         const hasMessage = !!this.draft.message.trim();
-        if (!hasFiles && !hasMessage) return "Select files to commit and specify commit message";
-        if (!hasFiles) return "Select files to commit";
+        if (!hasFiles && !this.draft.amend) return this.commitMode === "staged" ? "Stage changes before committing." : "Select files to commit.";
+        if (this.draft.amend && !this.head) return "There is no commit to amend.";
         if (!hasMessage) return "specify commit message";
         return "";
     }
 
-    network(action) {
+    stageSelection(paths, unstage = false) {
+        if (!paths.length) return;
+        return this.act(async () => {
+            const entries = (await this.repository.status()).filter(entry => paths.includes(entry.path));
+            if (entries.some(entry => entry.conflict)) throw new Error("Use Mark resolved for conflicting files.");
+            const selected = entries.filter(entry => unstage ? entry.staged : entry.untracked || entry.code[1] !== " ").map(entry => entry.path);
+            if (!selected.length) return;
+            await (unstage ? this.repository.unstage(selected) : this.repository.stage(selected));
+        });
+    }
+
+    async resumeOperation(action) {
+        const operation = this.operation;
+        if (!operation || this.busy) return;
+        if (action !== "continue" && !await confirm(this, action === "abort" ? "Abort Git operation" : "Skip current commit",
+            action === "abort" ? `Abort ${operation.kind}? Conflict resolution edits may be discarded.` : "Discard the current commit's changes and continue the operation?", action === "abort" ? "Abort" : "Skip")) return;
+        await this.act(() => this.operations.resume(operation, action));
+    }
+
+    amendRebase() {
+        if (this.busy || this.operation?.kind !== "rebase" || !this.operation.editing) return;
+        openGitDialog(this, new GitRebaseAmendModal(this));
+    }
+
+    async markResolved(path) {
+        const operation = this.operation;
+        if (this.busy || !await confirm(this, "Mark resolved", `Stage the current contents of ${path} as the resolution? If the file was deleted, keep the deletion.`, "Mark resolved")) return;
+        await this.act(() => this.operations.markResolved(operation, path));
+    }
+
+    resolveConflict(path) { openGitDialog(this, new GitConflictModal(this, path)); }
+
+    openManager(name, revision) {
+        const factories = { stashes: () => new GitStashModal(this), worktrees: () => new GitWorktreeModal(this), tags: () => new GitTagsModal(this),
+            rebase: () => new GitRebaseModal(this, revision), reset: () => new GitResetModal(this, revision), repositories: () => new GitRepositoriesModal(this) };
+        if (factories[name]) openGitDialog(this, factories[name]());
+    }
+
+    async switchRepository(probe) {
+        if (this.busy || this.disposed) throw new Error("Wait for the active Git operation before switching repositories.");
+        await this.refreshing;
+        const preferences = this.plugin.settingsStore.preferences;
+        const drafts = { ...(preferences.repositoryDrafts || {}), [this.repository.root]: { ...this.draft, commitMode: this.commitMode, changelists: this.changelists.serialize() } };
+        const next = drafts[probe.root] || {};
+        await this.act(async () => {
+            this.repository.discoveryPath = probe.root; this.repository.root = probe.root; this.repository.gitDir = probe.gitDir; this.repository.indexPath = probe.indexPath;
+            this.draft = { message: next.message || "", amend: !!next.amend };
+            this.commitMode = next.commitMode === "working" ? "working" : "staged";
+            this.changelists = new Changelists(next.changelists);
+            this.entries = []; this.ignored = []; this.selected.clear(); this.known.clear(); this.head = undefined; this.refs = undefined;
+            this.ready = true; this.error = "";
+            for (const view of this.views) { view.message.value = this.draft.message; view.amend.checked = this.draft.amend; }
+            await this.plugin.settingsStore.savePreferences({ repositoryDrafts: drafts, activeRepository: probe.root });
+        }, true);
+        this.plugin.history.reset(); await this.refresh(true); this.saveDraft();
+    }
+
+    network(action, branch) {
+        if (["push", "pull"].includes(action)) {
+            openGitDialog(this, new GitNetworkModal(this, action, branch));
+            return;
+        }
         return this.act(async () => {
             // Respect configured remotes/upstreams; do not force, merge, or rebase silently.
-            const args = action === "pull" ? ["pull", "--ff-only"] : action === "fetch" ? ["fetch", "--all"] : ["push"];
+            const args = ["fetch", "--all", "--prune"];
             const output = await this.repository.run(args);
             new Notice(output.trim() || `${action[0].toUpperCase()}${action.slice(1)} completed.`);
         });
@@ -341,24 +456,30 @@ export class GitController {
     async showDiff(paths, newTab = false) {
         if (!paths.length || this.disposed || this.busy) return;
         try {
-            const head = await this.repository.head();
-            const args = ["diff", "--no-ext-diff", "--no-textconv", "--no-color", ...(head ? ["HEAD"] : ["--cached"]), "--", ...paths];
-            const output = [await this.repository.run(args)];
-            if (!head) output.push(await this.repository.run(["diff", "--no-ext-diff", "--no-textconv", "--no-color", "--", ...paths]));
-            const untracked = (await this.repository.status()).filter(entry => entry.untracked && paths.some(path => path === "." || entry.path === path || entry.path.startsWith(`${path}/`)));
-            for (const entry of untracked) {
-                output.push(await this.repository.run(["diff", "--no-index", "--no-ext-diff", "--no-textconv", "--no-color", "--", "/dev/null", join(this.repository.root, entry.path)], { allowedExitCodes: [1] }));
-            }
-            const text = output.filter(Boolean).join("\n");
-            if (this.disposed) return;
-            if (!newTab) { showOutput(this, "Diff with Working Tree", text); return; }
-            const leaf = this.app.workspace.getLeaf(newTab === "window" ? "window" : "tab");
-            await leaf.setViewState({ type: DIFF_VIEW, active: true, state: { title: paths.length === 1 ? `Diff: ${paths[0]}` : "Git Diff", text, paths, comparison: "working" } });
+            const leaf = (!newTab && this.app.workspace.getLeavesOfType(DIFF_VIEW).find(leaf => leaf.view.comparison === "working" && leaf.view.containerEl.ownerDocument === this.app.workspace.containerEl.ownerDocument))
+                || this.app.workspace.getLeaf(newTab === "window" ? "window" : "tab");
+            await leaf.setViewState({ type: DIFF_VIEW, active: true, state: { title: paths.length === 1 ? `Diff: ${paths[0]}` : "Git Diff", paths, comparison: "working", baseline: "head" } });
             await this.app.workspace.revealLeaf(leaf);
         } catch (error) { if (!this.disposed) new Notice(`Git: ${error.message}`, 10000); }
     }
 
     showHistory(paths) { return this.openHistory(paths); }
+
+    compare(left = "HEAD", right = "", paths = []) { openGitDialog(this, new GitCompareModal(this, left, right, paths)); }
+
+    async openDiffText(text, title, document = this.app.workspace.containerEl.ownerDocument) {
+        if (this.disposed || !document.defaultView || text === undefined) return;
+        const anchors = [];
+        this.app.workspace.iterateAllLeaves(leaf => { if (leaf.view.containerEl.ownerDocument === document && leaf.view.containerEl.closest(".mod-root")) anchors.push(leaf); });
+        const anchor = anchors.sort((a, b) => (b.activeTime ?? 0) - (a.activeTime ?? 0))[0];
+        if (!anchor && document !== this.app.workspace.containerEl.ownerDocument) throw new Error("The invoking document group is unavailable.");
+        if (anchor) this.app.workspace.setActiveLeaf(anchor, { focus: false });
+        const leaf = this.app.workspace.getLeaf("tab");
+        if (leaf.view.containerEl.ownerDocument !== document) { leaf.detach(); throw new Error("The invoking window is unavailable."); }
+        await leaf.setViewState({ type: DIFF_VIEW, active: true, state: { title, text, mode: "split", comparison: "revision" } });
+        if (this.disposed || !document.defaultView) return;
+        await this.app.workspace.revealLeaf(leaf);
+    }
 
     async openHistory(paths, document = this.app.workspace.containerEl.ownerDocument) {
         if (this.disposed || !document.defaultView) return;
@@ -379,7 +500,7 @@ export class GitController {
     }
 
     persistDraft() {
-        return this.plugin.settingsStore.saveDraft(this.draft.message, this.draft.amend, this.changelists.serialize());
+        return this.plugin.settingsStore.saveDraft(this.draft.message, this.draft.amend, this.changelists.serialize(), this.commitMode, this.repository.root);
     }
 
     dispose() {

@@ -3,6 +3,24 @@ import { CommitInfo, GraphNode, GraphEdge, GraphData } from "../types";
 
 const BRANCH_COLORS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
+/** Parents follow children even when the display is date-sorted or reversed. */
+export function topologicalCommits(commits: CommitInfo[]): CommitInfo[] {
+  const byHash = new Map(commits.map(commit => [commit.hash, commit]));
+  const children = new Map(commits.map(commit => [commit.hash, 0]));
+  for (const commit of commits) for (const parent of commit.parents) if (children.has(parent)) children.set(parent, children.get(parent)! + 1);
+  const ready = commits.filter(commit => children.get(commit.hash) === 0);
+  const ordered: CommitInfo[] = [];
+  for (let index = 0; index < ready.length; index++) {
+    const commit = ready[index]; ordered.push(commit);
+    for (const parent of commit.parents) {
+      if (!children.has(parent)) continue;
+      const remaining = children.get(parent)! - 1; children.set(parent, remaining);
+      if (remaining === 0) ready.push(byHash.get(parent)!);
+    }
+  }
+  return ordered.length === commits.length ? ordered : commits;
+}
+
 export function computeGraphLayout(commits: CommitInfo[]): GraphData {
   if (commits.length === 0) return { nodes: [], edges: [], maxColumns: 0 };
 

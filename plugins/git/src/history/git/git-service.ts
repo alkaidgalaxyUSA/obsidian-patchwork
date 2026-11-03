@@ -85,6 +85,7 @@ export class GitService {
 
   private async exec(args: string[], timeout = 30000, input?: string): Promise<string> {
     if (this.disposed) throw new Error("Git history has been unloaded.");
+    const repoPath = this.repoPath;
     const { file, env } = await this.command();
     if (this.disposed) throw new Error("Git history has been unloaded.");
     return new Promise((resolve, reject) => {
@@ -98,7 +99,7 @@ export class GitService {
         // way, so this is safe to set for all of them.
         ["--literal-pathspecs", "-c", "core.quotepath=false", ...args],
         {
-          cwd: this.repoPath,
+          cwd: repoPath,
           windowsHide: true,
           maxBuffer: 50 * 1024 * 1024,
           timeout,
@@ -582,10 +583,11 @@ export class GitService {
    * compares it against nothing and reports the whole file as added. `-M`
    * turns rename detection on even where `diff.renames` is off.
    */
-  async diff(paths: readonly string[], staged = false, fullContext = false): Promise<string> {
+  async diff(paths: readonly string[], staged = false, fullContext = false, baseline: "index" | "head" = "index"): Promise<string> {
     const args = ["--literal-pathspecs", "diff", "--no-ext-diff", "--no-textconv", "--no-color", "-M"];
     if (fullContext) args.push("-U99999");
     if (staged) args.push("--cached");
+    else if (baseline === "head") args.push("HEAD");
     args.push("--", ...paths);
     return this.exec(args);
   }

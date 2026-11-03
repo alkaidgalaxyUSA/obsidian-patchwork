@@ -37,7 +37,10 @@ export class GitHistoryService {
     private details = new Map<string, Promise<CommitFileInfo[]>>();
 
     constructor(private plugin: PatchworkGitPlugin) {
-        this.backend = new GitService(plugin.repository.root);
+        this.backend = new GitService(plugin.repository.root, {
+            git: async () => ({ binary: { path: plugin.repository.executable, source: "path" }, tried: [plugin.repository.executable] }),
+            env: async extra => ({ ...process.env, ...extra }),
+        });
         this.git.coordinate = action => plugin.repository.mutate(async () => {
             if (this.disposed) throw new Error("Git history has been unloaded.");
             const controller = plugin.controller;
@@ -63,6 +66,8 @@ export class GitHistoryService {
             try { listener(); } catch (error) { console.error("Git history subscriber failed.", error); }
         }
     }
+
+    reset(): void { this.details.clear(); this.invalidate(); }
 
     async log(options: HistoryLogOptions) {
         if (this.disposed) throw new Error("Git history has been unloaded.");

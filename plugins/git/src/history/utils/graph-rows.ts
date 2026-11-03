@@ -1,4 +1,4 @@
-import { computeGraphLayout } from "./graph-layout";
+import { computeGraphLayout, topologicalCommits } from "./graph-layout";
 import type { CommitInfo, GraphEdge } from "../types";
 
 const HEIGHT = 30;
@@ -6,7 +6,11 @@ const CHUNK = 64;
 
 /** Slice upstream topology into Patchwork's log row cells. */
 export function createGraphRows(commits: CommitInfo[]) {
-    const graph = computeGraphLayout(commits);
+    const ordered = topologicalCommits(commits);
+    const graph = computeGraphLayout(ordered);
+    const positions = new Map(commits.map((commit, index) => [commit.hash, index]));
+    graph.edges = graph.edges.map(edge => ({ ...edge, fromRow: positions.get(ordered[edge.fromRow].hash)!, toRow: positions.get(ordered[edge.toRow].hash)! }));
+    graph.nodes.sort((left, right) => positions.get(left.commit.hash)! - positions.get(right.commit.hash)!);
     const buckets = new Map<number, GraphEdge[]>();
     for (const edge of graph.edges) {
         for (let chunk = Math.floor(Math.min(edge.fromRow, edge.toRow) / CHUNK); chunk <= Math.floor(Math.max(edge.fromRow, edge.toRow) / CHUNK); chunk++) {

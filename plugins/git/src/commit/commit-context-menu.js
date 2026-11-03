@@ -17,6 +17,8 @@ export function addCommitMenu(menu, controller, paths, changelistId) {
         if (icon) item.setIcon(iconName(icon));
     });
     action("Commit File...", null, () => controller.openSelection(paths), !entries.length || entries.some(entry => entry.conflict));
+    if (controller.commitMode === "staged") action("Stage Selected", "plus", () => controller.stageSelection(paths), !entries.length || entries.some(entry => entry.conflict));
+    if (controller.commitMode === "staged") action("Unstage Selected", "idea/expui/general/remove_dark.svg", () => controller.stageSelection(paths, true), !entries.some(entry => entry.staged) || entries.some(entry => entry.conflict));
     action("Rollback...", "git-rollback", () => controller.rollback(paths), !tracked.length || tracked.some(entry => entry.conflict || entry.original || entry.code.includes("A")));
     action("Move to Another Changelist...", null, () => controller.moveToChangelist(tracked.map(entry => entry.path)), !tracked.length);
     action("Show Diff", "git-show-diff", () => controller.showDiff(paths), !entries.length);
@@ -47,17 +49,7 @@ export function addCommitMenu(menu, controller, paths, changelistId) {
     action("Copy as Patch to Clipboard", null, () => controller.copyPatch(paths), !entries.length || entries.some(entry => entry.conflict));
     action("Shelve Changes...", "git-shelve", () => controller.shelve(paths, true), !entries.length || entries.some(entry => entry.untracked || entry.conflict));
     menu.addSeparator();
-    menu.addItem(item => item.setTitle("Refresh").setIcon(iconName("refresh-cw")).setDisabled(controller.busy).onClick(() => void controller.refresh()));
+    menu.addItem(item => item.setTitle("Refresh").setIcon(iconName("git-log-refresh")).setDisabled(controller.busy).onClick(() => void controller.refresh()));
     menu.addSeparator();
-    menu.addItem(item => {
-        item.setTitle("Local History");
-        const submenu = scopeGitMenu(item.setSubmenu(), menu.dom);
-        menu.onHide(() => submenu.hide());
-        submenu.setUseNativeMenu(false);
-        submenu.dom.classList.add("pw-git-context-submenu", "pw-git-commit-context-submenu");
-        for (const label of ["Show History...", "Show Project History...", "Recent Changes", "Put Label..."]) {
-            submenu.addItem(child => child.setTitle(label).setDisabled(true));
-        }
-    });
     addGitMenu(menu, controller, paths);
 }

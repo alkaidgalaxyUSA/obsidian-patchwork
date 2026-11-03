@@ -104,9 +104,12 @@ export class ChangedFiles {
             const active = [...this.selected].some(file => file.path === row.dataset.path);
             row.classList.toggle("is-selected", active); row.setAttribute("aria-selected", String(active));
         }
-        this.diffButton.disabled = !this.selected.size;
-        this.revertButton.disabled = !this.selected.size || this.pane.controller.busy;
-        this.historyButton.disabled = !this.commit;
+        const unavailable = !this.pane.controller.ready || this.pane.controller.busy || !this.commit;
+        this.diffButton.disabled = unavailable || !this.selected.size;
+        this.revertButton.disabled = unavailable || !this.selected.size || !!this.pane.controller.operation;
+        this.historyButton.disabled = unavailable;
+        this.diffButton.title = this.selected.size ? "Show Diff" : "Select changed files to compare.";
+        this.revertButton.title = this.pane.controller.operation ? "Finish the current Git operation first." : "Revert selected changes from this commit";
     }
 
     showDiff() {

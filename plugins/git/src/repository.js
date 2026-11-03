@@ -5,8 +5,9 @@ import { Shelves } from "./shelves.js";
 
 /** Native Git backend; paths are literal and commands never pass through a shell. */
 export class Repository {
-    constructor(vaultPath) {
+    constructor(vaultPath, executable = "git") {
         this.vaultPath = vaultPath;
+        this.executable = executable;
         this.root = vaultPath;
         this.children = new Set();
         this.queue = Promise.resolve();
@@ -17,7 +18,7 @@ export class Repository {
         if (this.disposed) return Promise.reject(new Error("Git plugin has been unloaded."));
         const { allowedExitCodes = [], ...processOptions } = options;
         return new Promise((resolveResult, reject) => {
-            const child = execFile("git", ["--no-pager", ...args], {
+            const child = execFile(this.executable, ["--no-pager", ...args], {
                 cwd: this.root, windowsHide: true, timeout: 120000, maxBuffer: 32 * 1024 * 1024,
                 encoding: "utf8", ...processOptions,
                 env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_LITERAL_PATHSPECS: "1", GIT_OPTIONAL_LOCKS: "0", ...options.env },
@@ -40,7 +41,7 @@ export class Repository {
     }
 
     async discover() {
-        this.root = this.vaultPath;
+        this.root = this.discoveryPath || this.vaultPath;
         this.root = (await this.run(["rev-parse", "--show-toplevel"])).trim();
         this.gitDir = (await this.run(["rev-parse", "--absolute-git-dir"])).trim();
         this.indexPath = resolve(this.root, (await this.run(["rev-parse", "--git-path", "index"])).trim());
@@ -172,8 +173,32 @@ export class Repository {
         else await this.run(["checkout", ref, "--"]);
     }
 
+    async checkCommitIndex(checks, env = {}) {
+        if (!checks.checkWhitespace) return;
+        const errors = await this.run(["diff", "--cached", "--check", "--no-ext-diff", "--no-textconv"], { env, allowedExitCodes: [2] });
+        if (errors.trim()) throw new Error("Pre-commit whitespace check failed. Review whitespace errors or newly added conflict markers in the commit diff, then retry. No commit was created.");
+    }
+
+    async commitStaged(message, amend, checks = {}) {
+        if (!message.trim()) throw new Error("Enter a commit message.");
+        if ((await this.status()).some(entry => entry.conflict)) throw new Error("Resolve all conflicts before committing.");
+        await this.assertNoOperation();
+        await this.checkCommitIndex(checks);
+        await this.run(["commit", ...(amend ? ["--amend"] : []), "-m", message]);
+        return { committed: true };
+    }
+
+    async assertNoOperation() {
+        for (const state of ["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "sequencer"]) {
+            const location = resolve(this.root, (await this.run(["rev-parse", "--git-path", state])).trim());
+            try { await access(location); }
+            catch (error) { if (error.code === "ENOENT") continue; throw error; }
+            throw new Error("Use the operation controls to finish or abort the active Git operation before committing.");
+        }
+    }
+
     /** Commit a working-tree selection using a private index; keep unrelated staging intact. */
-    async commit(selected, message, amend) {
+    async commit(selected, message, amend, checks = {}) {
         if (!message.trim()) throw new Error("Enter a commit message.");
         const entries = await this.status();
         if (entries.some(entry => entry.conflict)) throw new Error("Resolve all merge conflicts before committing.");
@@ -182,12 +207,7 @@ export class Repository {
         const before = await this.head();
         if (amend && !before) throw new Error("There is no commit to amend.");
         // Partial commits during merge/rebase/cherry-pick would corrupt operation semantics.
-        for (const state of ["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"]) {
-            const location = resolve(this.root, (await this.run(["rev-parse", "--git-path", state])).trim());
-            try { await access(location); }
-            catch (error) { if (error.code === "ENOENT") continue; throw error; }
-            throw new Error("Finish the active merge, rebase, or cherry-pick before committing here.");
-        }
+        await this.assertNoOperation();
         const paths = [...new Set(chosen.flatMap(entry => [entry.path, entry.code.includes("R") ? entry.original : undefined].filter(Boolean)))];
         const directory = await mkdtemp(join(this.gitDir, "patchwork-commit-"));
         const privateIndex = join(directory, "selected-index");
@@ -206,6 +226,7 @@ export class Repository {
                 await this.run(["read-tree", "--empty"], { env: { GIT_INDEX_FILE: preservedIndex } });
             }
             if (paths.length) await this.run(["add", "--all", "--", ...paths], { env });
+            await this.checkCommitIndex(checks, env);
             if (await this.head() !== before) throw new Error("HEAD changed. Refresh the selection and try again.");
             await this.run(["commit", ...(amend ? ["--amend"] : []), "-m", message], { env });
             committed = true;

@@ -1,4 +1,5 @@
-import { isAbsolute } from "node:path";
+import { GitBlameModal } from "./blame-modal";
+import { GitCloneModal } from "./clone-modal";
 import { choose, confirm, prompt, showOutput } from "./dialogs";
 import { GitRemotesModal } from "./remotes-modal";
 import { openGitDialog } from "./utils/portals";
@@ -31,16 +32,14 @@ export class FileContextActions {
         });
     }
 
+    blame() { openGitDialog(this.controller, new GitBlameModal(this.controller, this.paths[0])); }
+
     output(title, args) {
         return this.controller.act(async () => showOutput(this.controller, title, await this.repository.run(args)));
     }
 
     compare(title) {
-        return this.controller.act(async () => {
-            const revision = await this.revision(title);
-            if (!revision) return;
-            showOutput(this.controller, title, await this.repository.run(["diff", "--no-ext-diff", "--no-textconv", "--no-color", revision, "--", ...this.paths]));
-        });
+        this.controller.compare("HEAD", "", this.paths);
     }
 
     integrate(action) {
@@ -70,11 +69,7 @@ export class FileContextActions {
     }
 
     reset() {
-        return this.controller.act(async () => {
-            const revision = await this.revision("Reset HEAD");
-            if (!revision || !await confirm(this.controller, "Reset HEAD", `Move HEAD to ${revision} and unstage changes? Working files will be preserved.`, "Reset")) return;
-            await this.repository.run(["reset", "--mixed", revision, "--"]);
-        });
+        this.controller.openManager("reset");
     }
 
     stash() {
@@ -97,16 +92,7 @@ export class FileContextActions {
         openGitDialog(this.controller, new GitRemotesModal(this.controller));
     }
 
-    clone() {
-        return this.controller.act(async () => {
-            const url = await prompt(this.controller, "Clone Repository", "Repository URL");
-            if (!url) return;
-            const directory = await prompt(this.controller, "Clone Repository", "New absolute destination directory");
-            if (!directory) return;
-            if (!isAbsolute(directory)) throw new Error("Enter an absolute destination directory.");
-            await this.repository.run(["clone", "--", url, directory]);
-        });
-    }
+    clone() { openGitDialog(this.controller, new GitCloneModal(this.controller)); }
 
     github() {
         return this.controller.act(async () => {
