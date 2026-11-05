@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { access, appendFile, copyFile, mkdir, mkdtemp, open, readFile, rename, rm } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { Shelves } from "./shelves.js";
+import { detectWorktreeRenames, withWorktreeIndex } from "./utils/worktree-renames.js";
 
 /** Native Git backend; paths are literal and commands never pass through a shell. */
 export class Repository {
@@ -64,7 +65,7 @@ export class Repository {
     }
 
     async status() {
-        const raw = await this.run(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
+        const raw = await this.run(["status", "--porcelain=v1", "-z", "--untracked-files=all", "--renames"]);
         const parts = raw.split("\0");
         const entries = [];
         for (let index = 0; index < parts.length; index++) {
@@ -77,7 +78,7 @@ export class Repository {
             entries.push({ path, original, code, untracked, staged: !untracked && code[0] !== " ",
                 conflict: ["DD", "AU", "UD", "UA", "DU", "AA", "UU"].includes(code) });
         }
-        return entries;
+        return detectWorktreeRenames(this, entries);
     }
 
     async ignored() {
@@ -112,6 +113,10 @@ export class Repository {
         if (entries.some(entry => entry.conflict)) throw new Error("Resolve conflicts before creating a patch.");
         const head = await this.head();
         const flags = ["--binary", "--full-index", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", "--src-prefix=a/", "--dst-prefix=b/"];
+        if (entries.some(entry => entry.worktreeRename)) {
+            const files = [...new Set(entries.flatMap(entry => [entry.path, entry.original].filter(Boolean)))];
+            return withWorktreeIndex(this, files, env => this.run(["diff", "--cached", ...flags, "HEAD", "--", ...files], { env, encoding: "buffer" }));
+        }
         const output = [];
         const tracked = entries.filter(entry => !entry.untracked);
         if (head && tracked.length) {

@@ -39,8 +39,10 @@ export class BranchActions {
             local: snapshot.local, upstreams: snapshot.upstreams };
     }
 
-    run(id, ref, current, remote = true) {
-        return this.controller.act(async () => {
+    async run(id, ref, current, remote = true) {
+        let network;
+        const root = this.repository.root;
+        await this.controller.act(async () => {
             const action = this.actions.get(id);
             if (!action) throw new Error("This branch action is unavailable.");
             const context = await this.context(ref, current, remote);
@@ -48,8 +50,17 @@ export class BranchActions {
             if (["checkout-rebase", "rebase", "merge", "pull-rebase", "pull-merge"].includes(id) && !context.local.includes(current)) {
                 throw new Error("Check out a local branch before using this action.");
             }
+            if (id === "push") { network = { kind: "push", branch: context.ref }; return; }
+            if (id === "update" && !context.isRemote && context.ref === context.current) {
+                if (!context.tracking || !context.remote) throw new Error("This branch has no tracked remote branch.");
+                network = { kind: "pull", branch: context.ref }; return;
+            }
+            if (["pull-rebase", "pull-merge"].includes(id)) {
+                network = { kind: "pull", branch: context.current, options: { remote: context.remote, target: context.branch, strategy: id === "pull-rebase" ? "rebase" : "merge" } }; return;
+            }
             await action(context);
         });
+        if (network && !this.controller.disposed && this.repository.root === root) this.controller.network(network.kind, network.branch, network.options);
     }
 
     async checkout(context) {

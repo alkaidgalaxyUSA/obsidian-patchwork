@@ -99,7 +99,7 @@ body.theme-dark [data-pw-module="git"] .pw-log-date:not(:where([data-pw-module="
 
 body.theme-dark [data-pw-module="git"] .pw-git-log-right:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { border-left:0; }
 
-body.theme-dark [data-pw-module="git"] .pw-git-log-details:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { border-top:0; padding:10px 12px; background:var(--pw-git-raised); }
+body.theme-dark [data-pw-module="git"] .pw-git-log-details:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { border-top:0; padding:10px 12px; background:#191A1C; }
 
 body.theme-dark [data-pw-module="git"] .pw-log-message:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { font-size:12px; font-weight:500; line-height:1.55; padding:2px 0 8px; }
 
@@ -223,3 +223,8 @@ body.theme-dark [data-pw-module="git"] .pw-git-reset-description:not(:where([dat
 body.theme-dark [data-pw-module="git"] .pw-git-rebase-list:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { padding:0; border-radius:4px; }
 body.theme-dark [data-pw-module="git"] .pw-git-rebase-message textarea:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { height:auto; padding:8px; min-height:90px; }
 body.theme-dark [data-pw-module="git"] .pw-git-compare-files button[aria-pressed="true"]:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { background:#2A4371; color:#D1D3D9; }
+
+/* Commit directories and actionable commit metadata use the existing compact rows. */
+body [data-pw-module="git"] .pw-git-change-directory > summary:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { padding:2px 12px; line-height:20px; font-size:12px; cursor:pointer; }
+body [data-pw-module="git"] .pw-git-change-directory > .pw-git-change-file:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { padding-left:24px; }
+body [data-pw-module="git"] .pw-log-containing-branches button:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)), body [data-pw-module="git"] .pw-log-meta button.pw-log-revision:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display:inline; min-height:0; height:auto; margin:0 4px 0 0; padding:0; border:0; box-shadow:none; background:transparent; color:var(--text-accent); font:inherit; cursor:pointer; }

@@ -48,7 +48,7 @@ export class GitPopup {
             try { await this.repository.fetch(); await this.load(); }
             finally {
                 this.fetching = false;
-                this.fetchButton.disabled = !this.repository.ready;
+                this.fetchButton.disabled = !this.repository.ready || this.repository.busy;
                 this.fetchButton.removeAttribute("aria-busy");
             }
         });
@@ -150,7 +150,9 @@ export class GitPopup {
     action(id, label, icon) {
         if (!this.matches(label)) return;
         const button = this.row(label, icon, () => { this.close(); this.repository.command(id); });
-        button.disabled = !this.app.commands.commands[`patchwork-git:${id}`] || !this.repository.ready;
+        const unsupportedWindow = ["open-commit", "create-branch", "init-repo"].includes(id) && this.doc !== this.app.workspace.containerEl.ownerDocument;
+        button.disabled = !this.app.commands.commands[`patchwork-git:${id}`] || !this.repository.ready || this.repository.busy || unsupportedWindow;
+        button.title = unsupportedWindow ? "This action is unavailable in this window." : this.repository.busy ? "A Git operation is in progress." : label;
         const keys = this.app.hotkeyManager.getHotkeys(`patchwork-git:${id}`)?.[0];
         if (keys) button.createSpan({ cls: "pw-git-row-detail", text: [...keys.modifiers.map((key) => key === "Mod" ? "Ctrl" : key), keys.key].join("+") });
     }
@@ -158,7 +160,7 @@ export class GitPopup {
     render() {
         if (this.closed || this.controller.disposed) return;
         this.branchMenu?.hide();
-        this.fetchButton.disabled = !!this.fetching || !this.repository.ready;
+        this.fetchButton.disabled = !!this.fetching || !this.repository.ready || this.repository.busy;
         this.content.empty();
         if (this.mode === "revisions") { this.renderRevisions(); this.position(); return; }
         const showActions = !this.input.value.trim() || this.options.showActions;
@@ -174,7 +176,7 @@ export class GitPopup {
                 this.input.setAttribute("aria-label", this.input.placeholder);
                 this.render(); this.input.focus();
             });
-            button.disabled = !this.repository.ready;
+            button.disabled = !this.repository.ready || this.repository.busy;
         }
         this.content.createDiv({ cls: "pw-git-separator" });
         if (!this.data) {
@@ -212,7 +214,10 @@ export class GitPopup {
     branchList(refs, remote, group, base = "", prefix = "", depth = 0) {
         const folders = new Map();
         const searching = !!this.input.value.trim();
-        for (const ref of refs) {
+        const favorites = new Set(this.controller.plugin.settingsStore.preferences.logFavorites || []);
+        const rank = ref => !remote && ref === this.data.current ? 0 : favorites.has(`${remote ? "refs/remotes/" : "refs/heads/"}${ref}`) ? 1 : 2;
+        const sorted = group === "Recent" ? refs : [...refs].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+        for (const ref of sorted) {
             const label = ref.slice(base.length + prefix.length);
             const slash = this.options.groupByPrefix ? label.indexOf("/") : -1;
             if (slash >= 0) {

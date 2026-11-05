@@ -8,7 +8,7 @@ export class GitStashModal extends GitTaskModal {
         this.name = this.field("New stash message", "Local changes");
         this.stashButton = this.button("Stash All Changes", async () => {
             if (!await confirm(this.controller, "Stash all changes", "Save tracked and untracked files in a stash and remove those changes from the working tree?", "Stash")) return;
-            await this.change(async () => { await this.repo.assertNoOperation(); await this.repo.run(["stash", "push", "--include-untracked", "-m", this.name.value.trim() || "Local changes"]); });
+            await this.change(async () => { await this.repo.assertNoOperation(); await this.repo.run(["stash", "push", "--include-untracked", "-m", this.name.value.trim() || "Local changes"], { env: { GIT_LITERAL_PATHSPECS: "0" } }); });
             await this.load();
         }, true);
         this.button("Refresh", () => this.load());

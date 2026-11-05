@@ -24,6 +24,7 @@ export class Shelves {
         if (!head) throw new Error("Create an initial commit before shelving changes.");
         const entries = (await repo.status()).filter(entry => paths.includes(entry.path));
         if (!entries.length) throw new Error("Select tracked changes to shelve.");
+        if (entries.some(entry => entry.worktreeRename)) throw new Error("Stage moved files before shelving them so both paths can be restored safely.");
         if (entries.some(entry => entry.untracked || entry.conflict)) throw new Error("Only tracked, conflict-free changes can be shelved.");
         paths = [...new Set(entries.flatMap(entry => [entry.path, entry.code.includes("R") ? entry.original : undefined].filter(Boolean)))];
         const [worktree, index] = await Promise.all([this.patch(paths), this.patch(paths, true)]);

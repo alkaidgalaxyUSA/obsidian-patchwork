@@ -9,7 +9,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "pwsh -NoProfile -File ../scripts/Build-Install.ps1 -PluginsOnly",
+    "build": "pwsh -NoProfile -File ../scripts1/Build-Install.ps1 -PluginsOnly",
     "typecheck": "npm --prefix .. run typecheck"
   }
 }

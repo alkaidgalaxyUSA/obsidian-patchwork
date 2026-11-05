@@ -4,7 +4,7 @@ import { addGitMenu } from "../context-menu";
 import { CommitFileActions } from "./file-actions";
 
 /** Commit-specific actions stay at the first level of the menu. */
-export function addCommitMenu(menu, controller, paths, changelistId) {
+export function addCommitMenu(menu, controller, paths, changelistId, stage) {
     menu.setUseNativeMenu(false);
     menu.dom.classList.add("pw-git-context-menu", "pw-git-commit-context-menu");
     const entries = controller.entries.filter(entry => paths.includes(entry.path));
@@ -17,12 +17,12 @@ export function addCommitMenu(menu, controller, paths, changelistId) {
         if (icon) item.setIcon(iconName(icon));
     });
     action("Commit File...", null, () => controller.openSelection(paths), !entries.length || entries.some(entry => entry.conflict));
-    if (controller.commitMode === "staged") action("Stage Selected", "plus", () => controller.stageSelection(paths), !entries.length || entries.some(entry => entry.conflict));
-    if (controller.commitMode === "staged") action("Unstage Selected", "idea/expui/general/remove_dark.svg", () => controller.stageSelection(paths, true), !entries.some(entry => entry.staged) || entries.some(entry => entry.conflict));
+    if (controller.commitMode === "staged") action("Stage Selected", "plus", () => controller.stageSelection(paths), stage === "staged" || !entries.some(entry => entry.untracked || entry.code[1] !== " ") || entries.some(entry => entry.conflict));
+    if (controller.commitMode === "staged") action("Unstage Selected", "idea/expui/general/remove_dark.svg", () => controller.stageSelection(paths, true), stage === "unstaged" || !entries.some(entry => entry.staged) || entries.some(entry => entry.conflict));
     action("Rollback...", "git-rollback", () => controller.rollback(paths), !tracked.length || tracked.some(entry => entry.conflict || entry.original || entry.code.includes("A")));
     action("Move to Another Changelist...", null, () => controller.moveToChangelist(tracked.map(entry => entry.path)), !tracked.length);
-    action("Show Diff", "git-show-diff", () => controller.showDiff(paths), !entries.length);
-    action("Show Diff in a New Window", "git-show-diff", () => controller.showDiff(paths, "window"), !entries.length);
+    action("Show Diff", "git-show-diff", () => controller.showDiff(paths, false, stage), !entries.length);
+    action("Show Diff in a New Window", "git-show-diff", () => controller.showDiff(paths, "window", stage), !entries.length);
     action("Jump to Source", "idea/expui/general/edit_dark.svg", () => files.open(), paths.length !== 1 || !files.existing(paths[0]));
     action("Copy Path/Reference...", null, () => files.copy(), !paths.length);
     menu.addSeparator();
@@ -47,7 +47,7 @@ export function addCommitMenu(menu, controller, paths, changelistId) {
     }
     action("Create Patch from Local Changes...", "git-show-diff", () => controller.exportPatch(paths), !entries.length || entries.some(entry => entry.conflict));
     action("Copy as Patch to Clipboard", null, () => controller.copyPatch(paths), !entries.length || entries.some(entry => entry.conflict));
-    action("Shelve Changes...", "git-shelve", () => controller.shelve(paths, true), !entries.length || entries.some(entry => entry.untracked || entry.conflict));
+    action(entries.some(entry => entry.worktreeRename) ? "Shelve Changes... (stage moved files first)" : "Shelve Changes...", "git-shelve", () => controller.shelve(paths, true), !entries.length || entries.some(entry => entry.untracked || entry.conflict || entry.worktreeRename));
     menu.addSeparator();
     menu.addItem(item => item.setTitle("Refresh").setIcon(iconName("git-log-refresh")).setDisabled(controller.busy).onClick(() => void controller.refresh()));
     menu.addSeparator();

@@ -25,6 +25,7 @@ import { getLanguageFromExtension } from "./extensions";
 import { highlightToTokens } from "./highlighter";
 import { getStyleMap, getCombinedOverrides, getForegroundColor } from "./themes";
 import { copySqlSelectionOrSection, sqlSectionExtensions } from "./sql-sections";
+import { codeGitExtensions } from "./git-gutter.js";
 
 // Check if content appears to be binary (contains null bytes)
 function isBinaryContent(content: string, checkLength = 8192): boolean {
@@ -225,7 +226,8 @@ export class CodeEditorView extends TextFileView {
 		this.editorLanguage = language;
 
 		// Build extensions array
-		const extensions = [
+        const extensions = [
+            codeGitExtensions(this),
             this.readOnlyCompartment.of([EditorState.readOnly.of(this.documentReadOnly), EditorView.editable.of(!this.documentReadOnly)]),
 			// Line numbers (configurable)
 			this.lineNumbersCompartment.of(

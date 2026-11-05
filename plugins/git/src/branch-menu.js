@@ -4,7 +4,7 @@ import { isProtectedRemoteBranch } from "./utils/branch-protection";
 /** Both Git branch surfaces use the same actions and tracking submenus. */
 export function addBranchMenu(menu, controller, snapshot, ref, remote, run = action => action()) {
     const current = snapshot.current;
-    const busy = controller.busy || !controller.ready;
+    const busy = controller.busy || !controller.ready || menu.dom.ownerDocument !== controller.app.workspace.containerEl.ownerDocument;
     const local = snapshot.local.includes(current);
     const mutating = new Set(["checkout", "checkout-rebase", "new-branch", "merge", "rebase", "worktree", "pull-rebase", "pull-merge", "update", "rename", "delete"]);
     const add = (id, title, disabled = false) => menu.addItem(item => item.setTitle(title).setDisabled(busy || disabled || !!controller.operation && mutating.has(id))

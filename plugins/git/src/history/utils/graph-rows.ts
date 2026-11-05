@@ -9,7 +9,8 @@ export function createGraphRows(commits: CommitInfo[]) {
     const ordered = topologicalCommits(commits);
     const graph = computeGraphLayout(ordered);
     const positions = new Map(commits.map((commit, index) => [commit.hash, index]));
-    graph.edges = graph.edges.map(edge => ({ ...edge, fromRow: positions.get(ordered[edge.fromRow].hash)!, toRow: positions.get(ordered[edge.toRow].hash)! }));
+    const boundary = ordered.length > 1 && positions.get(ordered[0].hash)! > positions.get(ordered[ordered.length - 1].hash)! ? -1 : commits.length;
+    graph.edges = graph.edges.map(edge => ({ ...edge, fromRow: positions.get(ordered[edge.fromRow].hash)!, toRow: edge.toRow === ordered.length ? boundary : positions.get(ordered[edge.toRow].hash)! }));
     graph.nodes.sort((left, right) => positions.get(left.commit.hash)! - positions.get(right.commit.hash)!);
     const buckets = new Map<number, GraphEdge[]>();
     for (const edge of graph.edges) {

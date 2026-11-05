@@ -17,3 +17,29 @@ export function highlightLine(host, content, path) {
     // Highlight.js escapes source text; only its generated span markup is inserted.
     host.innerHTML = highlight.highlight(content, { language, ignoreIllegals: true }).value;
 }
+
+/** Overlay word ranges on syntax text nodes, preserving both kinds of highlighting. */
+export function highlightSegments(host, content, path, segments) {
+    highlightLine(host, content, path);
+    if (!segments) return;
+    let offset = 0;
+    const ranges = segments.flatMap(segment => {
+        const start = offset; offset += segment.value.length;
+        return segment.changed ? [{ start, end: offset }] : [];
+    });
+    const walker = host.ownerDocument.createTreeWalker(host, 4);
+    const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+    offset = 0;
+    for (const node of nodes) {
+        const text = node.textContent, start = offset; offset += text.length;
+        const overlaps = ranges.filter(range => range.end > start && range.start < offset);
+        if (!overlaps.length) continue;
+        const fragment = host.ownerDocument.createDocumentFragment(); let position = 0;
+        for (const range of overlaps) {
+            const from = Math.max(0, range.start - start), to = Math.min(text.length, range.end - start);
+            fragment.append(text.slice(position, from));
+            const mark = host.ownerDocument.createElement("span"); mark.className = "pw-diff-word"; mark.textContent = text.slice(from, to); fragment.append(mark); position = to;
+        }
+        fragment.append(text.slice(position)); node.replaceWith(fragment);
+    }
+}

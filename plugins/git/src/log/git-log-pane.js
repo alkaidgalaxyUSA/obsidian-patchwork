@@ -14,7 +14,7 @@ import { readMyBranches } from "./utils/my-branches";
 import { isProtectedRemoteBranch } from "../utils/branch-protection";
 
 export class GitLogPane {
-    constructor(controller, parent, rename) {
+    constructor(controller, parent, rename, initialFilter) {
         this.controller = controller;
         this.app = controller.app;
         this.history = controller.plugin.history;
@@ -24,9 +24,16 @@ export class GitLogPane {
         this.limit = 200;
         this.revision = 0;
         this.selectionRevision = 0;
+        this.accessibilityId = `pw-git-log-${crypto.randomUUID()}`;
         this.el = parent.createDiv({ cls: "pw-git-log-pane" });
         this.scope = scopeModule(this.el, "git", { surface: "log" });
         const preferences = controller.plugin.settingsStore.preferences;
+        const savedFilter = initialFilter ?? preferences.logFilters?.[controller.repository.root];
+        if (savedFilter && typeof savedFilter === "object") {
+            for (const key of ["ref", "search", "author", "path", "since", "order"]) if (typeof savedFilter[key] === "string") this.filter[key] = savedFilter[key];
+            for (const key of ["regex", "caseSensitive"]) this.filter[key] = savedFilter[key] === true;
+            if (Array.isArray(savedFilter.paths)) this.filter.paths = savedFilter.paths.filter(path => typeof path === "string");
+        }
         this.favorites = new Set(Array.isArray(preferences.logFavorites) ? preferences.logFavorites : ["HEAD"]);
         this.initializedFavorites = Array.isArray(preferences.logFavorites);
         this.groupDirectories = preferences.logGroupDirectories !== false;
@@ -34,9 +41,10 @@ export class GitLogPane {
         this.selectedHashes = new Set();
         this.splitters = [];
         this.rail = this.el.createDiv({ cls: "pw-git-log-rail" });
-        const hideBranches = () => this.el.classList.add("is-branches-hidden");
+        this.el.classList.toggle("is-branches-hidden", preferences.logBranchesHidden === true);
+        const hideBranches = () => { this.el.classList.add("is-branches-hidden"); this.savePreferences({ logBranchesHidden: true }); };
         this.collapsedRail = this.el.createEl("button", { cls: "pw-log-collapsed-branches", text: "Branches", attr: { "aria-label": "Show Git Branches", "aria-expanded": "false", type: "button" } });
-        this.collapsedRail.addEventListener("click", () => this.el.classList.remove("is-branches-hidden"));
+        this.collapsedRail.addEventListener("click", () => this.showBranches());
         this.button(this.rail, "Hide Git Branches", "chevron-left", hideBranches);
         this.rail.createDiv({ cls: "pw-git-log-rail-separator", attr: { role: "separator" } });
         this.button(this.rail, "New branch", "plus", () => this.action(controller => controller.newBranch()));
@@ -74,7 +82,8 @@ export class GitLogPane {
         this.refButton.removeAttribute("aria-label");
         this.refButton.prepend(this.refButton.createSpan({ cls: "pw-log-filter-prefix", text: "Branch: " }));
         this.clearRefButton = this.button(branchFilter, "Clear branch filter", "git-log-close", () => this.selectRef(""));
-        this.author = { value: "" }; this.date = { value: "" }; this.path = { value: "" };
+        this.search.value = this.filter.search;
+        this.author = { value: this.filter.author }; this.date = { value: this.filter.since }; this.path = { value: this.filter.path };
         this.authorButton = this.filterButton(toolbar, "User", "User filter", event => this.valueFilter(event, "author"));
         this.dateButton = this.filterButton(toolbar, "Date", "Date filter", event => this.valueFilter(event, "since"));
         this.pathButton = this.filterButton(toolbar, "Paths", "Paths filter", event => this.valueFilter(event, "path"));
@@ -86,7 +95,7 @@ export class GitLogPane {
         const actions = toolbar.createDiv({ cls: "pw-log-filter-actions" });
         this.button(actions, "Navigate to HEAD", "git-log-locate", () => { this.selectRef("HEAD"); });
         this.button(actions, "Refresh", "git-log-refresh", () => this.refresh());
-        this.button(actions, "Show Branches", "git-branch-flipped", () => { this.el.classList.remove("is-branches-hidden"); this.branchSearch.focus(); });
+        this.button(actions, "Show Branches", "git-branch-flipped", () => this.showBranches());
         this.button(actions, "View Options", "git-log-view", event => this.settings(event));
         this.button(actions, "Go to Hash or Reference", "search", () => this.goToRef());
         this.rows = center.createDiv({ cls: "pw-git-log-rows", attr: { role: "listbox", "aria-label": "Commits", "aria-multiselectable": "true", tabindex: "0" } });
@@ -156,7 +165,7 @@ export class GitLogPane {
             if (icon) item.setIcon(iconName(icon));
             item.onClick(() => this.selectRef(ref, label));
         });
-        menu.addItem(item => item.setTitle("Select...").onClick(() => { this.el.classList.remove("is-branches-hidden"); this.branchSearch.focus(); }));
+        menu.addItem(item => item.setTitle("Select...").onClick(() => this.showBranches()));
         menu.addItem(item => item.setTitle("All branches").setChecked(!this.filter.ref).onClick(() => this.selectRef("")));
         menu.addItem(item => item.setTitle("Favorites").setDisabled(true));
         choose(menu, "HEAD", "HEAD", "idea/expui/nodes/star_dark.svg");
@@ -326,7 +335,7 @@ export class GitLogPane {
     }
 
     button(parent, label, icon, handler) {
-        const button = parent.createEl("button", { cls: "clickable-icon", attr: { "aria-label": label, type: "button" } });
+        const button = parent.createEl("button", { cls: "clickable-icon", attr: { "aria-label": label, title: label, type: "button" } });
         setIcon(button, icon);
         button.addEventListener("click", event => {
             if (this.disposed || this.controller.disposed) return;
@@ -343,7 +352,7 @@ export class GitLogPane {
     }
 
     toggle(parent, icon, label, key) {
-        const button = parent.createEl("button", { cls: "pw-log-toggle", attr: { "aria-label": label, "aria-pressed": "false" } });
+        const button = parent.createEl("button", { cls: "pw-log-toggle", attr: { "aria-label": label, title: label, "aria-pressed": String(!!this.filter[key]) } });
         setIcon(button, icon);
         button.addEventListener("click", () => {
             this.filter[key] = !this.filter[key];
@@ -392,7 +401,11 @@ export class GitLogPane {
         }
         this.filter = { ...this.filter, search: this.search.value.trim(), author: this.author.value.trim(), path: this.path.value.trim(), since: this.date.value };
         const filterSignature = JSON.stringify(this.filter);
-        if (filterSignature !== this.filterSignature) this.rows.scrollTop = 0;
+        if (filterSignature !== this.filterSignature) {
+            this.rows.scrollTop = 0;
+            const filters = this.controller.plugin.settingsStore.preferences.logFilters || {};
+            this.savePreferences({ logFilters: { ...filters, [root]: { ...this.filter } } });
+        }
         this.filterSignature = filterSignature;
         this.rows.setAttribute("aria-busy", "true");
         try {
@@ -576,6 +589,7 @@ export class GitLogPane {
         for (let index = start; index < end; index++) {
             const commit = this.commits[index];
             const row = this.rows.createDiv({ cls: "pw-log-row", attr: { role: "option", "aria-selected": "false", "data-hash": commit.hash } });
+            row.id = `${this.accessibilityId}-${commit.hash}`;
             const selected = this.selectedHashes.has(commit.hash);
             row.classList.toggle("is-selected", selected);
             row.setAttribute("aria-selected", String(selected));
@@ -600,6 +614,7 @@ export class GitLogPane {
             });
         }
         this.rows.createDiv({ attr: { "aria-hidden": "true" } }).style.height = `${(this.commits.length - end) * height}px`;
+        this.updateActiveRow();
         this.rows.scrollTop = scrollTop; this.rows.scrollLeft = scrollLeft;
     }
 
@@ -645,6 +660,7 @@ export class GitLogPane {
         ++this.selectionRevision;
         this.selected = undefined;
         this.selectedHashes.clear();
+        this.rows.removeAttribute("aria-activedescendant");
         this.changedFiles.clear(); this.details.empty();
         this.details.createDiv({ cls: "pw-log-empty", text: "Commit details" });
     }
@@ -662,6 +678,7 @@ export class GitLogPane {
             if (!event.shiftKey) this.selectionAnchor = commit.hash;
         } else this.selectedHashes = new Set([...this.selectedHashes].filter(hash => this.commits.some(item => item.hash === hash)));
         this.selected = commit;
+        this.updateActiveRow();
         for (const row of this.rows.querySelectorAll(".pw-log-row")) {
             const active = this.selectedHashes.has(row.dataset.hash);
             row.classList.toggle("is-selected", active);
@@ -679,12 +696,18 @@ export class GitLogPane {
             const detail = await readCommit(this.history, commit);
             if (this.disposed || revision !== this.selectionRevision || this.repositoryRoot !== this.controller.repository.root) return;
             this.changedFiles.setCommit(commit, detail.files);
-            this.details.createDiv({ cls: "pw-log-message", text: detail.message });
+            const message = this.details.createDiv({ cls: "pw-log-message" });
+            for (const part of detail.message.split(/(https?:\/\/[^\s<>]+)/g)) {
+                if (!/^https?:\/\//.test(part)) { message.appendText(part); continue; }
+                const link = message.createEl("a", { text: part, attr: { href: part, rel: "noopener noreferrer" } });
+                link.onclick = event => { event.preventDefault(); void shell.openExternal(part).catch(error => new Notice(error.message)); };
+            }
             const date = new Date(commit.date);
             const day = date.toLocaleDateString(undefined, { year: "numeric", month: "2-digit", day: "2-digit" });
             const time = date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
             const meta = this.details.createDiv({ cls: "pw-log-meta" });
-            meta.createSpan({ cls: "pw-log-revision", text: commit.hash.slice(0, 8), attr: { title: commit.hash } });
+            const hash = meta.createEl("button", { cls: "pw-log-revision", text: commit.hash.slice(0, 8), attr: { type: "button", title: "Copy full commit hash", "aria-label": "Copy full commit hash" } });
+            hash.onclick = () => void this.el.ownerDocument.defaultView.navigator.clipboard.writeText(commit.hash).catch(error => new Notice(error.message));
             meta.createSpan({ text: ` ${commit.author} <` });
             const email = meta.createEl("a", { cls: "pw-log-email", text: commit.authorEmail,
                 attr: { href: `mailto:${encodeURIComponent(commit.authorEmail)}` } });
@@ -695,7 +718,12 @@ export class GitLogPane {
                 });
             });
             meta.createSpan({ text: `> on ${day} at ${time}` });
-            this.details.createDiv({ cls: "pw-log-meta pw-log-containing-branches", text: `In ${detail.branches.length} ${detail.branches.length === 1 ? "branch" : "branches"}: ${detail.branches.join(", ") || "None"}` });
+            const branches = this.details.createDiv({ cls: "pw-log-meta pw-log-containing-branches", text: `In ${detail.branches.length} ${detail.branches.length === 1 ? "branch" : "branches"}: ` });
+            for (const branch of detail.branches) {
+                const button = branches.createEl("button", { text: branch, attr: { type: "button", title: `Show ${branch} in Log` } });
+                button.onclick = () => this.selectRef(branch, branch);
+            }
+            if (!detail.branches.length) branches.appendText("None");
         } catch (error) { if (!this.disposed && revision === this.selectionRevision) this.changedFiles.clear(error.message); }
     }
 
@@ -720,16 +748,39 @@ export class GitLogPane {
     }
 
     navigate(event) {
-        if (!["ArrowDown", "ArrowUp"].includes(event.key) || !this.commits?.length) return;
+        if (!this.commits?.length) return;
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+            event.preventDefault(); this.selectedHashes = new Set(this.commits.map(commit => commit.hash));
+            void this.selectCommit(this.selected || this.commits[0], { preserve: true }); return;
+        }
+        if (event.key === "Enter" && this.selected && this.changedFiles.files.length) { event.preventDefault(); void this.openDiff(this.selected, this.changedFiles.files); return; }
+        if (event.key === "F10" && event.shiftKey && this.selected) {
+            event.preventDefault(); const menu = this.createMenu(); addHistoryCommitMenu(menu, this, this.selected);
+            const rect = this.rows.getBoundingClientRect(); menu.showAtPosition({ x: rect.left + 20, y: rect.top + 20 }); return;
+        }
+        if (!["ArrowDown", "ArrowUp", "Home", "End", "PageDown", "PageUp"].includes(event.key)) return;
         event.preventDefault();
         const index = this.commits.findIndex(commit => commit.hash === this.selected?.hash);
-        const next = Math.max(0, Math.min(this.commits.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)));
         const height = this.graphLayout.height;
+        const page = Math.max(1, Math.floor(this.rows.clientHeight / height));
+        const requested = { ArrowDown: index + 1, ArrowUp: index - 1, Home: 0, End: this.commits.length - 1, PageDown: index + page, PageUp: index - page }[event.key];
+        const next = Math.max(0, Math.min(this.commits.length - 1, requested));
         const top = next * height;
         if (top < this.rows.scrollTop) this.rows.scrollTop = top;
         else if (top + height > this.rows.scrollTop + this.rows.clientHeight) this.rows.scrollTop = top + height - this.rows.clientHeight;
         this.renderVisibleRows();
         void this.selectCommit(this.commits[next], event);
+    }
+
+    updateActiveRow() {
+        const row = [...this.rows.querySelectorAll(".pw-log-row")].find(item => item.dataset.hash === this.selected?.hash);
+        if (row) this.rows.setAttribute("aria-activedescendant", row.id);
+        else this.rows.removeAttribute("aria-activedescendant");
+    }
+
+    showBranches() {
+        this.el.classList.remove("is-branches-hidden"); this.branchSearch.focus();
+        this.savePreferences({ logBranchesHidden: false });
     }
 
     branchSettings(event) {
