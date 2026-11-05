@@ -1,9 +1,10 @@
 /** Resize the file list and message editor without rebuilding either surface. */
 export class CommitSplitter {
-    constructor(body, handle) {
+    constructor(body, handle, ratio = 0.5, save = () => {}) {
         this.body = body;
         this.handle = handle;
-        this.ratio = 0.5;
+        this.ratio = Number.isFinite(ratio) ? ratio : 0.5;
+        this.save = save;
         handle.tabIndex = 0;
         handle.setAttribute("role", "separator");
         handle.setAttribute("aria-label", "Resize commit message editor");
@@ -50,6 +51,7 @@ export class CommitSplitter {
         this.pointerId = undefined;
         this.body.classList.remove("is-resizing");
         if (pointerId !== undefined && this.handle.hasPointerCapture(pointerId)) this.handle.releasePointerCapture(pointerId);
+        if (pointerId !== undefined) this.save(this.ratio);
     }
 
     keydown(event) {
@@ -57,6 +59,7 @@ export class CommitSplitter {
         if (!(event.key in ratios)) return;
         event.preventDefault();
         this.setRatio(ratios[event.key]);
+        this.save(this.ratio);
     }
 
     dispose() {

@@ -106,14 +106,14 @@ export function computeGraphLayout(commits: CommitInfo[]): GraphData {
 
       parentColumns.push(parentLane);
 
-      const parentRow = commitIndex.get(parentHash);
-      if (parentRow !== undefined) {
+      const parentRow = commitIndex.get(parentHash) ?? commits.length;
+      {
         edges.push({
           fromRow: row,
           fromCol: col,
           toRow: parentRow,
           toCol: parentLane,
-          color: pi === 0 ? color : commitColors.get(parentHash) || color,
+          color: pi === 0 ? color : commitColors.get(parentHash) ?? color,
         });
       }
     }

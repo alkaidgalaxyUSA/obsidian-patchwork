@@ -22,6 +22,7 @@ import { installModulePreferences } from "../settings/module-preferences";
 import { AttachmentManager } from "../attachments/attachment-manager.js";
 import { NoteOutline } from "./note-outline.js";
 import { installLiteralTextInput } from "./literal-text-input";
+import { installGitGutter } from "./git-gutter.js";
 
 // Content owns document behavior and optional public service integrations.
 export function installEditorRuntime(plugin) {
@@ -29,6 +30,7 @@ export function installEditorRuntime(plugin) {
         installReadingMode(plugin);
         installEncryptedUnlock(plugin);
         installLiteralTextInput(plugin);
+        installGitGutter(plugin);
         plugin.noteCodeEditor = new NoteCodeEditor(plugin, {
             EditorView, EditorState, EditorSelection, Decoration, ViewPlugin, StateField, StateEffect, ChangeSet, Prec, Text, Transaction, keymap,
             defaultKeymap, undo, redo, invertedEffects, isolateHistory, syntaxTree, highlightingFor, highlightTree,

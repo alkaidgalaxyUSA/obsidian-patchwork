@@ -23,7 +23,8 @@ export class BranchHeader {
     refresh(snapshot) {
         if (this.disposed) return;
         const branch = snapshot.ready ? snapshot.branch || (snapshot.detachedCommit ? `Detached ${snapshot.detachedCommit}` : "Detached HEAD") : "Git";
-        this.label.textContent = branch;
+        if (this.label.textContent !== branch) this.label.textContent = branch;
+        this.button.title = snapshot.error || `Git: ${branch}`;
         this.button.setAttribute("aria-label", snapshot.error || `Git: ${branch}`);
         void this.menu?.load();
     }

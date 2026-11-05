@@ -9,7 +9,7 @@ export class ChangedFiles {
     constructor(pane, host) {
         this.pane = pane;
         this.host = host;
-        this.grouped = true;
+        this.grouped = pane.controller.plugin.settingsStore.preferences.logFilesGrouped !== false;
         this.selected = new Set();
         const toolbar = host.createDiv({ cls: "pw-log-files-actions" });
         this.diffButton = pane.button(toolbar, "Show Diff", "git-show-diff", () => this.showDiff());
@@ -30,6 +30,7 @@ export class ChangedFiles {
         this.commit = undefined;
         this.files = [];
         this.selected.clear();
+        this.anchor = undefined;
         this.tree.setAttribute("aria-label", "Changed files");
         this.projectName.setText(basename(this.pane.controller.repository.root));
         this.tree.setText(message);
@@ -80,9 +81,20 @@ export class ChangedFiles {
             row.createSpan({ cls: "pw-log-file-path", text: name });
             row.createSpan({ cls: "pw-log-file-status", text: file.status[0] });
             row.title = `${file.original ? file.original + " → " : ""}${file.path}\n${file.binary ? "Binary file" : `+${file.additions} −${file.deletions}`}`;
-            row.addEventListener("click", event => this.select(file, event.ctrlKey || event.metaKey));
+            row.addEventListener("click", event => this.select(file, event.ctrlKey || event.metaKey, event.shiftKey));
             row.addEventListener("dblclick", () => this.showDiff());
-            row.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); this.select(file, false); void this.showDiff(); } });
+            row.addEventListener("keydown", event => {
+                if (event.key === "Enter") { event.preventDefault(); this.select(file, false); void this.showDiff(); return; }
+                if (event.key === " ") { event.preventDefault(); this.select(file, true); return; }
+                if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") { event.preventDefault(); this.selected = new Set(this.files); this.updateActions(); return; }
+                const rows = [...this.tree.querySelectorAll(".pw-log-file")].filter(item => item.checkVisibility());
+                const index = rows.indexOf(row);
+                const position = { ArrowUp: index - 1, ArrowDown: index + 1, Home: 0, End: rows.length - 1 }[event.key];
+                if (position === undefined || !rows.length) return;
+                event.preventDefault();
+                const next = rows[Math.max(0, Math.min(rows.length - 1, position))];
+                this.select(this.files.find(item => item.path === next.dataset.path), false, event.shiftKey); next.focus();
+            });
             row.addEventListener("contextmenu", event => {
                 event.preventDefault();
                 if (!this.selected.has(file)) this.select(file, false);
@@ -93,7 +105,14 @@ export class ChangedFiles {
         }
     }
 
-    select(file, additive) {
+    select(file, additive, extend = false) {
+        if (!file) return;
+        if (extend && this.anchor) {
+            const files = [...this.tree.querySelectorAll(".pw-log-file")].filter(item => item.checkVisibility()).map(row => this.files.find(item => item.path === row.dataset.path));
+            const first = files.indexOf(this.anchor), last = files.indexOf(file);
+            if (first >= 0 && last >= 0) { this.selected = new Set(files.slice(Math.min(first, last), Math.max(first, last) + 1)); this.updateActions(); return; }
+        }
+        this.anchor = file;
         if (!additive) this.selected.clear();
         if (additive && this.selected.has(file)) this.selected.delete(file); else this.selected.add(file);
         this.updateActions();
@@ -142,7 +161,7 @@ export class ChangedFiles {
 
     options(event) {
         const menu = this.pane.createMenu();
-        menu.addItem(item => item.setTitle("Group by Directory").setChecked(this.grouped).onClick(() => { this.grouped = !this.grouped; this.render(); }));
+        menu.addItem(item => item.setTitle("Group by Directory").setChecked(this.grouped).onClick(() => { this.grouped = !this.grouped; this.pane.savePreferences({ logFilesGrouped: this.grouped }); this.render(); }));
         menu.showAtMouseEvent(event);
     }
 

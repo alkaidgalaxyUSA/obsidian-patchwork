@@ -131,7 +131,7 @@ Obsidian vault. Install declared dependencies explicitly when setting up:
 npm ci --ignore-scripts
 ```
 
-Set `VaultPath` in `scripts/Deployment.psd1` to the absolute Obsidian vault path
+Set `VaultPath` in `scripts1` to the absolute Obsidian vault path
 on this computer. Both the installer and the standalone Claudian identity
 checker read this shared configuration relative to their script directory.
 Set `ObsidianCliPath` in the same file to the installed `Obsidian.com` path.

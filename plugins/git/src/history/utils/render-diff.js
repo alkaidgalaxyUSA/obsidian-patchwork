@@ -1,4 +1,4 @@
-import { highlightLine } from "./highlight-line";
+import { highlightSegments } from "./highlight-line";
 import { pairLines, wordDiff } from "./word-diff";
 
 /** Render parsed changes with Patchwork's own diff classes and typography. */
@@ -22,17 +22,33 @@ export function renderDiff(output, raw, files, mode, contextMenu, limit = 3000) 
             const truncated = original.lines.length > limit - count;
             const hunk = truncated ? { ...original, lines: original.lines.slice(0, limit - count) } : original;
             count += hunk.lines.length;
-            const block = output.createSpan({ cls: "pw-diff-hunk" });
+            const block = output.createSpan({ cls: "pw-diff-hunk", attr: { tabindex: "0", "aria-label": `Change in ${file.path} at line ${hunk.newStart}` } });
             block.createSpan({ cls: "pw-diff-hunk-heading", text: `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@ ${hunk.header}\n` });
             if (mode === "split") renderSplit(block, hunk, file.path);
-            else for (const line of hunk.lines) {
+            else {
+                const segments = new Map();
+                for (const pair of pairLines(hunk.lines)) {
+                    if (pair.type !== "modify" || pair.left.content.length > 2000 || pair.right.content.length > 2000) continue;
+                    const words = wordDiff(pair.left.content, pair.right.content);
+                    if (words) { segments.set(pair.left, words.old); segments.set(pair.right, words.new); }
+                }
+                for (const line of hunk.lines) {
                 const span = block.createSpan({ cls: `pw-diff-unified-line pw-diff-${line.type}` });
+                if (line.newLineNo) { span.dataset.path = file.path; span.dataset.newLine = String(line.newLineNo); }
                 span.createSpan({ cls: "pw-diff-line-number", text: String(line.oldLineNo ?? "") });
                 span.createSpan({ cls: "pw-diff-line-number", text: String(line.newLineNo ?? "") });
                 span.createSpan({ cls: "pw-diff-line-sign", text: line.type === "add" ? "+" : line.type === "del" ? "-" : " " });
-                highlightLine(span.createSpan({ cls: "pw-diff-line-code" }), line.content, file.path);
+                highlightSegments(span.createSpan({ cls: "pw-diff-line-code" }), line.content, file.path, segments.get(line));
+                }
             }
-            if (!truncated && contextMenu) block.addEventListener("contextmenu", event => contextMenu(event, file, fileIndex, hunkIndex));
+            if (!truncated && contextMenu) {
+                block.addEventListener("contextmenu", event => contextMenu(event, file, fileIndex, hunkIndex));
+                block.addEventListener("keydown", event => {
+                    if (event.key !== "F10" || !event.shiftKey) return;
+                    event.preventDefault(); const rect = block.getBoundingClientRect();
+                    contextMenu(new block.ownerDocument.defaultView.MouseEvent("contextmenu", { clientX: rect.left, clientY: rect.top }), file, fileIndex, hunkIndex);
+                });
+            }
             if (truncated) { more(); return; }
         }
     }
@@ -46,6 +62,7 @@ function renderSplit(block, hunk, path) {
         const words = pair.type === "modify" && pair.left.content.length <= 2000 && pair.right.content.length <= 2000 ? wordDiff(pair.left.content, pair.right.content) : undefined;
         renderCell(left, pair.left, words?.old, pair.left?.oldLineNo, path);
         const rightLine = pair.right || (pair.type === "context" ? pair.left : undefined);
+        if (rightLine?.newLineNo) { right.dataset.path = path; right.dataset.newLine = String(rightLine.newLineNo); }
         renderCell(right, rightLine, words?.new, rightLine?.newLineNo, path);
     }
 }
@@ -53,6 +70,5 @@ function renderSplit(block, hunk, path) {
 function renderCell(cell, line, segments, number, path) {
     if (!line) return;
     cell.createSpan({ cls: "pw-diff-line-number", text: String(number ?? "") });
-    if (segments) for (const segment of segments) cell.createSpan({ cls: segment.changed ? "pw-diff-word" : "", text: segment.value });
-    else highlightLine(cell.createSpan(), line.content, path);
+    highlightSegments(cell.createSpan(), line.content, path, segments);
 }

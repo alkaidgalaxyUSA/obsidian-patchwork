@@ -10,7 +10,7 @@ Original retained SVG bytes, geometry, colors and embedded copyright comments ar
 
 jetbrains-sources.json maps each retained asset to its local filename, original source path and Git blob SHA-1. Existing runtime action filenames are preserved where possible. Matching Patchwork action assets are replaced by the preferred IDEA source. Modifier overlays and code-type symbols remain separate from full-size action icons even when their names overlap. Git's duplicate tool-window asset is removed and its caller uses the existing branch asset.
 
-[preview.html](../scripts/preview.html) displays all 1528 icons on one page in nine broad capability groups, using a continuous grid. Search, group filtering and independent preview scaling are available. Every sample uses a dark background.
+[preview.html](../scripts1/preview.html) displays all 1528 icons on one page in nine broad capability groups, using a continuous grid. Search, group filtering and independent preview scaling are available. Every sample uses a dark background.
 
 ## Size and Stroke
 

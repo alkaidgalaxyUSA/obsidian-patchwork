@@ -62,11 +62,20 @@ export class CommitFileActions {
         return this.run(async () => {
             const targets = this.paths.map(path => this.target(path));
             const choice = await choose(this.controller, "Copy Path/Reference...", [
-                { name: "Absolute Path", value: "absolute" }, { name: "File Name", value: "name" },
+                { name: "Absolute Path", value: "absolute" },
+                { name: "Path from Repository Root", value: "repository" },
+                { name: "Path from Vault Root", value: "vault" },
+                { name: "File Name", value: "name" },
             ]);
             if (!choice) return;
             this.validate();
-            const text = targets.map(target => choice.value === "absolute" ? target.absolute : basename(target.absolute)).join("\n");
+            const formats = {
+                absolute: target => target.absolute,
+                repository: target => relative(this.root, target.absolute).replaceAll("\\", "/"),
+                vault: target => target.path,
+                name: target => basename(target.absolute),
+            };
+            const text = targets.map(formats[choice.value]).join("\n");
             await this.context.document.defaultView.navigator.clipboard.writeText(text);
             this.validate();
             new Notice("Copied to clipboard.");

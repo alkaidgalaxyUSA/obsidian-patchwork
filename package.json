@@ -8,7 +8,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "pwsh -NoProfile -File scripts/Build-Install.ps1",
+    "build": "pwsh -NoProfile -File scripts1/Build-Install.ps1",
     "typecheck": "tsc --project plugins/tsconfig.json"
   },
   "devDependencies": {

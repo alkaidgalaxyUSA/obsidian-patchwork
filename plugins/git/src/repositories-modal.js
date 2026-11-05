@@ -1,6 +1,7 @@
 import { isAbsolute, relative, resolve } from "node:path";
 import { Repository } from "./repository";
 import { GitTaskModal } from "./ui/task-modal";
+import { discoverRoots } from "./utils/discover-roots.js";
 
 export class GitRepositoriesModal extends GitTaskModal {
     constructor(controller) { super(controller, "Repository and Submodules"); }
@@ -12,8 +13,23 @@ export class GitRepositoriesModal extends GitTaskModal {
         this.path.oninput = () => this.updateActions();
         this.updateActions();
         this.button("Refresh Submodules", () => this.load());
+        this.button("Discover Repositories", () => this.discover());
+        this.roots = this.body.createDiv({ cls: "pw-git-manager-list" });
         this.list = this.body.createDiv({ cls: "pw-git-manager-list" });
         void this.perform(() => this.load());
+    }
+    async discover() {
+        const paths = await discoverRoots(this.repo.vaultPath, () => this.validate());
+        this.validate(); this.roots.empty();
+        const parent = new Repository(this.repo.vaultPath, this.repo.executable);
+        try { await parent.discover(); paths.unshift(parent.root); } catch {} finally { parent.dispose(); }
+        this.validate();
+        for (const path of new Set(paths)) {
+            const row = this.roots.createDiv({ cls: "pw-git-manager-row" });
+            row.createSpan({ text: path });
+            this.button("Use Repository", async () => { this.path.value = path; await this.select(); }, false, row);
+        }
+        this.status.setText(paths.length ? "Discovered vault, parent and nested repositories. Linked directories and application/dependency internals are excluded." : "No repositories discovered.");
     }
     updateActions() {
         const valid = isAbsolute(this.path.value.trim());

@@ -12,6 +12,8 @@ export interface GitApi {
     getSnapshot(): GitSnapshot;
     onSnapshot(listener: (snapshot: GitSnapshot) => void): Unsubscribe;
     refresh(context: CallContext): Promise<void>;
+    /** UTF-8 HEAD baseline for an ordinary text file; never accepts editor contents. */
+    getFileBaseline?(path: string, context: CallContext): Promise<{ revision: string; text: string } | undefined>;
     openCommit(paths: readonly string[], context: CallContext): Promise<void>;
     openLog(context: CallContext): Promise<void>;
     showDiff(paths: readonly string[], options: { newTab?: boolean }, context: CallContext): Promise<void>;
