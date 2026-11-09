@@ -18,3 +18,9 @@
 .pw-diff-unified-line > .pw-diff-line-number:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { width:auto; margin:0; padding-right:1ch; }
 .pw-diff-line-code:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { min-width:0; white-space:inherit; }
 .pw-diff-line-sign:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { color:var(--text-muted); user-select:none; }
+
+/* Historical comparisons use an independent, resizable dialog. */
+body .pw-commit-diff-modal[data-pw-module="git"]:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { width:min(1200px, 92vw); height:82vh; max-width:96vw; max-height:94vh; resize:both; overflow:hidden; }
+body .pw-commit-diff-modal .modal-content:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display:flex; flex-direction:column; min-height:0; flex:1; overflow:hidden; }
+body .pw-commit-diff-modal .pw-git-diff-actions:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { flex-shrink:0; flex-wrap:wrap; }
+body .pw-commit-diff-modal .pw-git-output:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { flex:1; min-height:0; overflow:auto; margin:0; }

@@ -11,8 +11,16 @@ export async function readLog(history, filter, limit, skip = 0) {
 
 export function layoutGraph(commits) { return createGraphRows(commits.map(commit => commit.history)); }
 
-export async function readCommit(history, commit) {
-    const [files, branches] = await Promise.all([history.files(commit.hash), history.git.branchesContaining(commit.hash)]);
+export async function readCommit(history, commit, signal) {
+    const git = history.git;
+    const [groups, branches] = await Promise.all([
+        Promise.all((commit.parents.length ? commit.parents : [undefined]).map(async parent => {
+            const files = await git.showCommitFiles(commit.hash, parent, signal);
+            return files.map(file => ({ ...file, parentHash: parent }));
+        })), git.branchesContaining(commit.hash, signal),
+    ]);
+    signal?.throwIfAborted();
+    const files = groups.flat();
     return { files, branches, message: commit.fullMessage };
 }
 

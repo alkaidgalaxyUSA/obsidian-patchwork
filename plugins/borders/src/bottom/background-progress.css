@@ -1,0 +1,117 @@
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] {
+    --pw-borders-progress-start: #6b9bfa;
+    --pw-borders-progress-end: #366ace;
+    --pw-borders-progress-track: var(--background-modifier-border);
+    color: var(--text-muted);
+    font: 12px/1.4 var(--font-interface);
+}
+
+.pw-progress-widget[data-pw-module="borders"] {
+    order: -1;
+    flex: 0 1 auto !important;
+    min-width: 80px;
+    max-width: min(300px, 35vw);
+}
+.pw-progress-widget[data-pw-module="borders"][hidden],
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] [hidden]:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { display: none !important; }
+
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] .pw-progress-task:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    width: 100%;
+}
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] :is(.pw-progress-trigger, .pw-progress-cancel, .pw-progress-close):not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    padding: 2px 4px;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] button:hover:not(:disabled):not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { background: var(--background-modifier-hover); }
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] button:focus-visible:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { outline: 1px solid var(--pw-borders-progress-start); outline-offset: -1px; }
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] button:disabled:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { opacity: 0.45; cursor: default; }
+.pw-progress-widget[data-pw-module="borders"] .pw-progress-trigger:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { flex: 0 1 auto; justify-content: flex-start; gap: 0.5em; min-width: 0; }
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] .pw-progress-title:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; text-align: left; }
+.pw-progress-widget[data-pw-module="borders"] .pw-progress-title:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { flex: 0 1 auto; }
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] :is(.pw-progress-cancel, .pw-progress-close):not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { flex: 0 0 22px; width: 22px; }
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] svg:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { width: 12px; height: 12px; }
+.pw-progress-widget[data-pw-module="borders"] .pw-progress-count:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { flex: 0 0 auto; min-width: 16px; border-radius: 8px; background: var(--background-modifier-hover); font-size: 10px; text-align: center; }
+
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] .pw-progress-track:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) {
+    display: block;
+    height: 4px;
+    min-width: 32px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--pw-borders-progress-track);
+}
+.pw-progress-widget[data-pw-module="borders"] .pw-progress-track:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { width: 104px; flex: 0 1 104px; }
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] .pw-progress-fill:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--pw-borders-progress-end);
+    transform: scaleX(var(--pw-borders-progress-fraction, 0));
+    transform-origin: left;
+    transition: transform 150ms linear;
+}
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] .pw-progress-track[data-mode="indeterminate"] .pw-progress-fill:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) {
+    width: 200%;
+    background: linear-gradient(90deg, var(--pw-borders-progress-start), var(--pw-borders-progress-end), var(--pw-borders-progress-start));
+    background-size: 50% 100%;
+    animation: pw-borders-progress-flow 800ms linear infinite;
+    transition: none;
+}
+@keyframes pw-borders-progress-flow { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+:is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] .pw-progress-task[data-state="cancelling"] .pw-progress-track:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { opacity: 0.5; }
+
+.pw-progress-popup[data-pw-module="borders"] {
+    position: fixed;
+    z-index: var(--layer-popover, 300);
+    display: flex;
+    flex-direction: column;
+    width: min(360px, calc(100vw - 16px));
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--pw-workspace-canvas, var(--background-secondary));
+    box-shadow: var(--shadow-s);
+    overflow: hidden;
+}
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-popup-header:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 0 0 auto; padding: 8px 10px; border-bottom: 1px solid var(--background-modifier-border); color: var(--text-normal); font-weight: 500; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-list:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { overflow-y: auto; min-height: 0; max-height: 280px; overscroll-behavior: contain; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-task:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { padding: 12px; box-sizing: border-box; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-task + .pw-progress-task:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { border-top: 1px solid var(--background-modifier-border); }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-content:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-width: 0; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-details:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 4em; overflow: auto; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-details[data-error="true"]:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { color: var(--text-error); }
+
+@media (prefers-reduced-motion: reduce) {
+    :is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] .pw-progress-fill:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { transition: none; }
+    :is(.pw-progress-widget, .pw-progress-popup)[data-pw-module="borders"] .pw-progress-track[data-mode="indeterminate"] .pw-progress-fill:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { animation: none; transform: translateX(0); }
+}
+
+/* User-sized task windows keep list scrolling inside the resized surface. */
+.pw-progress-popup[data-pw-module="borders"] { box-sizing: border-box; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-popup-header:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { cursor: move; touch-action: none; user-select: none; }
+.pw-progress-popup[data-pw-module="borders"][data-user-sized="true"] .pw-progress-list:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { flex: 1 1 auto; max-height: none; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-resize:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { position: absolute; z-index: 1; min-width: 0; min-height: 0; width: 8px; height: 8px; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; touch-action: none; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-resize[data-edge="n"]:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { top: 0; left: 8px; right: 8px; width: auto; height: 5px; cursor: ns-resize; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-resize[data-edge="s"]:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { bottom: 0; left: 8px; right: 8px; width: auto; height: 5px; cursor: ns-resize; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-resize[data-edge="e"]:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { right: 0; top: 8px; bottom: 8px; height: auto; width: 5px; cursor: ew-resize; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-resize[data-edge="w"]:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { left: 0; top: 8px; bottom: 8px; height: auto; width: 5px; cursor: ew-resize; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-resize[data-edge="ne"]:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { top: 0; right: 0; cursor: nesw-resize; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-resize[data-edge="nw"]:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { top: 0; left: 0; cursor: nwse-resize; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-resize[data-edge="se"]:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { bottom: 0; right: 0; cursor: nwse-resize; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-resize[data-edge="sw"]:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { bottom: 0; left: 0; cursor: nesw-resize; }
+
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-meter:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pw-progress-popup[data-pw-module="borders"] .pw-progress-meter > .pw-progress-track:not(:where([data-pw-module="borders"] [data-pw-module]:not([data-pw-module="borders"]) *)) { flex: 1 1 auto; }

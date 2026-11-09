@@ -1,4 +1,4 @@
-import { ItemView, Menu, Modal, Notice } from "obsidian";
+import { ItemView, Menu, Notice } from "obsidian";
 import { iconName, setIcon } from "../utils/icons";
 import { addCommitMenu } from "./commit-context-menu";
 import { CommitSplitter } from "./commit-splitter";
@@ -6,10 +6,11 @@ import { OperationPanel } from "./operation-panel";
 import { fileIcon } from "../utils/file-icons";
 import { fileStatus } from "../utils/file-status.js";
 import { scopeModule } from "../../../utils/module-scope";
-import { openGitDialog, scopeGitMenu } from "../utils/portals";
+import { scopeGitMenu } from "../utils/portals";
 import { getServiceRegistry } from "../../../utils/service-registry";
 import { getWindowContext } from "../../../utils/windows";
 import { CommitFileActions } from "./file-actions";
+import { CommitOptionsPopup } from "./commit-options-popup";
 
 export const COMMIT_VIEW = "patchwork-git-commit";
 
@@ -62,8 +63,6 @@ export class CommitView extends ItemView {
         this.tool(toolbar, "Refresh Changes", "git-log-refresh", () => this.controller.refresh());
         this.tool(toolbar, "Rollback", "git-rollback", () => this.controller.rollback(this.selectedPaths()));
         this.tool(toolbar, "Show Diff", "git-show-diff", () => this.controller.showDiff(this.selectedPaths(), false, this.selectedStage));
-        const listsButton = this.tool(toolbar, "Changelists", "idea-expui-vcs-changelist_dark.svg", () => this.changelistMenu(listsButton));
-        listsButton.setAttribute("aria-haspopup", "menu");
         this.tool(toolbar, "Stage Selected", "plus", () => this.controller.stageSelection(this.selectedPaths()));
         this.tool(toolbar, "Unstage Selected", "idea/expui/general/remove_dark.svg", () => this.controller.stageSelection(this.selectedPaths(), true));
         this.tool(toolbar, "Shelve Silently", "git-shelve", () => this.controller.shelve(this.selectedPaths()));
@@ -82,18 +81,6 @@ export class CommitView extends ItemView {
         this.splitter = new CommitSplitter(body, separator, this.controller.plugin.settingsStore.preferences.commitSplitRatio,
             ratio => { void this.controller.plugin.settingsStore.savePreferences({ commitSplitRatio: ratio }).catch(error => new Notice(error.message)); });
         const footer = body.createDiv({ cls: "pw-git-commit-footer" });
-        const mode = footer.createEl("label", { cls: "pw-git-commit-mode", text: "Commit source" });
-        this.commitMode = mode.createEl("select");
-        this.commitMode.createEl("option", { value: "staged", text: "All staged changes" });
-        this.commitMode.createEl("option", { value: "working", text: "Checked files: all changes" });
-        this.commitMode.value = this.controller.commitMode;
-        this.commitMode.onchange = () => {
-            this.controller.commitMode = this.commitMode.value;
-            this.selectedStage = undefined;
-            this.controller.validationRequested = false;
-            this.controller.saveDraft(); this.controller.render();
-        };
-        this.commitHint = footer.createDiv({ cls: "pw-git-commit-hint" });
         const options = footer.createDiv({ cls: "pw-git-commit-options" });
         this.commitAllLabel = options.createEl("label", { cls: "pw-git-amend" });
         this.commitAll = this.commitAllLabel.createEl("input", { type: "checkbox" });
@@ -339,6 +326,8 @@ export class CommitView extends ItemView {
     }
 
     updateButtons() {
+        this.commitOptionsButton.disabled = this.controller.busy || !this.controller.ready || !!this.controller.operation;
+        if (this.commitOptionsPopup && !this.commitOptionsPopup.valid()) this.commitOptionsPopup.close(false);
         const disabled = this.controller.busy || !this.controller.ready || !!this.controller.error || !!this.controller.operation || this.controller.entries.some(entry => entry.conflict);
         const all = this.controller.commitMode === "staged" && this.controller.plugin.settingsStore.preferences.commitAllTracked === true && !this.controller.draft.amend;
         const hasChanges = all ? this.controller.entries.some(entry => !entry.untracked && !entry.conflict) : this.controller.commitMode === "staged" ? this.controller.entries.some(entry => entry.staged && !entry.conflict)
@@ -346,18 +335,12 @@ export class CommitView extends ItemView {
         const canAmend = this.controller.draft.amend && !!this.controller.head;
         this.commitButton.disabled = disabled || !hasChanges && !canAmend; this.pushButton.disabled = this.commitButton.disabled;
         this.amend.disabled = this.controller.busy || !!this.controller.operation || !this.controller.head;
-        this.commitMode.disabled = this.controller.busy || !!this.controller.operation;
-        this.commitMode.value = this.controller.commitMode;
         const staged = this.controller.commitMode === "staged";
         this.commitAllLabel.hidden = !staged;
         this.commitAll.disabled = disabled || this.controller.draft.amend;
         this.commitAll.checked = this.controller.plugin.settingsStore.preferences.commitAllTracked === true;
         this.commitButton.textContent = all ? "Commit All" : "Commit";
         this.commitButton.title = all ? "Commit all tracked changes; unversioned files are excluded" : staged ? "Commit all staged changes" : "Commit checked files";
-        this.commitHint.textContent = all ? "All tracked changes are committed, including unstaged changes. Unversioned files are excluded." : staged
-            ? "Only staged changes are committed."
-            : "All changes in checked files are committed.";
-        this.commitHint.title = "Select rows for toolbar actions. Checkboxes determine checked-file commits. Use staged mode for partial commits.";
         this.lastCommit.disabled = this.controller.busy;
         this.historyButton.disabled = this.loadingMessages || this.controller.busy || !this.controller.ready;
         this.message.disabled = this.controller.busy;
@@ -370,7 +353,6 @@ export class CommitView extends ItemView {
             if (["Stage Selected", "Unstage Selected"].includes(name)) button.hidden = !staged;
             if (name === "Stage Selected") button.disabled ||= !selected.some(entry => entry.untracked || entry.code[1] !== " ");
             if (name === "Stage Selected") button.disabled ||= this.selectedStage === "staged";
-            if (name === "Changelists") button.disabled ||= !this.controller.ready;
             if (name === "Select Opened File in Change View") button.disabled ||= !this.controller.ready || !this.controller.entries.length;
             if (name === "Unstage Selected") button.disabled ||= !selected.some(entry => entry.staged);
             if (name === "Unstage Selected") button.disabled ||= this.selectedStage === "unstaged";
@@ -429,36 +411,11 @@ export class CommitView extends ItemView {
     }
 
     showCommitOptions() {
-        if (this.commitOptionsModal || this.controller.disposed) return;
-        const modal = new Modal(this.app);
-        this.commitOptionsModal = modal;
-        modal.setTitle("Commit Options");
-        modal.contentEl.createEl("p", { text: "Commit scope" });
-        const select = modal.contentEl.createEl("select", { attr: { "aria-label": "Commit scope" } });
-        for (const [value, text] of [["staged", "All staged changes"], ["working", "All changes in checked files"]]) select.createEl("option", { value, text });
-        select.value = this.controller.commitMode;
-        select.onchange = () => { this.controller.commitMode = select.value; this.controller.saveDraft(); this.controller.render(); };
-        const checkLabel = modal.contentEl.createEl("label", { cls: "pw-git-amend" });
-        const whitespace = checkLabel.createEl("input", { type: "checkbox" });
-        whitespace.checked = this.controller.plugin.settingsStore.preferences.checkWhitespace === true;
-        checkLabel.createSpan({ text: "Check whitespace errors and newly added conflict markers before commit" });
-        whitespace.onchange = async () => {
-            const enabled = whitespace.checked;
-            whitespace.disabled = true;
-            try { await this.controller.plugin.settingsStore.savePreferences({ checkWhitespace: enabled }); }
-            catch (error) { new Notice(error.message); }
-            finally { if (whitespace.isConnected) whitespace.disabled = false; }
-        };
-        modal.contentEl.createEl("p", { text: "Staged mode commits the index, including selected hunks. Checked-file mode includes unstaged changes in each checked file. Git hooks and repository signing settings remain active." });
-        const settings = modal.contentEl.createEl("button", { text: "Git identity and signing settings" });
-        settings.onclick = () => { modal.close(); this.app.setting.open(); this.app.setting.openTabById(this.controller.plugin.manifest.id); };
-        this.commitOptionsButton.setAttribute("aria-expanded", "true");
-        modal.onClose = () => {
-            this.commitOptionsModal = undefined;
-            this.commitOptionsButton.setAttribute("aria-expanded", "false");
-            if (this.commitOptionsButton.isConnected) this.commitOptionsButton.focus();
-        };
-        openGitDialog(this.controller, modal);
+        if (this.commitOptionsPopup) { this.commitOptionsPopup.close(); return; }
+        if (this.controller.disposed || this.controller.busy || !this.controller.ready) return;
+        const popup = new CommitOptionsPopup(this, () => { if (this.commitOptionsPopup === popup) this.commitOptionsPopup = undefined; });
+        this.commitOptionsPopup = popup;
+        popup.open();
     }
 
     viewOptions(anchor) {
@@ -557,7 +514,7 @@ export class CommitView extends ItemView {
     }
 
     async onClose() {
-        this.commitOptionsModal?.close();
+        this.commitOptionsPopup?.close(false);
         this.splitter?.dispose(); this.menu?.hide(); this.stopBorders?.(); this.stopPanelState?.(); this.moduleScope?.dispose();
         if (this.previousFocused === null) this.contentEl.removeAttribute("data-pw-panel-focused");
         else if (this.previousFocused !== undefined) this.contentEl.setAttribute("data-pw-panel-focused", this.previousFocused);

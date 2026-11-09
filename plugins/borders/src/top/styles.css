@@ -13,7 +13,8 @@ body.pw-window-actions-enabled .workspace-drawer-vault-switcher > :is(.pw-vault-
     filter: brightness(calc(0.6 * var(--pw-borders-focus-gain, 1)));
 }
 body.pw-window-actions-enabled .workspace-drawer-vault-switcher > .workspace-drawer-vault-name {
-    filter: brightness(calc(0.7 * var(--pw-borders-focus-gain, 1)));
+    /* Color-only dimming preserves LCD text antialiasing; filters rasterize the label. */
+    -webkit-text-fill-color: rgb(from currentColor calc(r * 0.7 * var(--pw-borders-focus-gain, 1)) calc(g * 0.7 * var(--pw-borders-focus-gain, 1)) calc(b * 0.7 * var(--pw-borders-focus-gain, 1)) / alpha);
 }
 
 body.pw-window-actions-enabled .titlebar-button:not(.mod-logo) > svg { width: 13px; height: 13px; }
@@ -179,9 +180,9 @@ body.pw-window-actions-enabled .workspace-drawer-vault-switcher-icon svg { displ
 
 body.pw-window-actions-enabled .workspace-drawer-vault-name {
     --vault-profile-font-weight: 400;
-    --vault-profile-font-size: 13px;
+    --vault-profile-font-size: 12px;
     font-family: "Microsoft YaHei UI", var(--font-interface);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 400;
     color: rgb(from var(--text-normal) calc(r * 1.1) calc(g * 1.1) calc(b * 1.1) / alpha);
     min-width: 0;

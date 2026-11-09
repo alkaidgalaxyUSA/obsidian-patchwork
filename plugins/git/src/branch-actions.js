@@ -1,4 +1,6 @@
+import { Notice } from "obsidian";
 import { basename, dirname, isAbsolute, join } from "node:path";
+import { updateCurrentBranch } from "./utils/update-branch.js";
 import { prompt, confirm } from "./dialogs";
 import { isProtectedRemoteBranch } from "./utils/branch-protection";
 
@@ -40,6 +42,7 @@ export class BranchActions {
     }
 
     async run(id, ref, current, remote = true) {
+        if (id === "update" && !remote && ref === current) return this.controller.updateProject();
         let network;
         const root = this.repository.root;
         await this.controller.act(async () => {
@@ -50,16 +53,15 @@ export class BranchActions {
             if (["checkout-rebase", "rebase", "merge", "pull-rebase", "pull-merge"].includes(id) && !context.local.includes(current)) {
                 throw new Error("Check out a local branch before using this action.");
             }
-            if (id === "push") { network = { kind: "push", branch: context.ref }; return; }
-            if (id === "update" && !context.isRemote && context.ref === context.current) {
-                if (!context.tracking || !context.remote) throw new Error("This branch has no tracked remote branch.");
-                network = { kind: "pull", branch: context.ref }; return;
+            if (id === "update" && !context.isRemote && (!context.tracking || !context.remote)) {
+                network = { kind: "pull", branch: context.ref, options: { selectedUpdate: true } }; return;
             }
+            if (id === "push") { network = { kind: "push", branch: context.ref }; return; }
             if (["pull-rebase", "pull-merge"].includes(id)) {
                 network = { kind: "pull", branch: context.current, options: { remote: context.remote, target: context.branch, strategy: id === "pull-rebase" ? "rebase" : "merge" } }; return;
             }
             await action(context);
-        });
+        }, false, { title: `Git: ${id === "update" ? "Update" : id.replaceAll("-", " ")}` });
         if (network && !this.controller.disposed && this.repository.root === root) this.controller.network(network.kind, network.branch, network.options);
     }
 
@@ -106,9 +108,29 @@ export class BranchActions {
     async update(context) {
         if (context.isRemote) { await this.repository.run(["fetch", "--", context.remote, context.branch]); return; }
         if (!context.tracking || !context.remote) throw new Error("This branch has no tracked remote branch.");
-        if (context.ref === context.current) { this.controller.network("pull", context.ref); return; }
+        if (context.ref === context.current) {
+            const updated = await updateCurrentBranch(this.repository, { branch: context.ref, remote: context.remote,
+                target: context.tracking.slice(context.remote.length + 1),
+                strategy: this.controller.plugin.settingsStore.preferences.updateMethod === "rebase" ? "rebase" : "merge" });
+            new Notice(updated ? "Update completed." : "Already up to date.");
+            return;
+        }
         const remoteBranch = context.tracking.slice(context.remote.length + 1);
-        await this.repository.run(["fetch", "--", context.remote, `${remoteBranch}:${context.ref}`]);
+        const worktrees = (await this.repository.run(["worktree", "list", "--porcelain", "-z"])).split("\0\0");
+        const worktree = worktrees.map(record => record.split("\0")).find(fields => fields.includes(`branch refs/heads/${context.ref}`));
+        if (worktree) {
+            const path = worktree.find(field => field.startsWith("worktree "))?.slice(9);
+            if (!path) throw new Error("Unable to resolve the branch worktree.");
+            const run = args => this.repository.run(args, { cwd: path });
+            await run(["fetch", "--", context.remote, `refs/heads/${remoteBranch}`]);
+            const checkedOut = (await run(["symbolic-ref", "--quiet", "HEAD"])).trim();
+            if (checkedOut !== `refs/heads/${context.ref}`) throw new Error("The other worktree changed branches during fetch.");
+            await run(["merge", "--ff-only", "FETCH_HEAD"]);
+            new Notice(`Updated ${context.ref} in its worktree.`);
+            return;
+        }
+        await this.repository.run(["fetch", "--", context.remote, `refs/heads/${remoteBranch}:refs/heads/${context.ref}`]);
+        new Notice(`Updated ${context.ref}.`);
     }
 
     async branchName(title, initial = "") {

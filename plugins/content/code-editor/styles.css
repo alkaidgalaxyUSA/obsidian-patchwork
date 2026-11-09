@@ -2,6 +2,11 @@
    CODE EDITOR STYLES
    ======================================== */
 
+body .menu[data-pw-module="content"][data-pw-surface="code-menu"]:not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	--menu-background: var(--pw-workspace-canvas, var(--background-secondary));
+	background: var(--pw-workspace-canvas, var(--background-secondary)) !important;
+}
+
 .view-content.ce-editor-view:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
 	height: 100%;
 	padding: 0;
@@ -59,6 +64,17 @@
    Keep the translucent selection above lines, below the cursor and gutters. */
 .ce-editor-container .cm-selectionLayer:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
 	z-index: 1 !important;
+	pointer-events: none !important;
+}
+
+/* Painted selections must never intercept subsequent editor pointer events. */
+.ce-editor-container .cm-selectionBackground:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	pointer-events: none !important;
+}
+
+/* Grouped SQL uses section feedback instead of a persistent cursor-line band. */
+.ce-editor-container .ce-sql-sections .cm-activeLine:not(.ce-sql-section-hover):not(.ce-sql-section-selected):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+	background: transparent;
 }
 
 /* SQL group highlighting never changes the saved document. */
@@ -125,4 +141,12 @@
 
 .ce-attribution a:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
 	color: var(--text-accent);
+}
+
+/* A section selection fills every SQL line, including the final line at EOF. */
+.ce-editor-container .cm-line.ce-sql-section-selected:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    background: rgba(80, 110, 160, 0.28);
+}
+.ce-editor-container .ce-sql-group-selected .cm-selectionBackground:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    background: transparent !important;
 }

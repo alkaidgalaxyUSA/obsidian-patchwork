@@ -24,10 +24,11 @@ export class GitSnapshots {
         const detached = controller.branch?.startsWith("Detached ");
         return { ready: controller.ready && !controller.disposed, busy: controller.busy,
             error: controller.error || undefined, branch: detached ? undefined : controller.branch,
+            sync: controller.ready && !detached && controller.branchSync ? { ...controller.branchSync } : undefined,
             detachedCommit: detached ? controller.branch.slice("Detached ".length) : undefined, status };
     }
     deliver(listener, snapshot) {
-        try { listener({ ...snapshot, status: snapshot.status.map(entry => ({ ...entry })) }); }
+        try { listener({ ...snapshot, sync: snapshot.sync ? { ...snapshot.sync } : undefined, status: snapshot.status.map(entry => ({ ...entry })) }); }
         catch (error) { console.error("Git snapshot subscriber failed.", error); }
     }
     publish() {

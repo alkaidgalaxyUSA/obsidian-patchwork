@@ -1,6 +1,8 @@
+import { Menu } from "obsidian";
 import { setIcon } from "../utils/icons";
 import { explorerFileIcon } from "../utils/file-icons";
 import { getWindowContext } from "../../../utils/windows";
+import { scopeModule } from "../../../utils/module-scope";
 
 /** The native virtual tree remains in place beneath its expandable vault row. */
 export function installExplorerTree(plugin, view, runtime) {
@@ -30,6 +32,7 @@ export function installExplorerTree(plugin, view, runtime) {
     let disposed = false;
     let collapsed = false;
     let frame;
+    let rootMenu;
     const icons = new Map();
     const selectRoot = () => {
         tree.clearSelectedDoms();
@@ -46,9 +49,28 @@ export function installExplorerTree(plugin, view, runtime) {
         setIcon(arrow, value ? "chevron-right" : "chevron-down");
         if (!value) tree.infinityScroll.invalidateAll();
     };
+    const showRootMenu = event => {
+        if (disposed) return;
+        event.preventDefault(); event.stopPropagation();
+        plugin.app.workspace.setActiveLeaf(view.leaf, { focus: true });
+        selectRoot();
+        rootMenu?.hide();
+        const menu = rootMenu = new Menu();
+        menu.setParentElement(root);
+        const scope = scopeModule(menu.dom, "project", { surface: "file-menu" });
+        menu.onHide(() => { scope.dispose(); if (rootMenu === menu) rootMenu = undefined; });
+        plugin.app.workspace.trigger("file-menu", menu, plugin.app.vault.getRoot(), "file-explorer-context-menu", view.leaf);
+        if (event.type === "contextmenu") menu.showAtMouseEvent(event);
+        else {
+            const bounds = root.getBoundingClientRect();
+            menu.showAtPosition({ x: bounds.left, y: bounds.bottom });
+        }
+    };
+    root.addEventListener("contextmenu", showRootMenu);
     root.addEventListener("click", event => { event.preventDefault(); selectRoot(); });
     root.addEventListener("dblclick", event => { event.preventDefault(); selectRoot(); setCollapsed(!collapsed); });
     root.addEventListener("keydown", event => {
+        if (event.key === "ContextMenu" || event.shiftKey && event.key === "F10") { showRootMenu(event); return; }
         if (!["Enter", " ", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
         event.preventDefault(); event.stopPropagation();
         selectRoot();
@@ -90,6 +112,7 @@ export function installExplorerTree(plugin, view, runtime) {
     searchInput.addEventListener("input", revealSearch);
     return { expand: () => setCollapsed(false), collapse: () => setCollapsed(true), dispose: () => {
         disposed = true;
+        rootMenu?.hide();
         observer.disconnect(); stopSelection(); searchInput.removeEventListener("input", revealSearch);
         if (frame !== undefined) win.cancelAnimationFrame(frame);
         for (const icon of icons.values()) icon.remove();

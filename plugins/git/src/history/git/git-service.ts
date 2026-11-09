@@ -83,10 +83,12 @@ export class GitService {
     return { file: resolved.binary?.path ?? "git", env };
   }
 
-  private async exec(args: string[], timeout = 30000, input?: string): Promise<string> {
+  private async exec(args: string[], timeout = 30000, input?: string, signal?: AbortSignal): Promise<string> {
+    signal?.throwIfAborted();
     if (this.disposed) throw new Error("Git history has been unloaded.");
     const repoPath = this.repoPath;
     const { file, env } = await this.command();
+    signal?.throwIfAborted();
     if (this.disposed) throw new Error("Git history has been unloaded.");
     return new Promise((resolve, reject) => {
       const child = execFile(
@@ -103,6 +105,7 @@ export class GitService {
           windowsHide: true,
           maxBuffer: 50 * 1024 * 1024,
           timeout,
+          signal,
           env,
         },
         (error, stdout, stderr) => {
@@ -542,11 +545,11 @@ export class GitService {
     await this.enqueue(() => this.exec(["revert", "--no-edit", hash]));
   }
 
-  async branchesContaining(hash: string): Promise<string[]> {
-    const refs = await this.exec(["for-each-ref", `--contains=${hash}`, "--format=%(refname)%09%(symref)", "refs/heads", "refs/remotes"]);
+  async branchesContaining(hash: string, signal?: AbortSignal): Promise<string[]> {
+    const refs = await this.exec(["for-each-ref", `--contains=${hash}`, "--format=%(refname)%09%(symref)", "refs/heads", "refs/remotes"], 30000, undefined, signal);
     const branches = refs.split(/\r?\n/).filter(Boolean).filter(line => !line.split("\t")[1])
       .map(line => line.split("\t")[0].replace(/^refs\/(heads|remotes)\//, ""));
-    try { await this.exec(["merge-base", "--is-ancestor", hash, "HEAD"]); branches.unshift("HEAD"); }
+    try { await this.exec(["merge-base", "--is-ancestor", hash, "HEAD"], 30000, undefined, signal); branches.unshift("HEAD"); }
     catch { /* Detached or unrelated HEAD is not a containing branch. */ }
     return branches;
   }
@@ -666,13 +669,14 @@ export class GitService {
     }
   }
 
-  async showCommitFiles(hash: string): Promise<CommitFileInfo[]> {
-    const parent = await this.hasParent(hash);
+  async showCommitFiles(hash: string, parentHash?: string, signal?: AbortSignal): Promise<CommitFileInfo[]> {
+    const parent = !!parentHash || await this.hasParent(hash);
+    signal?.throwIfAborted();
     const command = parent ? ["diff", "--no-ext-diff", "--no-textconv", "--no-color"] : ["diff-tree", "--root", "--no-commit-id", "-r"];
-    const flags = ["-M", "-z", ...(parent ? [`${hash}^`, hash] : [hash]), "--"];
+    const flags = ["-M", "-z", ...(parent ? [parentHash || `${hash}^`, hash] : [hash]), "--"];
     const [names, stats] = await Promise.all([
-      this.exec([...command, "--name-status", ...flags]),
-      this.exec([...command, "--numstat", ...flags]),
+      this.exec([...command, "--name-status", ...flags], 30000, undefined, signal),
+      this.exec([...command, "--numstat", ...flags], 30000, undefined, signal),
     ]);
     const byPath = new Map<string, { additions: number; deletions: number; binary: boolean }>();
     const counts = stats.split("\0");

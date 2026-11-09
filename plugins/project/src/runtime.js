@@ -10,6 +10,7 @@ import { ExplorerStatus } from "./explorer/git-status";
 import { FileMenus } from "./menus/file-menus";
 import { installMenuStyles } from "./menus/index";
 import { installProjectPreferences } from "./settings/preferences";
+import { installSearchEverywhere } from "./search/search-everywhere";
 
 /** Own native explorer content, selections and integrations independently of Content. */
 export class ProjectRuntime {
@@ -26,6 +27,7 @@ export class ProjectRuntime {
         installExplorerActions(plugin, this);
         installMenuStyles(plugin);
         installProjectPreferences(plugin);
+        installSearchEverywhere(plugin);
         this.stopBorders = getServiceRegistry(this.app).watch("project", "borders", borders => {
             this.panel?.dispose(); this.panel = undefined; this.stopStates?.();
             this.borders = borders;

@@ -1,6 +1,25 @@
 # IntelliJ IDEA Git and Obsidian Patchwork Git Comparison
 
-Audit date: 2026-11-04.
+Audit date: 2026-11-04. Update workflow follow-up: 2026-11-05.
+
+## Project interaction follow-up (2026-11-05)
+
+- Project-tree Git Add stays enabled by request. It refreshes status and stages
+  unstaged paths within the selection; an empty selection of changes is a no-op.
+  This is an intentional difference from IDEA's status-dependent Add action
+  ([GitAdd.kt](https://github.com/JetBrains/intellij-community/blob/master/plugins/git4idea/backend/src/actions/GitAdd.kt)).
+- Explorer rows and menus share Git's 12px Microsoft YaHei UI typography.
+- Double Shift opens Project Search Everywhere, with All, Files and Text tabs.
+  The modifier gesture follows IDEA's
+  [ModifierKeyDoubleClickHandler](https://github.com/JetBrains/intellij-community/blob/master/platform/platform-impl/src/com/intellij/openapi/keymap/impl/ModifierKeyDoubleClickHandler.kt).
+  Search covers vault-visible names, paths and supported plain-text contents;
+  Actions now searches native Obsidian commands. The original substring search
+  was replaced with a source-derived IDEA matcher, contributor pagination,
+  highlighting, line/column navigation and search history. All loads 15 results
+  per contributor; individual tabs load 30, with More to continue. Text reads
+  retain a 5 MiB file limit. See the [pinned source mapping](plugins/project/src/search/SOURCE.md)
+  for translated algorithms, runtime adaptations and remaining parity gaps.
+  Binary, encrypted and unsupported text formats are excluded from content reads.
 
 ## Baseline and scope
 
@@ -8,7 +27,7 @@ The reference is JetBrains `intellij-community` revision `8eee455aa813af4ad427fd
 
 The implementation baseline is the **current working tree** of `D:\ideaProjects\obsidian-patchwork`, based on commit `f3117df`, including uncommitted Git changes. "Our implementation" means the reachable Patchwork Git interface and its actual operation path, not every method imported from the Git History backend. Project and Borders are counted only where Git uses their public integration.
 
-The inventory was constructed from IDEA action registrations and source areas first, then compared with Patchwork source. It contains **255 feature rows in 14 categories**: 247 core/shared-interface rows and 8 optional hosting rows. The action crosswalk accounts for **all 122 explicitly identified action registrations** in the pinned Git backend/frontend/shared XML files: 121 product-facing registrations and one excluded internal test action. Shared VCS, Log and Diff facilities are grouped by user-visible capability; menu aliases are not separate implementations.
+The inventory was constructed from IDEA action registrations and source areas first, then compared with Patchwork source. It contains **256 feature rows in 14 categories**: 248 core/shared-interface rows and 8 optional hosting rows. The action crosswalk accounts for **all 122 explicitly identified action registrations** in the pinned Git backend/frontend/shared XML files: 121 product-facing registrations and one excluded internal test action. Shared VCS, Log and Diff facilities are grouped by user-visible capability; menu aliases are not separate implementations.
 
 This is a comprehensive scoped feature inventory, not a guarantee that every dynamically supplied action, platform extension, third-party integration, hidden setting or future release has been enumerated. Optional hosting integrations are separated from Git core; general editor capabilities are included only when part of the Git workflow.
 
@@ -28,7 +47,7 @@ Present but incomplete cells state the gap. A raw Git command or unused backend 
 
 No single overall percentage is reported: these rows have very different sizes, overlap across surfaces, and are not effort-weighted. Counting small visual corrections equally with a merge engine would produce a misleading product-completion number.
 
-Snapshot counts: **73 fully covered narrow rows**, **114 partial rows**, **68 absent rows**. These are row counts, not an aggregate parity score.
+Snapshot counts: **74 fully covered narrow rows**, **115 partial rows**, **67 absent rows**. These are row counts, not an aggregate parity score.
 
 ## Feature inventory and implementation comparison
 
@@ -176,7 +195,7 @@ IDEA: [I1], [I2], [I6]. Patchwork: [P8], [P9].
 | <a id="b18"></a>**B18** Checkout and rebase onto current | Action exists; smart-checkout recovery absent. | <span style="color: #F57E84;">75%</span> | 15|
 | <a id="b19"></a>**B19** Checkout and update |  | <span style="color: #F57E84;">0%</span> | 25|
 | <a id="b20"></a>**B20** Compare branches / branch versus working tree | Comparison dialogs and Diff tabs. | <span style="color: #F57E84;">75%</span> | 60|
-| <a id="b21"></a>**B21** Update non-current branch | Fetch into branch; recovery workflow limited. | <span style="color: #F57E84;">75%</span> | 20|
+| <a id="b21"></a>**B21** Update non-current branch | Fast-forward fetch into a non-current branch without checkout; branches checked out in another worktree use fetch and fast-forward merge there. Multi-selection and advanced recovery remain incomplete. | <span style="color: #F57E84;">75%</span> | 20|
 | <a id="b22"></a>**B22** Pull selected remote branch with merge/rebase | Both actions exist. | <span style="color: #F57E84;">75%</span> | 45|
 | <a id="b23"></a>**B23** Show My Branches | Exclusive-commit ownership; alias expansion incomplete. | <span style="color: #F57E84;">75%</span> | 35|
 | <a id="b24"></a>**B24** Find merged local branches |  | <span style="color: #F57E84;">0%</span> | 15|
@@ -194,9 +213,9 @@ IDEA: [I1], [I6]. Patchwork: [P8], [P10].
 | IntelliJ IDEA Git capability | Our Obsidian Patchwork Git implementation | Completion | Daily-use frequency |
 | --- | --- | --- | --- |
 | <a id="n01"></a>**N01** Fetch remote refs | Commands and popup/dashboard entry points. | 100% | 85|
-| <a id="n02"></a>**N02** Incoming/outgoing preview | Pinned incoming/outgoing counts and separate paginated lists; all commits remain reachable beyond the first 200. | 100% | 85|
-| <a id="n03"></a>**N03** Fast-forward/merge/rebase update | Fast-forward, merge and rebase updates with optional stash/save-and-restore, preserved staged state and explicit conflict recovery. | 100% | 90|
-| <a id="n04"></a>**N04** Auto-save/restore changes during update |  | <span style="color: #F57E84;">0%</span> | 45|
+| <a id="n02"></a>**N02** Incoming/outgoing preview | Push preview provides pinned incoming/outgoing counts and separate paginated lists; all commits remain reachable beyond the first 200. Update fetches on execution rather than requiring a pinned preview. | 100% | 85|
+| <a id="n03"></a>**N03** Fast-forward/merge/rebase update | The header and Log toolbar Update Project directly fetch the current branch's remote and update only the checked-out local branch, using Merge by default or the saved Rebase preference. Other remote-tracking refs refresh without moving other local branches. Branch context-menu Update remains branch-specific. Native fast-forward, merge and rebase execution is covered; broader IDEA workflow gaps are listed below. | 100% | 90|
+| <a id="n04"></a>**N04** Auto-save/restore changes during update | Stash saves tracked/untracked changes and restores staged state; update/restore conflicts retain the saved stash for explicit recovery. IDEA Shelf selection and automatic post-conflict restoration remain incomplete. | <span style="color: #F57E84;">75%</span> | 45|
 | <a id="n05"></a>**N05** Push branch to selected remote target | Push preview pins the local commit and selected remote branch; upstream preservation or replacement is explicit; stale source plans are rejected. | 100% | 95|
 | <a id="n06"></a>**N06** Multi-repository push dialog |  | <span style="color: #F57E84;">0%</span> | 15|
 | <a id="n07"></a>**N07** Force push / force-with-lease for updates |  | <span style="color: #F57E84;">0%</span> | 15|
@@ -206,8 +225,25 @@ IDEA: [I1], [I6]. Patchwork: [P8], [P10].
 | <a id="n11"></a>**N11** Recent push-target history | Tracking/default remote only. | <span style="color: #F57E84;">25%</span> | 50|
 | <a id="n12"></a>**N12** Rejected-push update/retry workflow | Error reporting; separate manual update. | <span style="color: #F57E84;">25%</span> | 35|
 | <a id="n13"></a>**N13** Native push hooks | Native execution; IDE controls incomplete. | <span style="color: #F57E84;">75%</span> | 65|
-| <a id="n14"></a>**N14** Configure upstream/tracking | Checkout/push configuration; dedicated editor absent. | <span style="color: #F57E84;">75%</span> | 35|
+| <a id="n14"></a>**N14** Configure upstream/tracking | Checkout/push configuration and optional upstream setup in Update Project; dedicated editor absent. | <span style="color: #F57E84;">75%</span> | 35|
 | <a id="n15"></a>**N15** Scheduled automatic fetch |  | <span style="color: #F57E84;">0%</span> | 70|
+| <a id="n16"></a>**N16** Incoming/outgoing indicators in branch widget | Header, branch popup and Log branch rows show outgoing/incoming arrows and counts, with comparison targets, divergence and missing-upstream explanations. | 100% | 95|
+
+**Update workflow follow-up, 2026-11-05:** The pinned IDEA `GitUpdateProcess.fetchAndNotify` fetches the remote associated with the current branch, then updates that local branch. Other remote-tracking refs refresh according to the remote's fetch configuration; other local branches do not move. IDEA's separate `updateBranches` operation targets selected branches, including fast-forward updates of non-current branches. These are different actions.
+
+The header and Log toolbar now expose **Update Project**, independent of the selected history branch. They execute directly without an options panel when the destination is unambiguous, using Merge by default or the saved Rebase preference. Upstream configuration takes precedence. For a missing upstream, a unique same-name remote branch (or the sole configured remote) supplies the destination without changing tracking configuration. This fallback is a user-requested compatibility behavior, not identical IDEA behavior. Only an ambiguous destination opens selection. Branch context-menu Update retains its branch-specific semantics.
+
+Validation used disposable repositories: only the current local branch advanced; another remote-tracking branch refreshed while its local branch remained unchanged; staged/untracked state was restored; repeated updates returned up-to-date; tracking configuration stayed unchanged. A deleted target was rejected instead of merging its stale cached ref, and ambiguous remotes required selection. JavaScript syntax, type and module-boundary checks passed. No update was executed against the user's notes repository.
+
+Git alone was built, installed and reloaded, and installed runtime hashes matched. Physical pointer validation selected `develop` while the checked-out branch remained `main`; a temporary no-mutation dispatch probe confirmed the toolbar invoked Update Project once, independent of selection. The probe was restored immediately and debugging detached; no console errors were captured.
+
+The current-branch context-menu entry is also Update Project and uses the same direct action; non-current entries are explicitly labeled Update Selected Branch. After fetching, updates verify a common ancestor before saving changes or invoking merge/rebase. Unrelated histories produce an actionable error and leave local commits, index and files untouched. Disposable independent-root repositories verified this guard and the direct current-branch context dispatch. The notes repository was inspected read-only: local and remote branch families have different roots and no merge base; ordinary Update cannot reconcile them. No forced unrelated-history merge is performed.
+
+All visible update command, toolbar, context-menu and dialog labels are now **Update**, as requested. References to IDEA Update Project and Update Selected above distinguish operation semantics, not the current Patchwork labels. The history-reconciliation blocker is independent of these labels.
+
+**Remaining parity gaps:** project-wide multi-repository coordination, IDE Shelf-based preservation, rebase-over-merge choices, force-push recovery, automatic conflict-resolution dialogs and IDEA's update-results view. N03's 100% applies only to its named native update capability; neither entry is claimed to reproduce the complete IDEA Update workflow at 100%.
+
+N16 was implemented during the 2026-11-05 follow-up. Counts compare immutable branch tips against the configured upstream, or a unique same-name remote branch when no upstream exists; the latter is explicitly identified in the tooltip. Missing or ambiguous comparisons are not presented as synchronized. A branch without an upstream or matching branch on its sole remote shows a publish indicator without an invented count. Counts reflect the last known remote-tracking state; scheduled remote refresh remains [N15](#n15). The arrows are status indicators; Push remains available through [N05](#n05). In the Log branch tree, a single click selects a group or branch, a double click expands/collapses a group or loads a branch's history, and a single click on a commit loads its details. Disposable-repository checks covered comparison states; installed pointer checks verified these interactions, arrow visibility and commit-detail identity.
 
 ### 07. Log, filters and navigation
 
@@ -383,7 +419,7 @@ IDEA: [I3], [I6], [I7], [I9]. Patchwork: [P5], [P7], [P8], [P9], [P18].
 | <a id="u10"></a>**U10** Popout window operation targeting | Context guards; some operations unavailable outside main window. | <span style="color: #F57E84;">50%</span> | 25|
 | <a id="u11"></a>**U11** Persisted layouts/filters/preferences | Persisted Commit layout/grouping/path options, repository drafts, Log tabs/active tab/filters/branch visibility and Diff presentation; popout tab storage is isolated from the main window. | 100% | 85|
 | <a id="u12"></a>**U12** Customizable toolbars and action/keymap system | Subset of Obsidian commands/hotkeys. | <span style="color: #F57E84;">25%</span> | 25|
-| <a id="u13"></a>**U13** Notifications/progress/cancellation framework | Notices and modal status; cancellation limited. | <span style="color: #F57E84;">50%</span> | 75|
+| <a id="u13"></a>**U13** Notifications/progress/cancellation framework | Git uses Borders background progress for Fetch, Update, Push, Commit and serialized operations, with completion/error/unload cleanup and provider replacement. Continuous animation; Fetch/Clone X controls cancel the owned Git process tree. The popup minus button only minimizes. Merge/rebase cancellation remains separate. | <span style="color: #F57E84;">75%</span> | 75|
 
 ### 14. Optional hosting integrations
 
@@ -415,7 +451,7 @@ The existing safe restrictions are described as parity gaps rather than silently
 
 This document was produced by source/action inventory review. No new runtime feature tests, builds, installations, repository mutations or commits are required for this documentation task.
 
-Earlier work in this session supplied selected evidence: temporary-repository verification of moves, stage/unstage/checked-file commits, rebase messages and merge topology; installed-class checks for move synchronization; and runtime CSS checks for moved-from text and Commit Details background. These checks do **not** validate all 255 rows.
+Earlier work in this session supplied selected evidence: temporary-repository verification of moves, stage/unstage/checked-file commits, rebase messages and merge topology; installed-class checks for move synchronization; and runtime CSS checks for moved-from text and Commit Details background. These checks do **not** validate all 256 rows.
 
 Scores should be revised when implementation or evidence changes. A source-level implementation is distinguished from end-to-end acceptance; missing-runtime evidence is not converted into a fabricated success claim.
 

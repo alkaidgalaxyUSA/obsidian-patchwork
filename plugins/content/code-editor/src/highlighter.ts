@@ -21,7 +21,8 @@ export function highlightToTokens(
 	autoDetect: boolean
 ): HighlightToken[] {
 	const html = highlightCode(code, language, autoDetect);
-	const parsed = new DOMParser().parseFromString(`<pre>${html}</pre>`, "text/html");
+	// Unlike <pre>, <div> preserves an initial newline and therefore token offsets.
+	const parsed = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
 	const container = parsed.body.firstElementChild;
 
 	const tokens: HighlightToken[] = [];

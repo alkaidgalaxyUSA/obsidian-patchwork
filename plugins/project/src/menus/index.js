@@ -1,7 +1,7 @@
 import { Menu, Notice } from "obsidian";
 import { scopeModule } from "../../../utils/module-scope";
 
-const PRESETS = [["patchwork", "Patchwork"], ["github", "GitHub Theme"], ["border", "Border"], ["maple", "Maple"]];
+const PRESETS = [["github", "GitHub Theme"]];
 
 /** File-list-only presets: never install a theme stylesheet into the document. */
 export function installMenuStyles(plugin) {
@@ -10,7 +10,7 @@ export function installMenuStyles(plugin) {
     const hosts = new Map();
     const menus = new Set();
     let disposed = false;
-    const current = () => PRESETS.some(([id]) => id === plugin.settings.explorerAppearance) ? plugin.settings.explorerAppearance : "patchwork";
+    const current = () => PRESETS.some(([id]) => id === plugin.settings.explorerAppearance) ? plugin.settings.explorerAppearance : "github";
     const restoreHost = (host, record) => {
         if (host.getAttribute("data-pw-menu-style") !== record.applied) return;
         if (record.previous === null) host.removeAttribute("data-pw-menu-style"); else host.setAttribute("data-pw-menu-style", record.previous);

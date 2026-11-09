@@ -12,6 +12,8 @@ import { RightActions } from "./right/right-actions";
 import { SidebarResize } from "./right/sidebar-resize";
 import { PanelHost } from "./bottom/panel-host";
 import { DocumentStatusBar } from "./bottom/document-status-bar";
+import { BackgroundProgress } from "./bottom/background-progress";
+import { BackgroundProgressView } from "./bottom/background-progress-view";
 import { installAboutTab } from "./top/about-tab";
 import { installSettingsLifecycle } from "./top/settings-lifecycle";
 
@@ -26,6 +28,7 @@ export class BordersRuntime {
         this.panels = new Map(); this.headers = new Map(); this.tabs = new Map(); this.windows = new Map();
         this.listeners = new Set(); this.queues = new Map();
         this.settings = new SettingsHost(this.app);
+        this.progress = new BackgroundProgress();
         this.appFocus = new AppFocus(this.app.workspace.containerEl.ownerDocument.defaultView);
         plugin.register(() => this.appFocus.dispose());
         installAboutTab(plugin); installSettingsLifecycle(plugin);
@@ -59,6 +62,10 @@ export class BordersRuntime {
                 shell = { context, top: new WindowActions(this.app, doc), footer: new DocumentStatusBar(this.plugin, doc), states: new Map(), cleanups: [],
                     originalEnabled: doc.body.classList.contains("pw-window-actions-enabled") };
                 this.windows.set(context.windowId, shell);
+                if (shell.footer.bar) {
+                    this.progress.addWindow(context);
+                    shell.progress = new BackgroundProgressView(shell.footer.bar, context, this.progress);
+                }
                 shell.cleanups.push(this.appFocus.add(doc));
                 const tooltipDelays = new TooltipDelays(doc);
                 shell.cleanups.push(() => tooltipDelays.dispose());
@@ -128,6 +135,11 @@ export class BordersRuntime {
             }
             record.instances.clear(); this.schedule();
         } };
+    }
+
+    startProgress(options) {
+        this.sync();
+        return this.progress.start(options);
     }
 
     syncManagedTabs() {
@@ -370,6 +382,7 @@ export class BordersRuntime {
     removeWindow(id) {
         const shell = this.windows.get(id); if (!shell) return;
         this.windows.delete(id);
+        shell.progress?.dispose(); this.progress.removeWindow(id);
         for (const [tab, hadClass] of this.managedTabs) if (tab.ownerDocument === shell.context.document) {
             if (!hadClass) tab.classList.remove("pw-window-managed-tab"); this.managedTabs.delete(tab);
         }
@@ -394,5 +407,6 @@ export class BordersRuntime {
         if (this.frame !== undefined) this.app.workspace.containerEl.ownerDocument.defaultView.cancelAnimationFrame(this.frame);
         for (const id of this.windows.keys()) this.removeWindow(id);
         this.native.dispose(); this.settings.dispose(); this.listeners.clear(); this.headers.clear(); this.tabs.clear(); this.panels.clear();
+        this.progress.dispose();
     }
 }

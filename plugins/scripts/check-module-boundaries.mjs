@@ -38,7 +38,7 @@ async function resolveReference(file, specifier) {
 // wrappers, rails, resize handles and titlebars, but never feature interiors.
 const shellStyles = new Set([
   "layout/shell.css", "layout/workspace-cards.css", "layout/native-resize.css", "layout/native-toggles.css",
-  "top/styles.css", "left/styles.css", "left/left-ribbon-states.css", "left/icon-alignment.css", "right/styles.css", "bottom/styles.css",
+  "top/styles.css", "left/styles.css", "left/left-ribbon-states.css", "left/icon-alignment.css", "right/styles.css", "bottom/styles.css", "bottom/background-progress.css",
 ].map(file => `plugins/borders/src/${file}`));
 const files = [...await walk(root), ...await walk(resolve(project, "themes/Patchwork/src"))];
 let imports = 0, selectors = 0;

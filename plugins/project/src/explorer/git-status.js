@@ -5,20 +5,9 @@ export class ExplorerStatus {
     constructor(plugin) {
         this.roots = new Map(); this.status = new Map();
         this.stop = getServiceRegistry(plugin.app).watch("project", "git", git => {
-            this.stopSnapshots?.(); this.status.clear(); this.folders = new Map();
+            this.stopSnapshots?.(); this.status.clear();
             this.stopSnapshots = git?.onSnapshot(snapshot => {
                 this.status = new Map((snapshot.ready ? snapshot.status : []).map(entry => [this.key(entry.vaultPath), entry.state]));
-                this.folders = new Map();
-                const priority = { ignored: 0, unversioned: 1, modified: 2, conflict: 3 };
-                for (const [path, state] of this.status) {
-                    const parts = path.split("/"); parts.pop();
-                    const inherited = ["ignored", "unversioned", "conflict"].includes(state) ? state : "modified";
-                    while (parts.length) {
-                        const folder = parts.join("/");
-                        if (!this.folders.has(folder) || priority[inherited] > priority[this.folders.get(folder)]) this.folders.set(folder, inherited);
-                        parts.pop();
-                    }
-                }
                 for (const root of this.roots.keys()) this.paint(root);
             });
             for (const root of this.roots.keys()) this.paint(root);
@@ -37,8 +26,8 @@ export class ExplorerStatus {
     }
     paint(root) {
         const record = this.roots.get(root); if (!record) return;
-        const stateFor = row => row.classList.contains("nav-folder-title") ? this.folders?.get(this.key(row.dataset.path)) : this.status.get(this.key(row.dataset.path));
-        const rows = new Set(root.querySelectorAll(".nav-file-title[data-path], .nav-folder-title[data-path]"));
+        const stateFor = row => this.status.get(this.key(row.dataset.path));
+        const rows = new Set(root.querySelectorAll(".nav-file-title[data-path]"));
         for (const [row, lease] of record.rows) if (!rows.has(row) || !stateFor(row)) {
             this.release(row, lease); record.rows.delete(row);
         }

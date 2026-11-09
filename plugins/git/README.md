@@ -37,7 +37,19 @@ Project renders filenames from Git's public status snapshot: modified files are 
 
 The titlebar uses the same interface font as the theme. Its existing branch search, Recent/Local/Remote groups, checkout, new branch, revision checkout, Update Project, Commit and Push actions now use this plugin.
 
-Git identity, signing, hooks, remotes, upstreams and credential helpers follow the local Git configuration. Pull uses fast-forward only; Push never forces an update. Missing configuration and authentication failures are shown as Git errors. Remote branch menus also provide compare, rebase, merge and worktree actions through the existing serialized mutation queue.
+Git identity, signing, hooks, remotes, upstreams and credential helpers follow the local Git configuration. Update Project fetches on invocation and applies the selected Merge or Rebase method, remembered for subsequent updates. Push never forces an update. Missing configuration and authentication failures are shown as Git errors. Remote branch menus also provide compare, rebase, merge and worktree actions through the existing serialized mutation queue.
+
+### Update semantics
+
+The reference is JetBrains `intellij-community` commit `8eee455aa813af4ad427fd576b0ad8d94c418577`, specifically `GitUpdateSelectedBranchAction.kt`, `GitBranchActionsUtil.kt`, `GitUpdateProcess.java`, `GitUpdateOptionsPanel.kt` and `FixTrackedBranchDialog.kt` under `plugins/git4idea/backend/src`.
+
+- **Update Project** in the header and Log toolbar runs directly against the checked-out local branch, regardless of the selected history branch. It fetches the configured remote refspecs, refreshing other remote-tracking branches without updating other local branches. Merge is the default; a saved Rebase preference is respected. An up-to-date branch leaves local changes untouched.
+- The configured upstream takes precedence. Without an upstream, a unique same-name remote branch or the sole remote supplies the destination without modifying tracking configuration. This compatibility fallback is a deliberate user-requested deviation from IDEA. An ambiguous destination opens selection; ordinary updates do not open an options panel. A target absent from the fetch result is rejected, even if a stale remote-tracking ref exists.
+- **Update Project** on the current branch context menu uses the same direct project action. **Update Selected Branch** on another branch remains branch-specific: current branches use the saved method, while non-current branches fast-forward without checkout. A branch checked out in another worktree is fetched and fast-forwarded there. Missing tracking opens destination selection for this separate action. Busy operations block concurrent updates, and no-remotes repositories hide the action.
+- After fetch, a missing common ancestor blocks both Merge and Rebase before local-change preservation. Independent histories require separate reconciliation; Update never implicitly allows unrelated histories.
+- Working-tree updates can save tracked and untracked changes and restore their staged state. Conflicts retain the identifiable stash for recovery. Active Git operations block overlapping updates. Other-worktree updates use native fast-forward merge protection rather than stashing that worktree's changes.
+
+This is not complete IDEA Update parity: project-wide multi-repository coordination, IDE shelf-based preservation, rebase-over-merge choices, force-push recovery, automatic conflict-resolution dialogs and IDEA's update-results view remain separate gaps. The plugin updates the active repository and uses its existing operation/conflict UI. Disposable repository validation covers no-op, automatic fetch, staged/untracked restoration, divergent merge/rebase, non-current branches, another worktree and update-conflict stash retention.
 
 ## Log and lifecycle
 
@@ -90,7 +102,7 @@ detached checkout, cherry-pick and revert. Merge cherry-pick/revert are disabled
 because they require an explicit mainline choice. File menus provide history,
 diff, current-file navigation and guarded restoration. Changed-file details
 include rename metadata, binary markers and line counts, including root commits
-and first-parent merge changes.
+and merge changes grouped by parent in the commit details panel.
 
 The existing Diff tab uses imported diff parsing and word comparison behind
 Patchwork's own controls. It supports unified and side-by-side layouts. Working
@@ -107,3 +119,73 @@ code is retained in `src/history/LICENSE` and the generated JavaScript bundle.
 The separately downloaded history-view plugin is not integrated. Settings left
 by the earlier UI import remain preserved as unknown data, without mounting its
 interface or replacing existing Git drafts and popup preferences.
+
+## Background operation progress
+
+Git consumes the existing `BordersApi.progress` through the service registry.
+Fetch, Update, Push, Commit, branch actions and task-modal mutations register an
+indeterminate task for the operation. Status refresh does not keep a completed
+operation's progress visible. Fetch runs independently of background status scans. Opening a
+Push/Update dialog alone does not start a task. The existing 200 ms display delay
+prevents flashes for quick operations. No percentage is fabricated. Fetch and Clone register cancellation callbacks,
+so their X controls abort the owned Git process tree. Merge/rebase cancellation
+and recovery remain separate actions.
+
+Every exit path finishes the handle, including operation failures; refresh starts after progress cleanup.
+Git unload aborts presentation lifetime. Provider replacement reattaches active
+presentation without restarting Git commands; missing Borders allows Git work
+to continue without a footer task. Tasks retain the invoking window and never
+fall back to another window when that window closes.
+
+Validation covered provider absence/arrival/replacement, Git presentation disposal,
+and success, operation-error and refresh-error cleanup. An installed real Fetch
+showed `Git: Fetch` and finished with no remaining task or HEAD change. An
+installed Update with a temporary simulated fetch failure showed the existing
+indeterminate footer bar and hid it after failure; the diagnostic override was
+restored without updating repository files.
+
+Git command deadlines are enforced independently of child exit/stdio callbacks.
+On Windows, cancellation and deadlines terminate only the command's process tree,
+including network helpers. This also prevents an exited process with a missing
+completion callback from keeping Git busy indefinitely. Cancelling Fetch does not
+roll back remote-tracking refs already received, and cancelling Clone may leave a
+partial destination; neither action reports success after cancellation.
+
+## Commit details panel
+
+The existing Patchwork panel follows the single-commit flow in JetBrains
+intellij-community revision `6cd53e000b1c7c418972a0910651518e205b38df`:
+`MainFrame`, `VcsLogChangesBrowser`, `ChangesBrowserBase` and `CommitDetailsLoader`.
+The upper changed-files tree and lower commit metadata retain their draggable,
+persisted splitter. The repository is a real tree node included in Expand All
+and Collapse All, rather than a fixed heading outside the tree.
+
+Folder labels select their contained files; disclosure arrows and label double
+clicks expand or collapse. Arrow keys navigate visible nodes; Left/Right control
+folders. File double click or Enter opens Diff. Directory grouping and the
+existing file context actions remain available. Merge commits have a separate
+file group per parent, and file identity includes that parent for selection and
+Diff. Reverting merge files remains disabled until a mainline is explicitly
+supported. Multi-commit selection retains the existing Compare Selected flow;
+it does not yet implement IDEA's aggregated multi-commit change model.
+
+Selecting another commit aborts the previous detail commands and guards against
+stale results, repository changes and disposed views. Loading and empty states
+are explicit. Disposable-repository validation covered root commits, distinct
+changes against both merge parents and pre-aborted detail requests.
+
+Installed validation confirmed physical repository-label selection, repeated
+arrow collapse/expand with matching SVGs, physical file double click opening the
+existing Diff view, and rapid commit switching cancelling the old request while
+showing only the latest selection. No console errors were captured. Splitter
+behavior is retained from the existing panel and was not revalidated in this change.
+
+Historical file comparisons from the commit details panel now open in a scoped,
+resizable modal instead of a Content tab. The dialog reuses the existing diff
+renderer, supports unified/side-by-side presentation and change navigation, and
+closes with its owning pane/controller. Folder selection highlights the folder
+only while retaining its files as action targets. Inactive commit selections
+use gray; only the focused tree/list uses blue. Repository headings use normal
+font weight. Installed pointer validation confirmed these selection states and
+dialog opening without creating a workspace Diff tab. The dialog was closed
+before the subsequent mode-switch check, so that check remains unverified.

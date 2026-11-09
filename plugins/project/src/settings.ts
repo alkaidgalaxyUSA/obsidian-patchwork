@@ -10,17 +10,16 @@ export interface ProjectPreferences {
 }
 
 const defaults: ProjectPreferences = {
-    explorerFilesFirst: false, explorerCompact: false, explorerAppearance: "patchwork",
+    explorerFilesFirst: false, explorerCompact: false, explorerAppearance: "github",
     explorerOpenInNewTab: true, hideAttachmentFolders: true,
 };
-const appearances = new Set(["patchwork", "github", "border", "maple"]);
 
 function select(data: Record<string, unknown>): Partial<ProjectPreferences> {
     const result: Partial<ProjectPreferences> = {};
     for (const key of ["explorerFilesFirst", "explorerCompact", "explorerOpenInNewTab", "hideAttachmentFolders"] as const) {
         if (typeof data[key] === "boolean") result[key] = data[key];
     }
-    if (typeof data.explorerAppearance === "string" && appearances.has(data.explorerAppearance)) result.explorerAppearance = data.explorerAppearance;
+    result.explorerAppearance = "github";
     return result;
 }
 
@@ -36,6 +35,7 @@ export class ProjectSettings {
         });
         const preferences = { ...defaults, ...select(data) };
         this.baseline = { ...preferences };
+        if (data.explorerAppearance !== "github") await this.save(preferences);
         return preferences;
     }
 

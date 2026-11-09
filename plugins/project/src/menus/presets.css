@@ -1,23 +1,12 @@
-/* File-list adaptations of GitHub Theme (krios2146), Border (Akifyss), and
- * Maple (subframe7536). Upstream themes are MIT licensed; see root LICENSE.
- * These are curated presets, not global theme imports. */
+/* File-list adaptation of GitHub Theme (krios2146).
+ * MIT licensed; see root LICENSE. This is not a global theme import. */
 body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
     --pw-menu-folder-icon: url("../../../../icons/action-chevron-down.svg");
     --pw-menu-file-icon-content: none;
     --pw-menu-guide-width: 0px;
     --pw-menu-radius: 6px; --pw-menu-row: 30px; --pw-menu-indent: 14px;
 }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="border"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
-    --pw-menu-radius: 8px; --pw-menu-row: 32px; --pw-menu-indent: 16px;
-}
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="maple"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
-    --pw-menu-folder: #d0a31b;
-    --pw-menu-radius: 4px; --pw-menu-row: 32px; --pw-menu-indent: 16px;
-}
-body.theme-dark .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="maple"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
-    --pw-menu-folder: #dcb747;
-}
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
     /* Palette belongs to the application theme, not the menu preset. */
     --pw-menu-surface: var(--pw-left-panel-surface, var(--background-secondary));
     --pw-menu-text: var(--pw-explorer-text-color, var(--text-normal));
@@ -42,11 +31,11 @@ body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([
     background: var(--pw-menu-surface) !important;
     color: var(--pw-menu-text);
 }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-files-container:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] .nav-files-container:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
     padding: 4px 6px !important;
     background: var(--pw-menu-surface) !important;
 }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) :is(.nav-file-title, .nav-folder-title):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] :is(.nav-file-title, .nav-folder-title):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
     position: relative;
     box-sizing: border-box;
     height: var(--pw-menu-row) !important;
@@ -58,28 +47,28 @@ body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([
     box-shadow: none !important;
     background: transparent !important;
     color: var(--pw-menu-text) !important;
-    font-family: var(--font-interface);
+    font-family: "Microsoft YaHei UI", var(--font-interface);
     font-size: var(--nav-item-size) !important;
     font-weight: 400 !important;
     line-height: 22px !important;
     align-items: center;
 }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) :is(.nav-file-title, .nav-folder-title).has-focus:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] :is(.nav-file-title, .nav-folder-title).has-focus:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
     background: var(--pw-menu-active) !important;
 }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) :is(.nav-file-title, .nav-folder-title):is(.is-active, .is-selected):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] :is(.nav-file-title, .nav-folder-title):is(.is-active, .is-selected):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
     background: var(--pw-menu-active) !important;
     color: var(--pw-menu-active-text) !important;
-    font-weight: 500 !important;
+    font-weight: 400 !important;
 }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) :is(.nav-file-title-content, .nav-folder-title-content):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] :is(.nav-file-title-content, .nav-folder-title-content):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
     color: inherit !important;
     padding-left: 0 !important;
     line-height: inherit !important;
     top: 0;
 }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) :is(.nav-file-title, .nav-folder-title):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::after { content: none !important; }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-file-title:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::before {
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] :is(.nav-file-title, .nav-folder-title):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::after { content: none !important; }
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] .nav-file-title:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *))::before {
     content: var(--pw-menu-file-icon-content, "") !important;
     position: absolute;
     top: 50%;
@@ -89,19 +78,19 @@ body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([
     mask: url("../../../../icons/action-document.svg") center / contain no-repeat;
     opacity: 1;
 }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-folder .collapse-icon:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] .nav-folder .collapse-icon:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
     display: flex !important;
     margin-inline-start: -22px !important;
     color: var(--pw-menu-folder, var(--pw-menu-text)) !important;
 }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-folder .collapse-icon svg:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] .nav-folder .collapse-icon svg:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
     width: 17px !important; height: 17px !important;
     transform: none !important;
     translate: none !important;
     background: currentColor !important;
     mask: var(--pw-menu-folder-icon, url("../../../../icons/action-folder.svg")) center / contain no-repeat;
 }
-body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style]:not([data-pw-menu-style="patchwork"]) .nav-folder .collapse-icon svg > *:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display: none !important; }
+body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] .nav-folder .collapse-icon svg > *:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { display: none !important; }
 body .workspace-leaf-content[data-pw-module="project"][data-pw-menu-style="github"] .nav-folder .collapse-icon.is-collapsed svg:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) {
     transform: rotate(-90deg) !important;
 }

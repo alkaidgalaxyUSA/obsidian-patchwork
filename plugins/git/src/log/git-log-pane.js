@@ -5,6 +5,8 @@ import { iconName, setIcon } from "../utils/icons";
 import { scopeModule } from "../../../utils/module-scope";
 import { addHistoryCommitMenu } from "../history/menus";
 import { ChangedFiles } from "./changed-files";
+import { CommitDiffModal } from "./commit-diff-modal";
+import { openGitDialog } from "../utils/portals";
 import { readLog, layoutGraph, readCommit } from "./utils/git-log-data";
 import { PanelSplitter } from "../utils/panel-splitter";
 import { confirm, prompt } from "../dialogs";
@@ -12,6 +14,7 @@ import { topologicalCommits } from "../history/utils/graph-layout";
 import { renderRefIcon } from "./utils/ref-icon";
 import { readMyBranches } from "./utils/my-branches";
 import { isProtectedRemoteBranch } from "../utils/branch-protection";
+import { renderBranchSync } from "../ui/branch-sync";
 
 export class GitLogPane {
     constructor(controller, parent, rename, initialFilter) {
@@ -48,12 +51,12 @@ export class GitLogPane {
         this.button(this.rail, "Hide Git Branches", "chevron-left", hideBranches);
         this.rail.createDiv({ cls: "pw-git-log-rail-separator", attr: { role: "separator" } });
         this.button(this.rail, "New branch", "plus", () => this.action(controller => controller.newBranch()));
-        this.button(this.rail, "Update Selected", "branch-update", () => this.selectedBranchAction("update"));
+        this.button(this.rail, "Update", "branch-update", () => this.action(controller => controller.updateProject(this.el.ownerDocument)));
         this.button(this.rail, "Delete Branch", "delete", () => this.selectedBranchAction("delete"));
         this.button(this.rail, "Compare with Current", "git-show-diff", () => this.selectedBranchAction("compare"));
         this.myBranchesButton = this.button(this.rail, "Show My Branches", "search", () => this.showMyBranches());
         this.myBranchesButton.setAttribute("aria-pressed", "false");
-        this.button(this.rail, "Fetch", "branch-fetch", () => this.action(controller => controller.network("fetch")));
+        this.button(this.rail, "Fetch", "branch-fetch", () => this.action(controller => controller.network("fetch", undefined, undefined, this.el.ownerDocument)));
         this.button(this.rail, "Mark/Unmark as Favorite", "idea/expui/nodes/star_dark.svg", () => {
             const ref = this.selectedRef || "HEAD";
             if (this.favorites.has(ref)) this.favorites.delete(ref); else this.favorites.add(ref);
@@ -128,7 +131,7 @@ export class GitLogPane {
         this.stopHistory = this.history.onChange(changed);
         this.stopSnapshots = controller.snapshots.subscribe(snapshot => {
             this.updateBranchTools(); this.changedFiles.updateActions();
-            const signature = JSON.stringify([snapshot.ready, snapshot.branch, snapshot.error]);
+            const signature = JSON.stringify([snapshot.ready, snapshot.branch, snapshot.error, snapshot.sync]);
             if (signature === this.repositorySignature) return;
             this.repositorySignature = signature;
             changed();
@@ -234,6 +237,7 @@ export class GitLogPane {
 
     branchRows(parent, branches, prefix, remote, row, group, base = "") {
         const folders = new Map();
+        const nodes = [];
         for (const branch of branches) {
             const label = branch.slice(base.length);
             const slash = this.groupDirectories ? label.indexOf("/") : -1;
@@ -246,11 +250,16 @@ export class GitLogPane {
             const favorite = this.favorites.has(ref), current = !remote && branch === this.snapshot.current;
             const icon = current ? favorite ? "idea/dvcs/currentBranchFavoriteLabel_dark.svg" : "idea/dvcs/currentBranchLabel_dark.svg"
                 : favorite ? "idea/expui/nodes/star_dark.svg" : "git-branch-flipped";
-            row(parent, label, ref, icon, remote, branch);
+            nodes.push({ label, ref, icon, branch, weight: current ? 0 : favorite ? 1 : 4 });
         }
         for (const [name, refs] of folders) {
-            const folder = group(parent, name, prefix + base + name, true);
-            this.branchRows(folder, refs, prefix, remote, row, group, base + name + "/");
+            nodes.push({ label: name, refs, weight: refs.some(branch => this.favorites.has(prefix + branch)) ? 2 : 3 });
+        }
+        nodes.sort((left, right) => left.weight - right.weight || left.label.localeCompare(right.label));
+        for (const node of nodes) {
+            if (!node.refs) { row(parent, node.label, node.ref, node.icon, remote, node.branch); continue; }
+            const folder = group(parent, node.label, prefix + base + node.label, true);
+            this.branchRows(folder, node.refs, prefix, remote, row, group, base + node.label + "/");
         }
     }
 
@@ -265,7 +274,7 @@ export class GitLogPane {
         const states = [
             ["Show My Branches", true, "Requires an available repository."],
             ["New branch", !!this.controller.head, "Requires an existing commit."],
-            ["Update Selected", local && !!this.snapshot?.upstreams.get(this.selectedBranch), "Select a local branch with a configured upstream.", !hasRemotes],
+            ["Update", this.snapshot?.local.includes(this.snapshot?.current), "Check out a local branch before updating.", !hasRemotes],
             ["Delete Branch", valid && !current && !protectedRemote, protectedRemote ? "This remote branch is protected by repository Git settings." : "Select a branch other than the current local branch."],
             ["Compare with Current", valid && !current, "Select another branch."],
             ["Fetch", hasRemotes, "No remotes are configured.", !hasRemotes],
@@ -275,7 +284,7 @@ export class GitLogPane {
         for (const [label, enabled, reason, hidden = false] of states) {
             const button = this.rail.querySelector(`[aria-label="${label}"]`);
             if (!button) continue;
-            const operationBlocked = !!this.controller.operation && ["New branch", "Update Selected", "Delete Branch"].includes(label);
+            const operationBlocked = !!this.controller.operation && ["New branch", "Update", "Delete Branch"].includes(label);
             button.hidden = hidden; button.disabled = !available || !enabled || operationBlocked;
             button.title = !available ? "Git is busy or unavailable." : operationBlocked ? "Finish or abort the current Git operation first." : enabled ? label : reason;
         }
@@ -283,6 +292,9 @@ export class GitLogPane {
     }
 
     selectedBranchAction(id) {
+        if (id === "update" && this.snapshot && !this.selectedGroup && (!this.selectedRef || this.selectedRef === "HEAD")) {
+            return this.action(controller => controller.branchActions.run(id, this.snapshot.current, this.snapshot.current, false));
+        }
         if (!this.selectedBranch || !this.snapshot) return;
         return this.action(controller => controller.branchActions.run(id, this.selectedBranch, this.snapshot.current, this.selectedRemote));
     }
@@ -480,6 +492,10 @@ export class GitLogPane {
             button.createSpan({ text: label });
             button.classList.toggle("is-active", !this.selectedGroup && (this.selectedRef || "HEAD") === ref);
             button.dataset.ref = ref;
+            const current = !remote && ref === `refs/heads/${this.snapshot.current}`;
+            button.title = current ? `${branch} (Current branch)` : ref;
+            if (current) button.setAttribute("aria-current", "true");
+            if (!remote && ref.startsWith("refs/heads/")) renderBranchSync(button.createSpan({ cls: "pw-git-branch-sync" }), this.snapshot.sync?.get(branch));
             if (icon === "idea/expui/nodes/star_dark.svg") button.classList.add("pw-log-ref-marker");
             button.addEventListener("click", () => {
                 this.selectedRef = ref; this.selectedBranch = branch; this.selectedRemote = remote; this.selectedGroup = undefined;
@@ -511,11 +527,24 @@ export class GitLogPane {
             details.open = !!query || !collapsed.has(key);
             const summary = details.createEl("summary", { attr: { "data-group-key": key } });
             summary.classList.toggle("is-selected-group", this.selectedGroup === key);
-            summary.addEventListener("click", () => {
+            summary.addEventListener("click", event => {
+                event.preventDefault();
                 this.selectedGroup = key;
                 this.updateBranchTools();
                 for (const branch of this.tree.querySelectorAll(".pw-log-branch")) branch.classList.remove("is-active");
                 for (const other of this.tree.querySelectorAll("summary")) other.classList.toggle("is-selected-group", other === summary);
+            });
+            summary.addEventListener("dblclick", event => {
+                event.preventDefault(); event.stopPropagation();
+                details.open = !details.open;
+                summary.setAttribute("aria-expanded", String(details.open));
+            });
+            summary.setAttribute("aria-expanded", String(details.open));
+            summary.addEventListener("keydown", event => {
+                if (!["Enter", " ", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+                event.preventDefault(); event.stopPropagation();
+                details.open = event.key === "ArrowLeft" ? false : event.key === "ArrowRight" ? true : !details.open;
+                summary.setAttribute("aria-expanded", String(details.open));
             });
             setIcon(summary.createSpan({ cls: "pw-log-group-chevron", attr: { "aria-hidden": "true" } }), "chevron-right");
             if (folder) setIcon(summary.createSpan({ cls: key.startsWith("remote/") ? "pw-log-remote-icon" : "", attr: { "aria-hidden": "true" } }), "folder");
@@ -657,6 +686,7 @@ export class GitLogPane {
     }
 
     clearSelection() {
+        this.detailsRequest?.abort();
         ++this.selectionRevision;
         this.selected = undefined;
         this.selectedHashes.clear();
@@ -667,6 +697,8 @@ export class GitLogPane {
 
     async selectCommit(commit, event = {}) {
         if (this.disposed) return;
+        this.detailsRequest?.abort();
+        const request = this.detailsRequest = new AbortController();
         const revision = ++this.selectionRevision;
         if (!event.preserve) {
             if (event.shiftKey && this.selectionAnchor) {
@@ -684,7 +716,7 @@ export class GitLogPane {
             row.classList.toggle("is-selected", active);
             row.setAttribute("aria-selected", String(active));
         }
-        if (this.changedFiles.commit?.hash !== commit.hash) this.changedFiles.clear("");
+        this.changedFiles.clear("Loading changed files…", true);
         this.details.empty();
         if (this.selectedHashes.size !== 1) {
             this.changedFiles.clear(`${this.selectedHashes.size} commits selected`);
@@ -693,8 +725,8 @@ export class GitLogPane {
             return;
         }
         try {
-            const detail = await readCommit(this.history, commit);
-            if (this.disposed || revision !== this.selectionRevision || this.repositoryRoot !== this.controller.repository.root) return;
+            const detail = await readCommit(this.history, commit, request.signal);
+            if (this.disposed || !this.el.isConnected || request.signal.aborted || revision !== this.selectionRevision || this.repositoryRoot !== this.controller.repository.root) return;
             this.changedFiles.setCommit(commit, detail.files);
             const message = this.details.createDiv({ cls: "pw-log-message" });
             for (const part of detail.message.split(/(https?:\/\/[^\s<>]+)/g)) {
@@ -724,26 +756,35 @@ export class GitLogPane {
                 button.onclick = () => this.selectRef(branch, branch);
             }
             if (!detail.branches.length) branches.appendText("None");
-        } catch (error) { if (!this.disposed && revision === this.selectionRevision) this.changedFiles.clear(error.message); }
+        } catch (error) { if (!request.signal.aborted && !this.disposed && revision === this.selectionRevision) this.changedFiles.clear(error.message); }
     }
 
     async openDiff(commit, file) {
+        const revision = this.diffRevision = (this.diffRevision || 0) + 1;
+        const root = this.controller.repository.root;
         try {
             const files = Array.isArray(file) ? file : [file];
             const path = files.length === 1 ? files[0].path : `${files.length} files`;
-            const text = await this.history.git.diffCommitAgainstParent(commit.hash, [...new Set(files.flatMap(file => [file.original, file.path].filter(Boolean)))]);
-            if (this.disposed || this.controller.disposed || !this.el.isConnected) return;
+            const groups = new Map();
+            for (const file of files) {
+                const parent = file.parentHash || commit.parents[0];
+                if (!groups.has(parent)) groups.set(parent, []);
+                groups.get(parent).push(file);
+            }
+            const patches = await Promise.all([...groups].map(async ([parent, entries]) => {
+                const paths = [...new Set(entries.flatMap(file => [file.original, file.path].filter(Boolean)))];
+                const patch = parent ? await this.history.git.diffCommit(parent, commit.hash, paths)
+                    : await this.history.git.diffCommitAgainstParent(commit.hash, paths);
+                return groups.size > 1 ? `Changes against parent ${parent}\n${patch}` : patch;
+            }));
+            const text = patches.join("\n");
+            const parsed = await this.history.git.parseDiff(text);
+            if (this.disposed || this.controller.disposed || !this.el.isConnected || revision !== this.diffRevision || root !== this.controller.repository.root) return;
             const doc = this.el.ownerDocument;
-            const anchors = [];
-            this.app.workspace.iterateAllLeaves(leaf => {
-                if (leaf.view.containerEl.ownerDocument === doc && leaf.view.containerEl.closest(".mod-root")) anchors.push(leaf);
-            });
-            const anchor = anchors.sort((left, right) => (right.activeTime ?? 0) - (left.activeTime ?? 0))[0];
-            if (anchor) this.app.workspace.setActiveLeaf(anchor, { focus: false });
-            else if (doc !== this.app.workspace.containerEl.ownerDocument) throw new Error("This window has no document group for Git Diff.");
-            const leaf = this.app.workspace.getLeaf("tab");
-            if (leaf.view.containerEl.ownerDocument !== doc) throw new Error("Git Diff is unavailable in this window.");
-            await leaf.setViewState({ type: "patchwork-git-diff", state: { title: `${path} @ ${commit.hash.slice(0, 8)}`, text: text || "No textual changes (the file may be binary).", paths: files.map(file => file.path), revision: commit.hash }, active: true });
+            this.diffModal?.close();
+            this.diffModal = new CommitDiffModal(this.app, doc, `${path} @ ${commit.hash.slice(0, 8)}`,
+                text || "No textual changes (the file may be binary).", parsed, this.controller.plugin.settingsStore.preferences.diffMode);
+            openGitDialog(this.controller, this.diffModal);
         } catch (error) { if (!this.disposed) new Notice(error.message); }
     }
 
@@ -852,6 +893,8 @@ export class GitLogPane {
         }));
     }
     dispose() {
+        this.diffModal?.close();
+        this.detailsRequest?.abort();
         this.disposed = true; this.myBranchesRequest?.abort(); ++this.revision; ++this.selectionRevision; clearTimeout(this.timer);
         if (this.rowFrame !== undefined) this.el.ownerDocument.defaultView.cancelAnimationFrame(this.rowFrame);
         this.resizeObserver?.disconnect(); this.stopHistory?.(); this.stopSnapshots?.();

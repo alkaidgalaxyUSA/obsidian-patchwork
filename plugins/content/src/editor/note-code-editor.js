@@ -318,7 +318,9 @@ class NoteCodeEditor {
             select("theme", "Code theme");
         }
         separator();
-        button("run", "Run", "code-run").hidden = true;
+        const run = button("run", "Run", "code-run");
+        run.append(doc.createTextNode("Run"));
+        run.hidden = true;
         separator();
         const copy = button("copy", "Copy code", "copy");
         copy.classList.add("pw-code-copy");

@@ -14,7 +14,8 @@ export function buildGitFileActions(controller, paths, validate = () => {}) {
         separator = false;
     };
     action("Commit File...", "git-commit-horizontal", () => controller.openSelection(paths));
-    action("Add", "plus", () => files.add(), !controller.entries.some(entry => files.includes(entry.path) && (entry.untracked || entry.code[1] !== " ")));
+    action("Add", "plus", () => files.add());
+    actions[actions.length - 1].disabledReason = undefined;
     separator = true;
     action("Annotate with Git Blame", "list", () => files.blame(), paths.length !== 1 || !controller.sourceFile(paths[0])?.extension);
     action("Show Diff", "git-show-diff", () => controller.showDiff(paths));

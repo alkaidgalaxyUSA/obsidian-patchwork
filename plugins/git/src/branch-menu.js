@@ -40,7 +40,7 @@ export function addBranchMenu(menu, controller, snapshot, ref, remote, run = act
     menu.addSeparator();
     add("worktree", `New Worktree from '${ref}'...`);
     menu.addSeparator();
-    add("update", "Update", !snapshot.upstreams.get(ref));
+    if (snapshot.remotes.length) add("update", "Update");
     add("push", "Push...");
     const tracking = snapshot.upstreams.get(ref);
     if (tracking) menu.addItem(item => {

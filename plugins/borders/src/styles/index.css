@@ -4,6 +4,7 @@
 @import "../left/left-ribbon-states.css";
 @import "../right/styles.css";
 @import "../bottom/styles.css";
+@import "../bottom/background-progress.css";
 @import "../layout/workspace-cards.css";
 @import "../left/icon-alignment.css";
 @import "../layout/native-resize.css";
