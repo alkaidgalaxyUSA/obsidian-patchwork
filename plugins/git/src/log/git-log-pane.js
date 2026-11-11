@@ -5,7 +5,6 @@ import { iconName, setIcon } from "../utils/icons";
 import { scopeModule } from "../../../utils/module-scope";
 import { addHistoryCommitMenu } from "../history/menus";
 import { ChangedFiles } from "./changed-files";
-import { CommitDiffModal } from "./commit-diff-modal";
 import { openGitDialog } from "../utils/portals";
 import { readLog, layoutGraph, readCommit } from "./utils/git-log-data";
 import { PanelSplitter } from "../utils/panel-splitter";
@@ -15,6 +14,7 @@ import { renderRefIcon } from "./utils/ref-icon";
 import { readMyBranches } from "./utils/my-branches";
 import { isProtectedRemoteBranch } from "../utils/branch-protection";
 import { renderBranchSync } from "../ui/branch-sync";
+import { branchFolder } from "../utils/branch-tree-model";
 
 export class GitLogPane {
     constructor(controller, parent, rename, initialFilter) {
@@ -202,7 +202,8 @@ export class GitLogPane {
         const menu = this.createMenu();
         const mapping = { author: [this.author, this.authorButton, "User"], since: [this.date, this.dateButton, "Date"], path: [this.path, this.pathButton, "Paths"] };
         const [state, button, label] = mapping[key];
-        const choose = (title, value) => menu.addItem(item => item.setTitle(title).setChecked(state.value === value).onClick(() => {
+        menu.dom.classList.add("pw-log-value-menu");
+        const choose = (title, value) => menu.addItem(item => item.setTitle(title).onClick(() => {
             if (key === "path") this.filter.paths = undefined;
             state.value = value; this.setFilterText(button, `${label}${value ? ": " + title : ""}`); void this.refresh();
         }));
@@ -210,12 +211,6 @@ export class GitLogPane {
         if (key === "since") {
             for (const [title, value] of [["Last day", "1 day ago"], ["Last week", "1 week ago"], ["Last month", "1 month ago"], ["Last year", "1 year ago"]]) choose(title, value);
         } else {
-            const input = menu.dom.createEl("input", { cls: "pw-log-menu-search", type: "search", placeholder: key === "path" ? "Repository path (Enter to apply)" : "User (Enter to apply)", attr: { "aria-label": label } });
-            menu.dom.prepend(input);
-            input.addEventListener("keydown", event => {
-                event.stopPropagation();
-                if (event.key === "Enter") { if (key === "path") this.filter.paths = undefined; state.value = input.value.trim(); this.setFilterText(button, `${label}${state.value ? ": " + state.value : ""}`); menu.hide(); void this.refresh(); }
-            });
             let choices = [];
             if (key === "author") choices = [...new Set((this.commits ?? []).map(commit => commit.author))];
 
@@ -226,10 +221,7 @@ export class GitLogPane {
                 choices = [...new Set(choices.flatMap(path => { const parts = path.split("/"); return parts.length > 1 ? [parts.slice(0, -1).join("/"), path] : [path]; }))];
             }
             for (const value of choices.sort()) choose(value, value);
-            input.addEventListener("input", () => {
-                const query = input.value.toLowerCase();
-                for (const row of menu.dom.querySelectorAll(".menu-item")) row.hidden = !!query && !row.textContent.toLowerCase().includes(query);
-            });
+
         }
         if (this.disposed) { menu.hide(); return; }
         this.showFilter(menu, anchor);
@@ -240,9 +232,9 @@ export class GitLogPane {
         const nodes = [];
         for (const branch of branches) {
             const label = branch.slice(base.length);
-            const slash = this.groupDirectories ? label.indexOf("/") : -1;
-            if (slash >= 0) {
-                const name = label.slice(0, slash);
+            const folder = branchFolder(label, this.groupDirectories);
+            if (folder) {
+                const name = folder.name;
                 if (!folders.has(name)) folders.set(name, []);
                 folders.get(name).push(branch); continue;
             }
@@ -778,13 +770,10 @@ export class GitLogPane {
                 return groups.size > 1 ? `Changes against parent ${parent}\n${patch}` : patch;
             }));
             const text = patches.join("\n");
-            const parsed = await this.history.git.parseDiff(text);
             if (this.disposed || this.controller.disposed || !this.el.isConnected || revision !== this.diffRevision || root !== this.controller.repository.root) return;
             const doc = this.el.ownerDocument;
-            this.diffModal?.close();
-            this.diffModal = new CommitDiffModal(this.app, doc, `${path} @ ${commit.hash.slice(0, 8)}`,
-                text || "No textual changes (the file may be binary).", parsed, this.controller.plugin.settingsStore.preferences.diffMode);
-            openGitDialog(this.controller, this.diffModal);
+            await this.controller.openDiffText(text || "No textual changes (the file may be binary).", `${path} @ ${commit.hash.slice(0, 8)}`, doc,
+                { historical: true, revision: commit.hash });
         } catch (error) { if (!this.disposed) new Notice(error.message); }
     }
 

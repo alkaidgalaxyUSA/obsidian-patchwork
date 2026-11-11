@@ -16,6 +16,7 @@ import { GitOperations } from "./operations";
 import { currentUpdateTarget, updateCurrentBranch } from "./utils/update-branch.js";
 import { GitNetworkModal } from "./network-modal";
 import { GitCompareModal } from "./compare-modal";
+import { GitDiffModal } from "./diff-modal";
 import { GitConflictModal } from "./conflict-modal";
 import { GitStashModal } from "./stash-modal";
 import { GitWorktreeModal } from "./worktree-modal";
@@ -518,18 +519,12 @@ export class GitController {
 
     compare(left = "HEAD", right = "", paths = []) { openGitDialog(this, new GitCompareModal(this, left, right, paths)); }
 
-    async openDiffText(text, title, document = this.app.workspace.containerEl.ownerDocument) {
+    async openDiffText(text, title, document = this.app.workspace.containerEl.ownerDocument, options = {}) {
         if (this.disposed || !document.defaultView || text === undefined) return;
-        const anchors = [];
-        this.app.workspace.iterateAllLeaves(leaf => { if (leaf.view.containerEl.ownerDocument === document && leaf.view.containerEl.closest(".mod-root")) anchors.push(leaf); });
-        const anchor = anchors.sort((a, b) => (b.activeTime ?? 0) - (a.activeTime ?? 0))[0];
-        if (!anchor && document !== this.app.workspace.containerEl.ownerDocument) throw new Error("The invoking document group is unavailable.");
-        if (anchor) this.app.workspace.setActiveLeaf(anchor, { focus: false });
-        const leaf = this.app.workspace.getLeaf("tab");
-        if (leaf.view.containerEl.ownerDocument !== document) { leaf.detach(); throw new Error("The invoking window is unavailable."); }
-        await leaf.setViewState({ type: DIFF_VIEW, active: true, state: { title, text, mode: "split", comparison: "revision" } });
+        if (document !== this.app.workspace.containerEl.ownerDocument) throw new Error("The invoking window is unavailable.");
+        const files = await this.plugin.history.git.parseDiff(text);
         if (this.disposed || !document.defaultView) return;
-        await this.app.workspace.revealLeaf(leaf);
+        openGitDialog(this, new GitDiffModal(this, document, title, text, files, options));
     }
 
     async openHistory(paths, document = this.app.workspace.containerEl.ownerDocument) {

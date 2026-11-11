@@ -427,6 +427,8 @@ export class GitService {
   private parseLog(raw: string): CommitInfo[] {
     const fields = raw.split("\0");
     const commits: CommitInfo[] = [];
+    // The leading NUL leaves an empty element at index 0. Each subsequent
+    // commit contributes ten fields: nine metadata fields and its shortstat.
     for (let index = 1; index + 8 < fields.length; index += 10) {
       const [hash, shortHash, parents, message, body, author, authorEmail, date, refs] = fields.slice(index, index + 9);
       if (!/^[a-f\d]{40,64}$/.test(hash)) continue;

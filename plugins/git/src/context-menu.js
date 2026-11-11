@@ -1,10 +1,11 @@
 import { FileContextActions } from "./file-context-actions";
 import { renderFileActions } from "../../utils/file-menu-actions";
+import { GIT_ACTIONS } from "./utils/git-action-definitions";
 
 /** Git owns action semantics; hosts control only their root menu ordering. */
 export function buildGitFileActions(controller, paths, validate = () => {}) {
     const files = new FileContextActions(controller, paths);
-    const visibleIcons = new Set(["Add", "Show Diff", "Show History", "Rollback…", "Push…", "Fetch", "Merge...", "Branches...", "New Branch..."]);
+    const visibleIcons = new Set(["Add", GIT_ACTIONS.showDiff.title, GIT_ACTIONS.showHistory.title, GIT_ACTIONS.rollback.title, "Push…", "Fetch", "Merge...", "Branches...", "New Branch..."]);
     const actions = [];
     let separator = false;
     const action = (title, icon, callback, disabled = false) => {
@@ -13,18 +14,18 @@ export function buildGitFileActions(controller, paths, validate = () => {}) {
             run: async () => { validate(); await callback(); } });
         separator = false;
     };
-    action("Commit File...", "git-commit-horizontal", () => controller.openSelection(paths));
+    action(GIT_ACTIONS.commitFile.title, GIT_ACTIONS.commitFile.icon, () => controller.openSelection(paths));
     action("Add", "plus", () => files.add());
     actions[actions.length - 1].disabledReason = undefined;
     separator = true;
     action("Annotate with Git Blame", "list", () => files.blame(), paths.length !== 1 || !controller.sourceFile(paths[0])?.extension);
-    action("Show Diff", "git-show-diff", () => controller.showDiff(paths));
-    action("Compare with Revision...", "git-show-diff", () => files.compare("Compare with Revision"));
+    action(GIT_ACTIONS.showDiff.title, GIT_ACTIONS.showDiff.icon, () => controller.showDiff(paths));
+    action(GIT_ACTIONS.compareRevision.title, GIT_ACTIONS.compareRevision.icon, () => files.compare("Compare with Revision"));
     action("Compare with Branch or Tag...", "git-branch", () => files.compare("Compare with Branch or Tag"));
-    action("Show History", "history", () => controller.showHistory(paths));
+    action(GIT_ACTIONS.showHistory.title, GIT_ACTIONS.showHistory.icon, () => controller.showHistory(paths));
     action("Show Current Revision", "git-commit", () => files.output("Current Revision", paths.length === 1 && controller.sourceFile(paths[0])?.extension
         ? ["show", `HEAD:${paths[0]}`] : ["log", "-1", "--format=fuller", "--stat", "--", ...paths]));
-    action("Rollback…", "git-rollback", () => controller.rollback(paths));
+    action(GIT_ACTIONS.rollback.title, GIT_ACTIONS.rollback.icon, () => controller.rollback(paths));
     separator = true;
     action("Push…", "idea-expui-vcs-push_dark.svg", () => controller.network("push"));
     action("Pull…", "arrow-down-left", () => controller.network("pull"));

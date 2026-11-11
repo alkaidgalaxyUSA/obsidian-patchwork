@@ -280,7 +280,6 @@ export class CommitView extends ItemView {
             content.createSpan({ cls: "pw-git-file-origin", text: origin, attr: { title: origin } });
         }
         if (this.showPaths) content.createSpan({ cls: "pw-git-file-path", text: path });
-        if (!stage && entry.staged && !entry.conflict) content.createSpan({ cls: "pw-git-stage-label", text: entry.code[1] !== " " ? "Partly staged" : "Staged" });
         row.setAttribute("aria-description", `${entry.original ? `${entry.original} → ` : ""}${entry.path} (${entry.code})`);
         row.onclick = event => {
             if (event.target.closest("input")) return;
