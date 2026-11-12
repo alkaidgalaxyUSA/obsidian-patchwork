@@ -95,6 +95,10 @@ body.theme-dark .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw
   --patchwork-note-surface: #202020;
   --patchwork-note-code: #001628;
   --patchwork-note-code-text: #d6deeb;
+  --blockquote-border-color: #33353B;
+  --hr-color: #33353B;
+  --table-border-color: #33353B;
+  --table-header-border-color: var(--table-border-color);
 }
 
 body .mod-root .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) :is(.markdown-source-view, .markdown-preview-view):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {

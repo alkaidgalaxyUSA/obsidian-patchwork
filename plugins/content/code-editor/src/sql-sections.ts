@@ -13,6 +13,16 @@ const sqlSectionsField = StateField.define<readonly SqlSection[]>({
 });
 
 const hoverSqlSection = StateEffect.define<number | undefined>();
+const selectSqlSection = StateEffect.define<boolean>();
+const selectedSectionField = StateField.define<boolean>({
+	create: () => false,
+	update: (selected, transaction) => {
+		for (const effect of transaction.effects) {
+			if (effect.is(selectSqlSection)) return effect.value;
+		}
+		return transaction.docChanged || transaction.selection ? false : selected;
+	},
+});
 const hoveredSectionField = StateField.define<number | undefined>({
 	create: () => undefined,
 	update: (position, transaction) => {
@@ -70,6 +80,18 @@ export async function copySqlSelectionOrSection(view: EditorView): Promise<void>
 
 function sectionDecorations(view: EditorView) {
 	const decorations: Range<Decoration>[] = [];
+	if (view.state.field(selectedSectionField)) {
+		const selection = view.state.selection.main;
+		for (const range of view.visibleRanges) {
+			const from = Math.max(range.from, selection.from);
+			const to = Math.min(range.to, selection.to - 1);
+			if (from > to) continue;
+			for (let number = view.state.doc.lineAt(from).number; number <= view.state.doc.lineAt(to).number; number++) {
+				decorations.push(Decoration.line({ class: "ce-sql-section-selected" }).range(view.state.doc.line(number).from));
+			}
+		}
+		return Decoration.set(decorations, true);
+	}
 	const hovered = view.state.field(hoveredSectionField);
 	for (const section of view.state.field(sqlSectionsField)) {
 		if (section.from === hovered) {
@@ -95,7 +117,7 @@ function sectionDecorations(view: EditorView) {
 const sqlSectionControls = ViewPlugin.define(view => ({
 	decorations: sectionDecorations(view),
 	update(update) {
-		if (update.docChanged || update.viewportChanged ||
+		if (update.docChanged || update.viewportChanged || update.selectionSet ||
 			update.startState.field(hoveredSectionField) !== update.state.field(hoveredSectionField)) {
 			this.decorations = sectionDecorations(update.view);
 		}
@@ -106,13 +128,13 @@ const sqlSectionControls = ViewPlugin.define(view => ({
 		contextmenu(event, view) {
 			const section = sectionAtEvent(view, event);
 			if (!section) return false;
-			// Select the group for the host's native Copy action. Do not replace,
-			// cancel or reorder the native context menu and its other actions.
+			// Select the group before the editor context menu handles Copy or Cut.
 			const text = sqlSectionText(view.state.doc, section);
 			const from = section.bodyFrom + view.state.sliceDoc(section.bodyFrom, section.to).indexOf(text);
+			const end = from + (text.trim() ? text.length : 0);
 			view.dispatch({
-				selection: { anchor: from, head: from + (text.trim() ? text.length : 0) },
-				effects: hoverSqlSection.of(section.from),
+				selection: { anchor: from, head: end },
+				effects: [hoverSqlSection.of(section.from), selectSqlSection.of(!!text.trim())],
 			});
 			view.focus();
 			return false;
@@ -127,4 +149,9 @@ const sqlSectionControls = ViewPlugin.define(view => ({
 	},
 });
 
-export const sqlSectionExtensions = [sqlSectionsField, hoveredSectionField, sqlSectionControls];
+export const sqlSectionExtensions = [sqlSectionsField, hoveredSectionField, selectedSectionField, sqlSectionControls,
+	EditorView.editorAttributes.compute([selectedSectionField, sqlSectionsField], state => ({
+		class: [state.field(sqlSectionsField).length ? "ce-sql-sections" : "",
+			state.field(selectedSectionField) ? "ce-sql-group-selected" : ""].filter(Boolean).join(" "),
+	})),
+];

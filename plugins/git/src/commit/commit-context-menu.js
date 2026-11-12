@@ -2,6 +2,7 @@ import { iconName } from "../utils/icons";
 import { scopeGitMenu } from "../utils/portals";
 import { addGitMenu } from "../context-menu";
 import { CommitFileActions } from "./file-actions";
+import { GIT_ACTIONS } from "../utils/git-action-definitions";
 
 /** Commit-specific actions stay at the first level of the menu. */
 export function addCommitMenu(menu, controller, paths, changelistId, stage) {
@@ -16,12 +17,12 @@ export function addCommitMenu(menu, controller, paths, changelistId, stage) {
         item.setTitle(title).setDisabled(unavailable || disabled).onClick(() => void callback());
         if (icon) item.setIcon(iconName(icon));
     });
-    action("Commit File...", null, () => controller.openSelection(paths), !entries.length || entries.some(entry => entry.conflict));
+    action(GIT_ACTIONS.commitFile.title, null, () => controller.openSelection(paths), !entries.length || entries.some(entry => entry.conflict));
     if (controller.commitMode === "staged") action("Stage Selected", "plus", () => controller.stageSelection(paths), stage === "staged" || !entries.some(entry => entry.untracked || entry.code[1] !== " ") || entries.some(entry => entry.conflict));
     if (controller.commitMode === "staged") action("Unstage Selected", "idea/expui/general/remove_dark.svg", () => controller.stageSelection(paths, true), stage === "unstaged" || !entries.some(entry => entry.staged) || entries.some(entry => entry.conflict));
-    action("Rollback...", "git-rollback", () => controller.rollback(paths), !tracked.length || tracked.some(entry => entry.conflict || entry.original || entry.code.includes("A")));
+    action(GIT_ACTIONS.rollback.title, GIT_ACTIONS.rollback.icon, () => controller.rollback(paths), !tracked.length || tracked.some(entry => entry.conflict || entry.original || entry.code.includes("A")));
     action("Move to Another Changelist...", null, () => controller.moveToChangelist(tracked.map(entry => entry.path)), !tracked.length);
-    action("Show Diff", "git-show-diff", () => controller.showDiff(paths, false, stage), !entries.length);
+    action(GIT_ACTIONS.showDiff.title, GIT_ACTIONS.showDiff.icon, () => controller.showDiff(paths, false, stage), !entries.length);
     action("Show Diff in a New Window", "git-show-diff", () => controller.showDiff(paths, "window", stage), !entries.length);
     action("Jump to Source", "idea/expui/general/edit_dark.svg", () => files.open(), paths.length !== 1 || !files.existing(paths[0]));
     action("Copy Path/Reference...", null, () => files.copy(), !paths.length);

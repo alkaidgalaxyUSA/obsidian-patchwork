@@ -186,6 +186,10 @@
   },
   "active": "7d3f9fa4cb4f7380",
   "lastOpenFiles": [
+    "plugins/git/src/commit/COMMIT_OPTIONS.md",
+    "plugins/git/styles/commit-options.css",
+    "plugins/git/src/commit/commit-options-popup.js",
+    "plugins/git/src/utils/commit-options.js",
     "themes/Patchwork/README.md",
     "themes/Patchwork/baseline.png",
     "AGENTS.md"

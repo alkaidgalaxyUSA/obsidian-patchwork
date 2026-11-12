@@ -17,7 +17,7 @@ export class GitHeaderActions {
         if (this.controller.disposed) return;
         if (["open-commit", "create-branch", "init-repo"].includes(id) && !this.mainWindow()) return;
         const actions = {
-            pull: () => this.controller.network("pull"),
+            pull: () => this.controller.network("pull", undefined, undefined, this.document),
             "open-commit": () => this.controller.open(),
             push: () => this.controller.network("push"),
             "create-branch": () => this.controller.newBranch(),
@@ -28,7 +28,7 @@ export class GitHeaderActions {
         }).catch(error => new Notice(error.message));
     }
 
-    fetch() { return this.ready ? this.controller.network("fetch") : Promise.reject(new Error("Git is not ready.")); }
+    fetch() { return this.ready ? this.controller.network("fetch", undefined, undefined, this.document) : Promise.reject(new Error("Git is not ready.")); }
     mainWindow() {
         if (this.document === this.controller.app.workspace.containerEl.ownerDocument) return true;
         new Notice("This Git action is unavailable in this window."); return false;

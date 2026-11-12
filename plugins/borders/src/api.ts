@@ -4,6 +4,12 @@ import { BordersRuntime } from "./runtime";
 export function createBordersApi(runtime: BordersRuntime): BordersApi {
     return {
         version: 1,
+        progress: {
+            version: 1,
+            start: options => runtime.startProgress(options),
+            getTasks: context => runtime.progress.getTasks(context),
+            subscribe: (context, listener) => runtime.progress.subscribe(context, listener),
+        },
         registerPanel: definition => runtime.registerPanel(definition),
         registerHeader: contribution => runtime.registerHeader(contribution),
         registerSettings: contribution => runtime.registerSettings(contribution),

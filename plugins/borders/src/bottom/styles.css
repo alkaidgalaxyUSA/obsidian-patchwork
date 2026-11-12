@@ -27,11 +27,13 @@ body.pw-document-footer-enabled .status-bar :is(.status-bar-item, .pw-status-pat
     -webkit-text-fill-color: rgb(from currentColor calc(r * 0.7 * var(--pw-borders-focus-gain, 1)) calc(g * 0.7 * var(--pw-borders-focus-gain, 1)) calc(b * 0.7 * var(--pw-borders-focus-gain, 1)) / alpha);
 }
 body.pw-document-footer-enabled .status-bar > .plugin-editor-status { display: none; }
+/* The header already provides the branch selector; keep the separate Git status icon. */
+body.pw-document-footer-enabled .status-bar > .plugin-obsidian-git.mod-clickable { display: none; }
 body.pw-document-footer-enabled .status-bar > .pw-status-path {
     display: flex;
     margin-left: 10px;
     flex: 1 1 0;
-    order: -1;
+    order: -2;
     min-width: 0;
     align-items: center;
     gap: 6px;

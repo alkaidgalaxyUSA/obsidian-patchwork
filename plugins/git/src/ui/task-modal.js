@@ -62,9 +62,9 @@ export class GitTaskModal extends Modal {
             }
         }
     }
-    async change(action) {
+    async change(action, title = this.titleEl.textContent, options = {}) {
         this.validate();
-        return this.controller.act(async () => { this.validate(); return action(); }, true);
+        return this.controller.act(async () => { this.validate(); return action(); }, true, { title: `Git: ${title}`, document: this.context.document, ...options });
     }
     onClose() { this.closed = true; this.controls = []; }
 }

@@ -4,9 +4,11 @@ import { iconName, setIcon } from "../utils/icons";
 import { GitHeaderActions } from "./actions";
 import { scopeModule } from "../../../utils/module-scope";
 import { GitPopupResize } from "../utils/popup-resize";
+import { renderBranchSync } from "../ui/branch-sync";
+import { branchLabel, branchFolder, groupRemoteBranches } from "../utils/branch-tree-model";
 
 const ACTIONS = [
-    ["pull", "Update Project…", "arrow-down-left"],
+    ["pull", "Update", "arrow-down-left"],
     ["open-commit", "Commit…", "git-commit"],
     ["push", "Push…", "arrow-up-right"],
 ];
@@ -218,10 +220,10 @@ export class GitPopup {
         const rank = ref => !remote && ref === this.data.current ? 0 : favorites.has(`${remote ? "refs/remotes/" : "refs/heads/"}${ref}`) ? 1 : 2;
         const sorted = group === "Recent" ? refs : [...refs].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
         for (const ref of sorted) {
-            const label = ref.slice(base.length + prefix.length);
-            const slash = this.options.groupByPrefix ? label.indexOf("/") : -1;
-            if (slash >= 0) {
-                const name = label.slice(0, slash);
+            const label = branchLabel(ref, base, prefix);
+            const folder = branchFolder(label, this.options.groupByPrefix);
+            if (folder) {
+                const name = folder.name;
                 if (!folders.has(name)) folders.set(name, []);
                 folders.get(name).push(ref);
                 continue;
@@ -249,9 +251,7 @@ export class GitPopup {
 
     remoteGroups(branches, searching) {
         const names = this.data.remotes ?? [...new Set(branches.map(ref => ref.split("/")[0]))];
-        for (const name of names) {
-            const refs = branches.filter(ref => ref.startsWith(`${name}/`));
-            if (searching && !refs.length) continue;
+        for (const { remote: name, refs } of groupRemoteBranches(branches, names)) {
             const expanded = searching || !this.collapsedRemotes.has(name);
             const folder = this.row(name, expanded ? "chevron-down" : "chevron-right", () => {
                 if (this.collapsedRemotes.has(name)) this.collapsedRemotes.delete(name);
@@ -286,6 +286,7 @@ export class GitPopup {
         if (current) {
             button.setAttribute("aria-current", "true");
         }
+        if (!remote) renderBranchSync(button.createSpan({ cls: "pw-git-branch-sync" }), this.data.sync?.get(ref));
         const tracking = !remote && this.data.upstreams.get(ref);
         if (tracking) button.createSpan({ cls: "pw-git-row-detail", text: tracking });
         setIcon(button.createSpan({ cls: "pw-git-branch-more" }), "chevron-right");

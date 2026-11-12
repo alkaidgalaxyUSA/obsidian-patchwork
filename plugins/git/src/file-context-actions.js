@@ -24,10 +24,11 @@ export class FileContextActions {
     }
 
     add() {
+        if (!this.controller.ready || this.controller.disposed) return;
         return this.controller.act(async () => {
             const entries = await this.repository.status();
             const paths = entries.filter(entry => this.includes(entry.path) && (entry.untracked || entry.code[1] !== " ")).map(entry => entry.path);
-            if (!paths.length) throw new Error("No unstaged changes in the selected files.");
+            if (!paths.length) return;
             await this.repository.stage(paths);
         });
     }

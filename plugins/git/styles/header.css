@@ -1,3 +1,8 @@
+body [data-pw-module="git"] .pw-git-branch-sync:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display:inline-flex; align-items:center; gap:5px; flex-shrink:0; margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; }
+body [data-pw-module="git"] .pw-git-branch-sync[hidden]:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display:none !important; }
+body [data-pw-module="git"] .pw-git-branch-sync span:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { display:inline-flex; align-items:center; gap:1px; }
+body [data-pw-module="git"] .pw-git-sync-outgoing:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { color:var(--color-blue, #6C95EB); }
+body [data-pw-module="git"] .pw-git-sync-incoming:not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) { color:var(--color-green, #73BD79); }
 body .pw-vault-git:where([data-pw-module="git"], [data-pw-module="git"] *):not(:where([data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]), [data-pw-module="git"] [data-pw-module]:not([data-pw-module="git"]) *)) {
     font-family: "Microsoft YaHei UI", var(--font-interface);
     font-weight: 400;

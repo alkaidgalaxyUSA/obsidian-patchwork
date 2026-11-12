@@ -235,3 +235,7 @@ body .pw-document-options-menu .menu-separator:where([data-pw-module="content"],
     overflow-wrap: normal;
     word-break: normal;
 }
+
+/* Tab context menus share the configured IDEA UI typography. */
+body .pw-document-tab-context-menu[data-pw-module="content"]:not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)),
+body .pw-document-tab-context-menu[data-pw-module="content"] :is(.menu-item, .menu-item-title, .menu-item-shortcut):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { font-family:"Microsoft YaHei UI", var(--font-interface); font-size:12px; font-weight:400; }

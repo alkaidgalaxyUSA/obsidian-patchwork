@@ -32,7 +32,7 @@ export class GitCloneModal extends GitTaskModal {
         this.cancellation = new AbortController();
         this.status.setText("Cloning… Cancel remains available. Large repositories may take several minutes.");
         try {
-            await this.change(() => this.repo.run(["clone", ...(branch ? ["--branch", branch] : []), ...(depth ? ["--depth", depth] : []), ...(this.submodules.value === "yes" ? ["--recurse-submodules"] : []), "--", url, directory], { signal: this.cancellation.signal, timeout: 600000 }));
+            await this.change(() => this.repo.run(["clone", ...(branch ? ["--branch", branch] : []), ...(depth ? ["--depth", depth] : []), ...(this.submodules.value === "yes" ? ["--recurse-submodules"] : []), "--", url, directory], { signal: this.cancellation.signal, timeout: 600000 }), "Clone", { signal: this.cancellation.signal, onCancel: () => this.cancellation?.abort() });
             this.status.setText(`Repository cloned to ${directory}`);
         } finally { this.cancellation = undefined; }
     }

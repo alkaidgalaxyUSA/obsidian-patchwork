@@ -5,6 +5,7 @@ export type GitFileState = "added" | "modified" | "deleted" | "conflict" | "igno
 export interface GitSnapshot {
     ready: boolean; busy: boolean; error?: string;
     branch?: string; detachedCommit?: string;
+    sync?: { status: "compared" | "unpublished" | "unavailable"; tracking: boolean; comparison?: string; ahead?: number; behind?: number };
     status: readonly { vaultPath: string; originalVaultPath?: string; state: GitFileState }[];
 }
 export interface GitApi {

@@ -15,7 +15,7 @@ body.pw-window-actions-enabled:not(.is-mobile) {
 
 /* Use the same deeper black for dark-mode cards while keeping the canvas separate. */
 body.theme-dark.pw-window-actions-enabled:not(.is-mobile) {
-    --pw-workspace-canvas: hsl(from var(--background-secondary) h s calc(l * 1.2));
+    --pw-workspace-canvas: #26282C;
     --pw-workspace-card: #191A1C;
     --pw-left-panel-surface: var(--pw-workspace-card);
 }

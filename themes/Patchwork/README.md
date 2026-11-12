@@ -1,11 +1,12 @@
 # Patchwork Theme
 
-The theme uses the retained GitHub Theme stylesheet without additional visual
-customizations. Its installation name remains Patchwork for compatibility.
+Patchwork is based on the retained GitHub Theme stylesheet. The installation
+name and Style Settings heading are Patchwork. Upstream setting identifiers
+remain unchanged to preserve existing preferences.
 
 ## Sources
 
-- `github.theme.css`: the original retained GitHub Theme stylesheet, unchanged.
+- `patchwork.css`: the GitHub-derived stylesheet with Patchwork branding.
 - `src/theme.scss`: the minimal entry point required by the existing packager.
 - `manifest.json`, `versions.json`, and `package.psd1`: installation metadata.
 

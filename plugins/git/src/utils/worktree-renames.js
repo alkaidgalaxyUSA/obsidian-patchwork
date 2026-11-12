@@ -1,5 +1,6 @@
 import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { stagePaths } from "./stage-paths.js";
 
 /** Inspect worktree paths using a disposable index; never stage the user's files. */
 export async function withWorktreeIndex(repo, paths, action) {
@@ -8,9 +9,7 @@ export async function withWorktreeIndex(repo, paths, action) {
     try {
         await copyFile(repo.indexPath, env.GIT_INDEX_FILE);
         const baseline = (await repo.run(["write-tree"], { env })).trim();
-        for (let offset = 0; offset < paths.length; offset += 100) {
-            await repo.run(["add", "--all", "--", ...paths.slice(offset, offset + 100)], { env });
-        }
+        await stagePaths(repo, paths, { env });
         return await action(env, baseline);
     } finally {
         await rm(directory, { recursive: true, force: true });

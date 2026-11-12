@@ -1,6 +1,7 @@
 import { Notice } from "obsidian";
 import { iconName } from "../utils/icons";
 import { confirm, prompt } from "../dialogs";
+import { GIT_ACTIONS } from "../utils/git-action-definitions";
 
 /** Extend the established Log menus with the imported headless operations. */
 export function addHistoryCommitMenu(menu, pane, commit) {
@@ -39,8 +40,8 @@ export function addHistoryCommitMenu(menu, pane, commit) {
 }
 
 export function addHistoryFileMenu(menu, pane, commit, file) {
-    menu.addItem(item => item.setTitle("Show Diff").setIcon(iconName("git-show-diff")).onClick(() => pane.openDiff(commit, file)));
-    menu.addItem(item => item.setTitle("Show History").setIcon(iconName("history")).onClick(() => pane.controller.openHistory([file.path], pane.el.ownerDocument)));
+    menu.addItem(item => item.setTitle(GIT_ACTIONS.showDiff.title).setIcon(iconName(GIT_ACTIONS.showDiff.icon)).onClick(() => pane.openDiff(commit, file)));
+    menu.addItem(item => item.setTitle(GIT_ACTIONS.showHistory.title).setIcon(iconName(GIT_ACTIONS.showHistory.icon)).onClick(() => pane.controller.openHistory([file.path], pane.el.ownerDocument)));
     const current = pane.controller.sourceFile(file.path);
     menu.addItem(item => item.setTitle("Open current file").setIcon(iconName("git-file")).setDisabled(!current || pane.el.ownerDocument !== pane.app.workspace.containerEl.ownerDocument).onClick(async () => {
         if (!current || pane.disposed) return;

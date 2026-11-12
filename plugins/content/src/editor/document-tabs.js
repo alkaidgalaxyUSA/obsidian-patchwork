@@ -1,5 +1,7 @@
 import { ContentMenu as Menu } from "../utils/portals";
-import { Notice, Platform } from "obsidian";
+import { Notice } from "obsidian";
+import { DocumentTabActions } from "./document-tab-actions";
+import { appendDocumentTabActions } from "./document-tab-context-menu";
 
 /** Activate without revealLeaf's transient highlight or leaving focus in the explorer. */
 export async function activateDocumentTab(app, leaf) {
@@ -18,13 +20,15 @@ export function documentTabsToClose(leaf, direction) {
     const siblings = leaf.parent?.children ?? [];
     const index = siblings.indexOf(leaf);
     if (index < 0) return [];
-    return siblings.filter((item, position) => !item.pinned
-        && (direction === "all" || direction === "left" && position < index || direction === "right" && position > index));
+    return siblings.filter((item, position) => (direction === "all" || !item.pinned)
+        && (direction === "all" || direction === "unpinned" || direction === "others" && item !== leaf
+            || direction === "left" && position < index || direction === "right" && position > index));
 }
 
 /** Content owns document tab menus and save-before-close behavior. */
 export function installDocumentTabs(plugin) {
     const { app } = plugin;
+    const operations = new DocumentTabActions(plugin);
     const docs = new Map();
     const menus = new Set();
     const closing = new Set();
@@ -33,12 +37,17 @@ export function installDocumentTabs(plugin) {
         if (closing.has(group)) return;
         closing.add(group);
         try {
-            for (const target of documentTabsToClose(leaf, direction)) {
-                if (target.parent !== group || target.pinned) continue;
+            const targets = direction === "current" ? [leaf] : documentTabsToClose(leaf, direction);
+            for (const target of targets) {
+                const skipPinned = !["all", "current"].includes(direction);
+                if (target.parent !== group || skipPinned && target.pinned) continue;
                 try {
+                    const doc = target.view.containerEl.ownerDocument;
+                    const path = target.view.file?.path;
                     // Flush pending editor writes before detaching each tab.
                     await target.view.save?.();
-                    if (target.parent === group && !target.pinned) target.detach();
+                    operations.validate(target, doc, path);
+                    if (target.parent === group && !(skipPinned && target.pinned)) target.detach();
                 } catch { new Notice("A tab could not be saved and was left open."); }
             }
         } finally { closing.delete(group); }
@@ -53,20 +62,20 @@ export function installDocumentTabs(plugin) {
             event.preventDefault();
             event.stopImmediatePropagation();
             const menu = new Menu();
+            menu.dom.classList.add("pw-document-tab-context-menu");
             menus.add(menu);
             menu.onHide(() => menus.delete(menu));
-            menu.addItem((item) => item.setTitle("Close").onClick(() => leaf.detach()));
-            for (const [direction, title] of [["all", "Close All"], ["left", "Close Left"], ["right", "Close Right"]]) {
+            const path = leaf.view.file?.path;
+            const run = action => { void Promise.resolve().then(() => {
+                operations.validate(leaf, doc, path);
+                return action();
+            }).catch(error => new Notice(error.message ?? "Could not complete the tab action.")); };
+            menu.addItem((item) => item.setTitle("Close").setDisabled(closing.has(leaf.parent)).onClick(() => run(() => closeTabs(leaf, "current"))));
+            for (const [direction, title] of [["others", "Close Others"], ["all", "Close All"], ["unpinned", "Close All Unpinned"], ["left", "Close Left"], ["right", "Close Right"]]) {
                 menu.addItem((item) => item.setTitle(title).setDisabled(closing.has(leaf.parent) || !documentTabsToClose(leaf, direction).length)
-                    .onClick(() => closeTabs(leaf, direction)));
+                    .onClick(() => run(() => closeTabs(leaf, direction))));
             }
-            menu.addSeparator();
-            const file = leaf.view.file;
-            if (file) {
-                menu.addItem((item) => item.setTitle("Rename").onClick(() => app.fileManager.promptForFileRename(file)));
-                if (Platform.isDesktopApp) menu.addItem((item) => item.setTitle("Open in explorer").onClick(() => app.showInFolder(file.path)));
-            }
-            if (leaf.canPin()) menu.addItem((item) => item.setTitle(leaf.pinned ? "Unpin" : "Pin").onClick(() => leaf.togglePinned()));
+            appendDocumentTabActions(menu, leaf, operations, run);
             menu.showAtMouseEvent(event);
         };
         doc.addEventListener("contextmenu", context, true);

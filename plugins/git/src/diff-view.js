@@ -1,4 +1,4 @@
-import { ItemView, Menu, Notice } from "obsidian";
+import { ItemView, Menu, Notice, setIcon } from "obsidian";
 import { iconName } from "./utils/icons";
 import { scopeModule } from "../../utils/module-scope";
 import { scopeGitMenu } from "./utils/portals";
@@ -17,7 +17,7 @@ export class DiffView extends ItemView {
     getViewType() { return DIFF_VIEW; }
     getDisplayText() { return this.title || "Git Diff"; }
     getIcon() { return iconName("git-show-diff"); }
-    getState() { return { title: this.title, text: this.comparison === "working" ? undefined : this.text, paths: this.paths, comparison: this.comparison, revision: this.revision, mode: this.mode, wrap: this.wrap, fullContext: this.fullContext, staged: this.staged, baseline: this.baseline, root: this.root }; }
+    getState() { return { title: this.title, text: this.comparison === "working" ? undefined : this.text, paths: this.paths, comparison: this.comparison, revision: this.revision, historical: this.historical, mode: this.mode, wrap: this.wrap, fullContext: this.fullContext, staged: this.staged, baseline: this.baseline, root: this.root }; }
 
     async onOpen() {
         this.moduleScope = scopeModule(this.contentEl, "git", { surface: "diff" });
@@ -39,6 +39,7 @@ export class DiffView extends ItemView {
         this.paths = Array.isArray(state.paths) ? state.paths : state.path ? [state.path] : [];
         this.comparison = state.comparison;
         this.revision = state.revision;
+        this.historical = state.historical === true;
         const preferences = this.controller.plugin.settingsStore.preferences;
         this.mode = (state.mode ?? preferences.diffMode) === "split" ? "split" : "unified";
         this.wrap = state.wrap ?? preferences.diffWrap ?? false;
@@ -96,28 +97,43 @@ export class DiffView extends ItemView {
         this.contentEl.empty();
         this.contentEl.classList.toggle("is-line-wrap", !!this.wrap);
         const toolbar = this.contentEl.createDiv({ cls: "pw-git-diff-actions" });
-        const action = (label, callback, selected = false) => {
-            const button = toolbar.createEl("button", { text: label, attr: { type: "button", "aria-pressed": String(selected) } });
+        const left = toolbar.createDiv({ cls: "pw-git-diff-actions-left" });
+        const center = toolbar.createDiv({ cls: "pw-git-diff-actions-center" });
+        const right = toolbar.createDiv({ cls: "pw-git-diff-actions-right" });
+        const iconAction = (host, icon, label, callback, selected = false) => {
+            const button = host.createEl("button", { attr: { type: "button", "aria-label": label, "aria-pressed": String(selected) } });
+            setIcon(button, icon);
+            button.title = label;
             button.onclick = callback;
+            return button;
         };
-        action("Unified", () => { this.mode = "unified"; this.savePreferences(); this.render(); }, this.mode === "unified");
-        action("Side by side", () => { this.mode = "split"; this.savePreferences(); this.render(); }, this.mode === "split");
+        const separator = host => host.createSpan({ cls: "pw-git-diff-separator", text: "|", attr: { "aria-hidden": "true" } });
+        const selectedPath = this.paths?.[0];
+        const fileIndex = Math.max(0, (this.files || []).findIndex(file => file.path === selectedPath || file.oldPath === selectedPath));
+        iconAction(left, "arrow-up", "Previous Difference", () => this.navigateHunk(-1));
+        iconAction(left, "arrow-down", "Next Difference", () => this.navigateHunk(1));
+        iconAction(left, "edit", "Jump to Source", () => this.jumpToSource());
+        separator(left);
+        iconAction(left, "chevron-left", "Previous File", () => this.navigateFile(-1));
+        center.createSpan({ cls: "pw-git-diff-file-count", text: `${fileIndex + 1}/${Math.max(1, (this.files || []).length)} files` });
+        iconAction(left, "chevron-right", "Next File", () => this.navigateFile(1));
+        separator(left);
+        iconAction(left, "collapse", "Collapse Unchanged Fragments", () => { this.fullContext = !this.fullContext; this.savePreferences(); void this.refresh(this.comparison === "working"); }, !this.fullContext);
+        if ((this.files || []).length && (this.files || []).some(file => file.hunks?.length)) center.createSpan({ cls: "pw-git-diff-difference-count", text: `${(this.files || []).reduce((count, file) => count + (file.hunks?.length || 0), 0)} difference${(this.files || []).reduce((count, file) => count + (file.hunks?.length || 0), 0) === 1 ? "" : "s"}` });
+        iconAction(right, "layout-sidebar-left", "Side by side", () => { this.mode = "split"; this.savePreferences(); this.render(); }, this.mode === "split");
+        iconAction(right, "layout", "Unified", () => { this.mode = "unified"; this.savePreferences(); this.render(); }, this.mode === "unified");
+        iconAction(right, "settings", "Diff Settings", () => { this.wrap = !this.wrap; this.savePreferences(); this.render(); }, !!this.wrap);
         if (this.comparison === "working") {
-            const baseline = toolbar.createEl("select", { attr: { "aria-label": "Diff comparison" } });
+            const baseline = center.createEl("select", { attr: { "aria-label": "Diff comparison" } });
             for (const [value, text] of [["head", "HEAD → Working tree"], ["index", "Index → Working tree"], ["staged", "HEAD → Index (staged)"]]) baseline.createEl("option", { value, text });
             baseline.value = this.staged ? "staged" : this.baseline;
             baseline.onchange = () => { this.staged = baseline.value === "staged"; this.baseline = baseline.value === "head" ? "head" : "index"; void this.refresh(true); };
-            action("Full context", () => { this.fullContext = !this.fullContext; this.savePreferences(); void this.refresh(true); }, !!this.fullContext);
-            action("Refresh", () => void this.refresh(true));
+            iconAction(right, "refresh-cw", "Refresh", () => void this.refresh(true));
         }
-        action("Wrap lines", () => { this.wrap = !this.wrap; this.savePreferences(); this.render(); }, !!this.wrap);
-        for (const [label, step] of [["Previous hunk", -1], ["Next hunk", 1]]) action(label, () => this.navigateHunk(step));
-        const navigation = toolbar.createEl("select", { attr: { "aria-label": "Navigate changed files" } });
-        navigation.createEl("option", { text: "Changed files", value: "" });
-        for (const [index, file] of (this.files || []).entries()) navigation.createEl("option", { text: file.path, value: String(index) });
-        navigation.onchange = () => { if (navigation.value !== "") this.contentEl.querySelectorAll(".pw-diff-file")[Number(navigation.value)]?.scrollIntoView({ block: "center" }); };
         const output = this.contentEl.createEl("pre", { cls: "pw-git-output" });
-        renderDiff(output, this.text, this.files, this.mode, (event, file, fileIndex, hunkIndex) => this.hunkMenu(event, file, fileIndex, hunkIndex));
+        renderDiff(output, this.text, this.files, this.mode,
+            this.historical ? undefined : (event, file, fileIndex, hunkIndex) => this.hunkMenu(event, file, fileIndex, hunkIndex),
+            3000, this.historical ? { historical: true, revision: this.revision } : undefined);
         output.ondblclick = event => {
             const line = event.target.closest("[data-new-line][data-path]");
             if (line) void this.openWorkingLine(line.dataset.path, Number(line.dataset.newLine));
@@ -129,6 +145,19 @@ export class DiffView extends ItemView {
         };
         this.contentEl.scrollTop = scrollTop;
         if (focusLabel) [...toolbar.querySelectorAll("button")].find(button => button.textContent === focusLabel)?.focus({ preventScroll: true });
+    }
+
+    navigateFile(step) {
+        const files = [...this.contentEl.querySelectorAll(".pw-diff-file")];
+        if (!files.length) return;
+        const current = files.findIndex(file => file.getBoundingClientRect().top >= this.contentEl.getBoundingClientRect().top - 4);
+        const index = Math.max(0, Math.min(files.length - 1, (current < 0 ? 0 : current) + step));
+        files[index]?.scrollIntoView({ block: "start" });
+    }
+
+    jumpToSource() {
+        const line = this.contentEl.querySelector("[data-new-line][data-path]");
+        if (line) void this.openWorkingLine(line.dataset.path, Number(line.dataset.newLine));
     }
 
     savePreferences() {

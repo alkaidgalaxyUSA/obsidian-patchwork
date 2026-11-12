@@ -250,10 +250,12 @@ body .pw-note-code-header button[data-action="run"]:where([data-pw-module="conte
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 24px;
-    width: 24px;
+    flex: 0 0 auto;
+    width: auto;
     height: 24px;
     padding: 4px;
+    gap: 4px;
+    white-space: nowrap;
     border-radius: 4px;
     color: var(--pw-content-code-icon);
 }
@@ -351,8 +353,8 @@ body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .pw-n
 body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-source-view.mod-cm6 .cm-line.pw-note-code-opening:has(.pw-note-code-header[data-collapsed="true"]):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { padding-bottom: 12px !important; }
 body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .pw-note-code-header:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { overflow: visible; }
 
-/* Keep the name and fold triangle visible; reveal actions only for this block. */
-body .pw-note-code-header :is(.pw-code-select, .pw-note-code-separator, [data-action="run"], [data-action="copy"], [data-action="more"]):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+/* Keep the name, fold triangle and Run button visible; reveal other actions only for this block. */
+body .pw-note-code-header :is(.pw-code-select, .pw-note-code-separator, [data-action="copy"], [data-action="more"]):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
     opacity: 0;
     pointer-events: none;
 }

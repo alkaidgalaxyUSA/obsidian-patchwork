@@ -1,8 +1,12 @@
-import { execFile } from "node:child_process";
-import { access, appendFile, copyFile, mkdir, mkdtemp, open, readFile, rename, rm } from "node:fs/promises";
+import { runGitCommand } from "./utils/run-git-command.js";
+import { access, appendFile, copyFile, mkdir, mkdtemp, open, readFile, rename, rm, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { Shelves } from "./shelves.js";
 import { detectWorktreeRenames, withWorktreeIndex } from "./utils/worktree-renames.js";
+import { runPathspecCommand } from "./utils/pathspec-command.js";
+import { stagePaths } from "./utils/stage-paths.js";
+import { readBranchSync } from "./utils/branch-sync.js";
+import { commitArguments } from "./utils/commit-options.js";
 
 /** Native Git backend; paths are literal and commands never pass through a shell. */
 export class Repository {
@@ -17,19 +21,7 @@ export class Repository {
 
     run(args, options = {}) {
         if (this.disposed) return Promise.reject(new Error("Git plugin has been unloaded."));
-        const { allowedExitCodes = [], ...processOptions } = options;
-        return new Promise((resolveResult, reject) => {
-            const child = execFile(this.executable, ["--no-pager", ...args], {
-                cwd: this.root, windowsHide: true, timeout: 120000, maxBuffer: 32 * 1024 * 1024,
-                encoding: "utf8", ...processOptions,
-                env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_LITERAL_PATHSPECS: "1", GIT_OPTIONAL_LOCKS: "0", ...options.env },
-            }, (error, stdout, stderr) => {
-                this.children.delete(child);
-                if (error && !allowedExitCodes.includes(error.code)) reject(new Error(String(stderr?.length ? stderr : error.message).trim()));
-                else resolveResult(stdout);
-            });
-            this.children.add(child);
-        });
+        return runGitCommand(this, args, options);
     }
 
     mutate(action) {
@@ -132,22 +124,27 @@ export class Repository {
 
     async snapshot() {
         const [local, current, remote, log, tags, remotes] = await Promise.all([
-            this.run(["for-each-ref", "--format=%(refname:short)%09%(upstream:short)", "refs/heads"]),
-            this.branch(), this.run(["for-each-ref", "--format=%(refname)%09%(symref)", "refs/remotes"]),
+            this.run(["for-each-ref", "--format=%(refname)%09%(objectname)%09%(upstream)", "refs/heads"]),
+            this.branch(), this.run(["for-each-ref", "--format=%(refname)%09%(objectname)%09%(upstream)%09%(symref)", "refs/remotes"]),
             this.run(["reflog", "--format=%gs", "-n", "40"]).catch(() => ""), this.run(["tag", "--list"]),
             this.run(["remote"]),
         ]);
-        const upstreams = new Map(local.trim().split(/\r?\n/).filter(Boolean).map(line => line.split("\t")));
+        const upstreams = new Map(local.trim().split(/\r?\n/).filter(Boolean).map(line => {
+            const [ref, , upstream] = line.split("\t");
+            return [ref.slice("refs/heads/".length), upstream?.replace(/^refs\/(heads|remotes)\//, "")];
+        }));
+        const remoteNames = remotes.trim().split(/\r?\n/).filter(Boolean);
+        const sync = await readBranchSync(this, `${local}\n${remote}`, remoteNames);
         const branches = [...upstreams.keys()];
         const visited = log.split(/\r?\n/).flatMap(line => {
             const match = line.match(/^checkout: moving from (.+) to (.+)$/);
             return match ? [match[2], match[1]] : [];
         });
-        return { current, upstreams, local: branches,
+        return { current, upstreams, sync, local: branches,
             recent: [...new Set([current, ...visited])].filter(ref => branches.includes(ref)).slice(0, 8),
             remote: remote.split(/\r?\n/).filter(Boolean).map(line => line.split("\t"))
-                .filter(([ref, symbolic]) => !symbolic && !ref.endsWith("/HEAD")).map(([ref]) => ref.replace(/^refs\/remotes\//, "")),
-            remotes: remotes.trim().split(/\r?\n/).filter(Boolean),
+                .filter(([ref, , , symbolic]) => !symbolic && !ref.endsWith("/HEAD")).map(([ref]) => ref.replace(/^refs\/remotes\//, "")),
+            remotes: remoteNames,
             tags: tags.trim().split(/\r?\n/).filter(Boolean), remoteError: false, tagsError: false };
     }
 
@@ -164,12 +161,19 @@ export class Repository {
         return [...new Set([...paths, ...originals])];
     }
 
-    async stage(paths) { await this.run(["add", "--all", "--", ...await this.expandRenames(paths)]); }
+    async stage(paths) {
+        if (!paths.length) return;
+        const entries = await this.status();
+        const originals = entries.filter(entry => entry.code[1] === "R" && paths.some(path => path === "." || entry.path === path || entry.path.startsWith(`${path}/`)))
+            .map(entry => entry.original).filter(Boolean);
+        await stagePaths(this, [...new Set([...paths, ...originals])]);
+    }
 
     async unstage(paths) {
+        if (!paths.length) return;
         paths = await this.expandRenames(paths);
-        if (await this.head()) await this.run(["reset", "--quiet", "HEAD", "--", ...paths]);
-        else await this.run(["rm", "--cached", "--ignore-unmatch", "-r", "--", ...paths]);
+        if (await this.head()) await runPathspecCommand(this, ["reset", "--quiet", "HEAD"], paths);
+        else await runPathspecCommand(this, ["rm", "--cached", "--ignore-unmatch", "-r"], paths);
     }
 
     async checkout(ref, remote = false) {
@@ -184,12 +188,25 @@ export class Repository {
         if (errors.trim()) throw new Error("Pre-commit whitespace check failed. Review whitespace errors or newly added conflict markers in the commit diff, then retry. No commit was created.");
     }
 
+    async commitOptionsInfo() {
+        const config = key => this.run(["config", "--get", key], { allowedExitCodes: [1] }).then(value => value.trim());
+        const [name, email, hooks] = await Promise.all([
+            config("user.name"), config("user.email"),
+            Promise.all(["pre-commit", "commit-msg"].map(async name => {
+                const path = resolve(this.root, (await this.run(["rev-parse", "--git-path", `hooks/${name}`])).trim());
+                try { return (await stat(path)).isFile(); }
+                catch (error) { if (error.code === "ENOENT") return false; throw error; }
+            })),
+        ]);
+        return { identity: name && email ? `${name} <${email}>` : "", hasHooks: hooks.some(Boolean) };
+    }
+
     async commitStaged(message, amend, checks = {}) {
         if (!message.trim()) throw new Error("Enter a commit message.");
         if ((await this.status()).some(entry => entry.conflict)) throw new Error("Resolve all conflicts before committing.");
         await this.assertNoOperation();
         await this.checkCommitIndex(checks);
-        await this.run(["commit", ...(amend ? ["--amend"] : []), "-m", message]);
+        await this.run(commitArguments(message, amend, checks));
         return { committed: true };
     }
 
@@ -230,12 +247,12 @@ export class Repository {
                 if (error.code !== "ENOENT") throw error;
                 await this.run(["read-tree", "--empty"], { env: { GIT_INDEX_FILE: preservedIndex } });
             }
-            if (paths.length) await this.run(["add", "--all", "--", ...paths], { env });
+            await stagePaths(this, paths, { env });
             await this.checkCommitIndex(checks, env);
             if (await this.head() !== before) throw new Error("HEAD changed. Refresh the selection and try again.");
-            await this.run(["commit", ...(amend ? ["--amend"] : []), "-m", message], { env });
+            await this.run(commitArguments(message, amend, checks), { env });
             committed = true;
-            if (paths.length) await this.run(["reset", "--quiet", "HEAD", "--", ...paths], { env: { GIT_INDEX_FILE: preservedIndex } });
+            await runPathspecCommand(this, ["reset", "--quiet", "HEAD"], paths, { env: { GIT_INDEX_FILE: preservedIndex } });
             await lock.writeFile(await readFile(preservedIndex));
             await lock.close();
             await rename(lockPath, this.indexPath);

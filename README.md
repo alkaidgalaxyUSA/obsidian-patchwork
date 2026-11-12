@@ -263,10 +263,11 @@ GitHub Theme, Maple Theme, Power Plugins, Patchwork contributors and saltyfireba
 copyright notices. Packaged plugin LICENSE files and entry-point/style notices
 retain these attributions when packages are distributed separately.
 
-The unmodified bundled Maple Mono font remains under SIL OFL 1.1, not MIT. Its
-full required notice is embedded in `themes/Patchwork/src/app/fonts.scss` and
-retained in the generated CSS. Third-party dependency licenses inside ignored
-`node_modules` belong to those dependencies and are not removed.
+The current Patchwork theme uses `themes/Patchwork/patchwork.css`, derived from
+GitHub Theme. Previous Maple theme modules and bundled Maple Mono fonts are no
+longer included. Historical copyright notices remain in the root license;
+third-party dependency licenses inside ignored `node_modules` belong to those
+dependencies and are not removed.
 
 ## Unified plugin project
 

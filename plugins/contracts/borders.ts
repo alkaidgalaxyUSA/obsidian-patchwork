@@ -1,4 +1,5 @@
 import type { CallContext, Disposable, ModuleId, PanelId, Unsubscribe, WindowContext } from "./common";
+import type { BackgroundProgressApi } from "./progress";
 
 export interface PanelState {
     id: PanelId; windowId: string; visible: boolean; focused: boolean;
@@ -36,6 +37,8 @@ export interface TabActionsContribution {
 }
 export interface BordersApi {
     readonly version: 1;
+    /** Optional for compatibility with older Borders providers. */
+    readonly progress?: BackgroundProgressApi;
     registerPanel(definition: PanelDefinition): Disposable;
     registerHeader(contribution: HeaderContribution): Disposable;
     registerSettings(contribution: SettingsContribution): Disposable;

@@ -1,3 +1,8 @@
+/* Native context menus share the window canvas, including editor menus. */
+body.pw-window-actions-enabled[data-pw-borders-enabled="true"] {
+    --menu-background: var(--pw-workspace-canvas, var(--background-secondary));
+}
+
 body.pw-window-actions-enabled {
     --ribbon-width: 48.4px;
     --pw-window-control-width: 44px;
@@ -29,3 +34,56 @@ body.pw-window-actions-enabled .workspace-ribbon {
 }
 
 body.pw-window-actions-enabled .workspace-tab-header-container > .sidebar-toggle-button { display: none; }
+
+/* Native hover tips and notifications belong to the window shell, independently of the theme. */
+body.pw-window-actions-enabled[data-pw-borders-enabled="true"] > .tooltip:not([data-pw-module]) {
+    --tooltip-background: #33353B;
+    --tooltip-radius: 3px;
+    --tooltip-color: #F0F0F0;
+    background-color: #33353B;
+    color: #F0F0F0;
+    border-radius: 3px;
+    corner-shape: round;
+    width: max-content;
+    max-width: min(720px, calc(100vw - 24px));
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+body.pw-window-actions-enabled[data-pw-borders-enabled="true"] > .tooltip:not([data-pw-module]) > .tooltip-arrow {
+    display: none;
+}
+
+/* Toast notifications retain their bottom-right placement. */
+body.pw-window-actions-enabled[data-pw-borders-enabled="true"] > .notice-container {
+    top: auto;
+    bottom: calc(var(--status-bar-height, 24px) + 12px);
+    left: auto;
+    right: 12px;
+    inset-inline-start: auto;
+    inset-inline-end: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 0;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+}
+
+body.pw-window-actions-enabled[data-pw-borders-enabled="true"] > .notice-container > .notice {
+    --notice-background: #33353B;
+    --notice-radius: 3px;
+    --notice-color: #F0F0F0;
+    background-color: #33353B;
+    color: #F0F0F0;
+    border-radius: 3px;
+    corner-shape: round;
+    margin: 0;
+    flex-shrink: 0;
+    width: max-content;
+    max-width: min(720px, calc(100vw - 24px));
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}

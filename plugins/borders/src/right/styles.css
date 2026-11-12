@@ -40,7 +40,7 @@ body .pw-window-actions .side-dock-ribbon-action[aria-pressed="true"] {
     --icon-color: var(--text-normal);
     --icon-color-hover: var(--text-normal);
     color: var(--text-normal);
-    background: color-mix(in srgb, var(--background-secondary-alt) 65%, var(--color-base-100));
+    background: #494B4E;
 }
 
 body .pw-window-actions .side-dock-ribbon-action[aria-pressed="true"][data-pw-panel-focused="true"] {

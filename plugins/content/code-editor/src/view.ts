@@ -26,6 +26,7 @@ import { highlightToTokens } from "./highlighter";
 import { getStyleMap, getCombinedOverrides, getForegroundColor } from "./themes";
 import { copySqlSelectionOrSection, sqlSectionExtensions } from "./sql-sections";
 import { codeGitExtensions } from "./git-gutter.js";
+import { codeContextMenu } from "./context-menu";
 
 // Check if content appears to be binary (contains null bytes)
 function isBinaryContent(content: string, checkLength = 8192): boolean {
@@ -249,6 +250,7 @@ export class CodeEditorView extends TextFileView {
 			editorKeymaps,
 			// Syntax highlighting using highlight.js
 			this.languageCompartment.of(this.languageExtensions(language)),
+			codeContextMenu,
 			// Save on change
 			EditorView.updateListener.of((update) => {
                 if (update.docChanged || update.selectionSet) this.changed();
@@ -283,10 +285,10 @@ export class CodeEditorView extends TextFileView {
 					borderRight: "1px solid var(--background-modifier-border)",
 				},
 				".cm-activeLineGutter": {
-					backgroundColor: "var(--background-secondary-alt)",
+					backgroundColor: "rgba(128, 128, 128, 0.6)",
 				},
 				".cm-activeLine": {
-					backgroundColor: "var(--background-secondary-alt)",
+					backgroundColor: "rgba(128, 128, 128, 0.6)",
 				},
 			}),
 		];
