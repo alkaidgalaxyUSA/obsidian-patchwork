@@ -1,3 +1,5 @@
+import { GitPathsModal } from "./paths-modal";
+import { logSinceDate } from "../utils/log-since-date";
 import { addBranchMenu } from "../branch-menu";
 import { Menu, Notice } from "obsidian";
 import { shell } from "electron";
@@ -23,7 +25,7 @@ export class GitLogPane {
         this.history = controller.plugin.history;
         this.menus = new Set();
         this.rename = rename;
-        this.filter = { ref: "HEAD", search: "", author: "", path: "", since: "", regex: false, caseSensitive: false };
+        this.filter = { ref: "", search: "", author: "", path: "", since: "", regex: false, caseSensitive: false };
         this.limit = 200;
         this.revision = 0;
         this.selectionRevision = 0;
@@ -34,9 +36,11 @@ export class GitLogPane {
         const savedFilter = initialFilter ?? preferences.logFilters?.[controller.repository.root];
         if (savedFilter && typeof savedFilter === "object") {
             for (const key of ["ref", "search", "author", "path", "since", "order"]) if (typeof savedFilter[key] === "string") this.filter[key] = savedFilter[key];
-            for (const key of ["regex", "caseSensitive"]) this.filter[key] = savedFilter[key] === true;
+            for (const key of ["regex", "caseSensitive", "fileHistory", "firstParent", "noMerges"]) this.filter[key] = savedFilter[key] === true;
             if (Array.isArray(savedFilter.paths)) this.filter.paths = savedFilter.paths.filter(path => typeof path === "string");
         }
+        this.filter.paths = [...new Set(this.filter.paths?.length ? this.filter.paths : this.filter.path ? [this.filter.path] : [])];
+        this.filter.path = "";
         this.favorites = new Set(Array.isArray(preferences.logFavorites) ? preferences.logFavorites : ["HEAD"]);
         this.initializedFavorites = Array.isArray(preferences.logFavorites);
         this.groupDirectories = preferences.logGroupDirectories !== false;
@@ -86,13 +90,28 @@ export class GitLogPane {
         this.refButton.prepend(this.refButton.createSpan({ cls: "pw-log-filter-prefix", text: "Branch: " }));
         this.clearRefButton = this.button(branchFilter, "Clear branch filter", "git-log-close", () => this.selectRef(""));
         this.search.value = this.filter.search;
-        this.author = { value: this.filter.author }; this.date = { value: this.filter.since }; this.path = { value: this.filter.path };
+        this.author = { value: this.filter.author }; this.date = { value: logSinceDate(this.filter.since) }; this.path = { value: this.filter.path };
         this.authorButton = this.filterButton(toolbar, "User", "User filter", event => this.valueFilter(event, "author"));
         this.dateButton = this.filterButton(toolbar, "Date", "Date filter", event => this.valueFilter(event, "since"));
         this.pathButton = this.filterButton(toolbar, "Paths", "Paths filter", event => this.valueFilter(event, "path"));
-        this.button(toolbar, "Commit Sort Order", "git-log-sort", event => {
+        this.syncPaths();
+        this.graphOptionsButton = this.button(toolbar, "Graph Options", "intelli-sort", event => {
             const menu = this.createMenu();
-            for (const [label, order] of [["Topology", "topo"], ["Date Order", "date"], ["Reverse Order", "reverse"]]) menu.addItem(item => item.setTitle(label).setChecked((this.filter.order || "topo") === order).onClick(() => { this.filter.order = order; void this.refresh(); }));
+            menu.dom.classList.add("pw-git-graph-options-menu");
+            const group = title => menu.addItem(item => { item.setTitle(title).setDisabled(true); item.dom.classList.add("pw-git-graph-options-group"); });
+            const option = (title, callback, checked) => menu.addItem(item => {
+                item.setTitle(title).setChecked(!!checked).onClick(callback);
+                item.dom.classList.add("pw-git-graph-options-item");
+            });
+            group("Sort");
+            option("By Commit Date", () => { this.filter.order = "date"; void this.refresh(); }, this.filter.order === "date");
+            option("Topologically", () => { this.filter.order = "topo"; void this.refresh(); }, (this.filter.order || "topo") === "topo");
+            group("Options");
+            option("First Parent", () => { this.filter.firstParent = !this.filter.firstParent; void this.refresh(); }, this.filter.firstParent);
+            option("No Merges", () => { this.filter.noMerges = !this.filter.noMerges; void this.refresh(); }, this.filter.noMerges);
+            group("Branch Actions");
+            option("Collapse Linear Branches", () => this.setGraphBranchMode("collapse"));
+            option("Expand Linear Branches", () => this.setGraphBranchMode("expand"));
             menu.showAtMouseEvent(event);
         });
         const actions = toolbar.createDiv({ cls: "pw-log-filter-actions" });
@@ -139,14 +158,37 @@ export class GitLogPane {
     }
 
     filterButton(parent, text, label, handler, arrow = true) {
-        const button = parent.createEl("button", { cls: "pw-log-filter", attr: { type: "button", "aria-label": label, "aria-haspopup": "menu", "aria-expanded": "false" } });
+        const host = arrow ? parent.createDiv({ cls: "pw-log-filter-control" }) : parent;
+        const button = host.createEl("button", { cls: "pw-log-filter", attr: { type: "button", "aria-label": label, "aria-haspopup": "menu", "aria-expanded": "false" } });
         button.createSpan({ cls: "pw-log-filter-label", text });
         if (arrow) setIcon(button.createSpan({ cls: "pw-log-filter-chevron" }), "chevron-down");
         button.addEventListener("click", handler);
+        if (arrow) {
+            const clear = host.createEl("button", { cls: "clickable-icon pw-log-filter-clear", attr: { type: "button", "aria-label": `Clear ${text} filter`, title: `Clear ${text} filter` } });
+            setIcon(clear, "x");
+            clear.hidden = true;
+            clear.onclick = () => {
+                this.filterMenu?.hide();
+                if (button === this.pathButton) void this.setPaths([]);
+                else {
+                    const state = button === this.authorButton ? this.author : this.date;
+                    state.value = ""; void this.refresh();
+                }
+                button.focus();
+            };
+        }
         return button;
     }
 
-    setFilterText(button, text) { button.querySelector(".pw-log-filter-label").setText(text); }
+    setFilterText(button, text) {
+        const label = button.querySelector(".pw-log-filter-label");
+        label.empty();
+        const prefix = /^(User|Date|Paths): /.exec(text)?.[0];
+        const selected = button === this.refButton ? !!this.filter.ref
+            : button === this.pathButton ? !!this.filter.paths?.length : !!prefix;
+        if (prefix) label.appendText(prefix);
+        label.createSpan({ text: prefix ? text.slice(prefix.length) : text, cls: selected ? "pw-log-filter-value" : "" });
+    }
 
     showFilter(menu, anchor) {
         if (this.filterMenu && this.filterAnchor === anchor) { this.filterMenu.hide(); menu.hide(); return; }
@@ -169,7 +211,6 @@ export class GitLogPane {
             item.onClick(() => this.selectRef(ref, label));
         });
         menu.addItem(item => item.setTitle("Select...").onClick(() => this.showBranches()));
-        menu.addItem(item => item.setTitle("All branches").setChecked(!this.filter.ref).onClick(() => this.selectRef("")));
         menu.addItem(item => item.setTitle("Favorites").setDisabled(true));
         choose(menu, "HEAD", "HEAD", "idea/expui/nodes/star_dark.svg");
         const favorites = this.favorites;
@@ -200,12 +241,18 @@ export class GitLogPane {
         const anchor = event.currentTarget;
         if (this.filterMenu && this.filterAnchor === anchor) { this.filterMenu.hide(); return; }
         const menu = this.createMenu();
+        if (key === "path") {
+            menu.dom.classList.add("pw-log-value-menu");
+            menu.addItem(item => item.setTitle("Select...").onClick(() => openGitDialog(this.controller, new GitPathsModal(this))));
+            menu.addItem(item => item.setTitle("Select in Tree...").onClick(() => openGitDialog(this.controller, new GitPathsModal(this, true))));
+            this.showFilter(menu, anchor); return;
+        }
         const mapping = { author: [this.author, this.authorButton, "User"], since: [this.date, this.dateButton, "Date"], path: [this.path, this.pathButton, "Paths"] };
         const [state, button, label] = mapping[key];
         menu.dom.classList.add("pw-log-value-menu");
         const choose = (title, value) => menu.addItem(item => item.setTitle(title).onClick(() => {
-            if (key === "path") this.filter.paths = undefined;
-            state.value = value; this.setFilterText(button, `${label}${value ? ": " + title : ""}`); void this.refresh();
+            if (key === "path") this.filter.paths = [];
+            state.value = key === "since" ? logSinceDate(value) : value; this.setFilterText(button, `${label}${value ? ": " + title : ""}`); void this.refresh();
         }));
         choose("All", "");
         if (key === "since") {
@@ -214,12 +261,6 @@ export class GitLogPane {
             let choices = [];
             if (key === "author") choices = [...new Set((this.commits ?? []).map(commit => commit.author))];
 
-            if (key === "path") {
-                try { choices = (await this.controller.repository.run(["ls-files", "-z"])).split("\0").filter(Boolean); }
-                catch (error) { menu.hide(); if (!this.disposed) new Notice(error.message); return; }
-                if (this.disposed) { menu.hide(); return; }
-                choices = [...new Set(choices.flatMap(path => { const parts = path.split("/"); return parts.length > 1 ? [parts.slice(0, -1).join("/"), path] : [path]; }))];
-            }
             for (const value of choices.sort()) choose(value, value);
 
         }
@@ -410,6 +451,7 @@ export class GitLogPane {
             const filters = this.controller.plugin.settingsStore.preferences.logFilters || {};
             this.savePreferences({ logFilters: { ...filters, [root]: { ...this.filter } } });
         }
+        this.syncPaths();
         this.filterSignature = filterSignature;
         this.rows.setAttribute("aria-busy", "true");
         try {
@@ -426,7 +468,7 @@ export class GitLogPane {
             }
             this.commits = commits;
             this.rename(`Log: ${this.filter.ref === "HEAD" ? snapshot.current : this.refLabel || "All"}`);
-            const refName = this.filter.ref === "HEAD" ? snapshot.current : this.refLabel || this.filter.ref || "All";
+            const refName = !this.filter.ref ? "" : this.filter.ref === "HEAD" ? snapshot.current : this.refLabel || this.filter.ref;
             const localName = refName.replace(/^refs\/(heads|remotes)\//, "");
             const remote = snapshot.remotes.find(name => localName.startsWith(name + "/"));
             this.setFilterText(this.refButton, remote ? localName.slice(remote.length + 1) : localName);
@@ -573,12 +615,39 @@ export class GitLogPane {
         else if (focusedGroup) [...this.tree.querySelectorAll("summary")].find(row => row.dataset.groupKey === focusedGroup)?.focus({ preventScroll: true });
     }
 
-    setHistoryPaths(paths) {
-        this.filter.paths = [...paths]; this.filter.ref = "";
-        this.path.value = paths.length === 1 ? paths[0] : "";
-        this.setFilterText(this.pathButton, `Paths: ${paths.length === 1 ? paths[0] : paths.length + " selected"}`);
-        this.limit = 200; this.rows.scrollTop = 0;
+    syncPaths() {
+        const paths = this.filter.paths || [];
+        const label = paths.length ? paths[0] + (paths.length > 1 ? " + " + (paths.length - 1) : "") : "All";
+        this.setFilterText(this.pathButton, "Paths: " + label);
+        this.pathButton.title = paths.length ? paths.join("\n") : "All paths";
+        this.pathButton.setAttribute("aria-label", "Paths: " + label);
+        this.pathButton.classList.toggle("is-active", paths.length > 0);
+        for (const [button, value, label] of [[this.authorButton, this.author.value, "User"], [this.dateButton, this.date.value, "Date"], [this.pathButton, paths.length, "Paths"]]) {
+            if (button !== this.pathButton) this.setFilterText(button, value ? `${label}: ${value}` : label);
+            if (button === this.dateButton && value) this.setFilterText(button, `Date: Since ${value}`);
+            button.querySelector(".pw-log-filter-chevron").hidden = !!value;
+            button.parentElement.querySelector(".pw-log-filter-clear").hidden = !value;
+        }
+    }
+
+    setPaths(paths, fileHistory = false) {
+        this.filter.fileHistory = fileHistory;
+        this.filter.paths = [...new Set(paths)].sort();
+        this.filter.path = ""; this.path.value = "";
+        if (this.filter.paths.length) {
+            const root = this.controller.repository.root;
+            const recent = this.controller.plugin.settingsStore.preferences.logRecentPaths || {};
+            const groups = recent[root] || [];
+            const signature = JSON.stringify(this.filter.paths);
+            this.savePreferences({ logRecentPaths: { ...recent, [root]: [this.filter.paths, ...groups.filter(group => JSON.stringify(group) !== signature)].slice(0, 10) } });
+        }
+        this.syncPaths(); this.limit = 200; this.rows.scrollTop = 0;
         return this.refresh();
+    }
+
+    setHistoryPaths(paths) {
+        this.filter.ref = "";
+        return this.setPaths(paths, true);
     }
 
     scheduleRows() {
@@ -590,9 +659,14 @@ export class GitLogPane {
     }
 
     renderRows() {
-        this.graphLayout = layoutGraph(this.commits);
+        this.graphLayout = layoutGraph(this.commits, this.filter.order);
         this.renderStart = -1;
         this.renderVisibleRows();
+    }
+
+    setGraphBranchMode(mode) {
+        this.graphBranchMode = mode;
+        this.renderRows();
     }
 
     renderVisibleRows() {
@@ -767,13 +841,14 @@ export class GitLogPane {
                 const paths = [...new Set(entries.flatMap(file => [file.original, file.path].filter(Boolean)))];
                 const patch = parent ? await this.history.git.diffCommit(parent, commit.hash, paths)
                     : await this.history.git.diffCommitAgainstParent(commit.hash, paths);
-                return groups.size > 1 ? `Changes against parent ${parent}\n${patch}` : patch;
+                return { text: patch, parent };
             }));
-            const text = patches.join("\n");
+            const text = patches.map(patch => patch.text).join("\n");
+            const baseRevisions = patches.flatMap(patch => [...patch.text.matchAll(/^diff --git /gm)].map(() => patch.parent));
             if (this.disposed || this.controller.disposed || !this.el.isConnected || revision !== this.diffRevision || root !== this.controller.repository.root) return;
             const doc = this.el.ownerDocument;
-            await this.controller.openDiffText(text || "No textual changes (the file may be binary).", `${path} @ ${commit.hash.slice(0, 8)}`, doc,
-                { historical: true, revision: commit.hash });
+            await this.controller.openDiffText(text || "No textual changes (the file may be binary).", path, doc,
+                { historical: true, revision: commit.hash, baseRevisions });
         } catch (error) { if (!this.disposed) new Notice(error.message); }
     }
 

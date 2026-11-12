@@ -31,7 +31,7 @@ export class GitTool {
         host.addEventListener("keydown", this.navigateTabs);
     }
 
-    add(filter) {
+    add(filter = {}) {
         this.restored = true;
         let tab;
         const pane = new GitLogPane(this.controller, this.tabs.body, label => {

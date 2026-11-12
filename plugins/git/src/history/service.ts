@@ -73,7 +73,7 @@ export class GitHistoryService {
         if (this.disposed) throw new Error("Git history has been unloaded.");
         this.git.setRepoPath(this.plugin.repository.root);
         const paths = options.paths ?? [];
-        let follow = paths.length === 1;
+        let follow = options.follow !== false && paths.length === 1;
         if (follow) {
             try { follow = !(await stat(resolve(this.plugin.repository.root, paths[0]))).isDirectory(); }
             catch {

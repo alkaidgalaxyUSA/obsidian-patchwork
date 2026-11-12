@@ -23,6 +23,8 @@ for (const file of [
   "idea-expui-vcs-push_dark.svg", "idea-expui-vcs-merge_dark.svg",
   "idea-expui-vcs-unshelve_dark.svg", "idea-expui-run-pause_dark.svg",
   "idea-expui-vcs-changelist_dark.svg", "idea-vcs-branchNode.svg",
+  "idea/expui/general/up_dark.svg", "idea/expui/general/down_dark.svg",
+  "idea/expui/general/left_dark.svg", "idea/expui/general/right_dark.svg",
   "idea/expui/general/remove_dark.svg", "idea/general/gearPlain_dark.svg",
   "idea/expui/general/moveUp_dark.svg", "idea/expui/general/moveDown_dark.svg",
   "idea/dvcs/currentBranchLabel_dark.svg", "idea/dvcs/currentBranchFavoriteLabel_dark.svg", "idea/dvcs/branchLabel_dark.svg",

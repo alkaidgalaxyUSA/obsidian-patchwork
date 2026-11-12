@@ -1,6 +1,7 @@
 import { highlightSegments } from "./highlight-line";
 import { pairLines, wordDiff } from "./word-diff";
 import { setIcon } from "../../utils/icons";
+import { splitDocuments } from "./split-documents";
 
 /** Render parsed changes with Patchwork's own diff classes and typography. */
 export function renderDiff(output, raw, files, mode, contextMenu, limit = 3000, options = {}) {
@@ -13,25 +14,29 @@ export function renderDiff(output, raw, files, mode, contextMenu, limit = 3000, 
         const fileLabel = file.oldPath ? `${file.oldPath} → ${file.path}` : file.path;
         const header = output.createSpan({ cls: "pw-diff-file" });
         if (options.historical) {
-            setIcon(header.createSpan({ cls: "pw-diff-file-lock", attr: { "aria-hidden": "true" } }), "lock");
-            header.createSpan({ cls: "pw-diff-file-revision", text: `${options.revision?.slice(0, 8) || "--------"}` });
-            header.createSpan({ cls: "pw-diff-file-path", text: fileLabel });
-            header.appendText("\n");
+            header.classList.add("pw-diff-revision-headers");
+            const revisionHeader = (revision, path) => {
+                const side = header.createSpan({ cls: "pw-diff-revision-header" });
+                setIcon(side.createSpan({ cls: "pw-diff-file-lock", attr: { "aria-hidden": "true" } }), "status-file-lock");
+                side.createSpan({ cls: "pw-diff-file-revision", text: revision?.slice(0, 8) || "--------" });
+                if (path) side.createSpan({ cls: "pw-diff-file-path", text: path });
+            };
+            if (file.change !== "added") revisionHeader(options.baseRevisions?.[fileIndex], file.oldPath || file.path);
+            if (file.change !== "deleted") revisionHeader(options.revision, file.change === "added" ? file.path : undefined);
         } else header.setText(`${fileLabel}  +${file.additions} −${file.deletions}\n`);
         if (file.binary) { output.createSpan({ text: "Binary file changed\n" }); continue; }
         if (!file.hunks.length) { output.createSpan({ text: file.oldPath ? "Renamed; content unchanged\n" : file.change === "modified" ? "File mode changed; content unchanged\n" : `${file.change === "added" ? "Added" : "Deleted"} empty file\n` }); continue; }
         const singleSide = mode === "split" && (file.change === "added" || file.change === "deleted");
-        if (mode === "split" && !singleSide) {
-            const columns = output.createSpan({ cls: "pw-diff-columns" });
-            columns.createSpan({ text: "Before" }); columns.createSpan({ text: "After" });
-        }
+        const blocks = [];
+        const finish = () => { if (options.registerCleanup && mode === "split" && !singleSide) splitDocuments(output, blocks, options.registerCleanup); };
         for (let hunkIndex = 0; hunkIndex < file.hunks.length; hunkIndex++) {
-            if (count >= limit) { more(); return; }
+            if (count >= limit) { finish(); more(); return; }
             const original = file.hunks[hunkIndex];
             const truncated = original.lines.length > limit - count;
             const hunk = truncated ? { ...original, lines: original.lines.slice(0, limit - count) } : original;
             count += hunk.lines.length;
-            const block = output.createSpan({ cls: "pw-diff-hunk", attr: { tabindex: "0", "aria-label": `Change in ${file.path} at line ${hunk.newStart}` } });
+            const block = output.createSpan({ cls: "pw-diff-hunk", attr: { tabindex: "0" } });
+            blocks.push(block);
             if (!options.historical) block.createSpan({ cls: "pw-diff-hunk-heading", text: `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@ ${hunk.header}\n` });
             if (mode === "split") renderSplit(block, hunk, file.path, singleSide, file.change);
             else {
@@ -58,8 +63,9 @@ export function renderDiff(output, raw, files, mode, contextMenu, limit = 3000, 
                     contextMenu(new block.ownerDocument.defaultView.MouseEvent("contextmenu", { clientX: rect.left, clientY: rect.top }), file, fileIndex, hunkIndex);
                 });
             }
-            if (truncated) { more(); return; }
+            if (truncated) { finish(); more(); return; }
         }
+        finish();
     }
 }
 
@@ -72,7 +78,7 @@ function renderSplit(block, hunk, path, singleSide = false, change) {
             continue;
         }
         const row = block.createSpan({ cls: "pw-diff-pair" });
-        const left = row.createSpan({ cls: `pw-diff-cell pw-diff-${pair.left?.type || "context"}` });
+        const left = row.createSpan({ cls: `pw-diff-cell pw-diff-left pw-diff-${pair.left?.type || "context"}` });
         const right = row.createSpan({ cls: `pw-diff-cell pw-diff-${pair.right?.type || (pair.type === "context" ? "context" : "empty")}` });
         const words = pair.type === "modify" && pair.left.content.length <= 2000 && pair.right.content.length <= 2000 ? wordDiff(pair.left.content, pair.right.content) : undefined;
         renderCell(left, pair.left, words?.old, pair.left?.oldLineNo, path);
@@ -85,5 +91,5 @@ function renderSplit(block, hunk, path, singleSide = false, change) {
 function renderCell(cell, line, segments, number, path) {
     if (!line) return;
     cell.createSpan({ cls: "pw-diff-line-number", text: String(number ?? "") });
-    highlightSegments(cell.createSpan(), line.content, path, segments);
+    highlightSegments(cell.createSpan({ cls: "pw-diff-cell-content" }), line.content, path, segments);
 }

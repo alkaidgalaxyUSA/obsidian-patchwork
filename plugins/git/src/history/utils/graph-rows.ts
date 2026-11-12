@@ -5,8 +5,8 @@ const HEIGHT = 30;
 const CHUNK = 64;
 
 /** Slice upstream topology into Patchwork's log row cells. */
-export function createGraphRows(commits: CommitInfo[]) {
-    const ordered = topologicalCommits(commits);
+export function createGraphRows(commits: CommitInfo[], topology = true) {
+    const ordered = topology ? topologicalCommits(commits) : commits;
     const graph = computeGraphLayout(ordered);
     const positions = new Map(commits.map((commit, index) => [commit.hash, index]));
     const boundary = ordered.length > 1 && positions.get(ordered[0].hash)! > positions.get(ordered[ordered.length - 1].hash)! ? -1 : commits.length;

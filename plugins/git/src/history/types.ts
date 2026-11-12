@@ -138,6 +138,7 @@ export interface HistoryLogOptions {
   file?: string; paths?: string[]; follow?: boolean; search?: string;
   author?: string; since?: string; regex?: boolean; caseSensitive?: boolean;
   order?: "topo" | "date" | "reverse";
+  firstParent?: boolean; noMerges?: boolean;
 }
 
 export interface CommitFileInfo {

@@ -395,6 +395,8 @@ export class GitService {
     if (opts.maxCount) args.push(`--max-count=${opts.maxCount}`);
     if (opts.skip) args.push(`--skip=${opts.skip}`);
     if (opts.order === "reverse") args.push("--reverse");
+    if (opts.firstParent) args.push("--first-parent");
+    if (opts.noMerges) args.push("--no-merges");
     if (opts.author) args.push(`--author=${opts.author}`);
     if (opts.since) args.push(`--since=${opts.since}`);
     if (!opts.regex) args.push("--fixed-strings");
