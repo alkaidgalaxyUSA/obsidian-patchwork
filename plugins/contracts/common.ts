@@ -1,5 +1,5 @@
 export type ModuleId = "borders" | "project" | "content" | "git" | "terminal" | "claudian";
-export type PanelId = "project" | "git:commit" | "git:log" | "terminal" | "claudian";
+export type PanelId = "project" | "git:commit" | "git:log" | "bookmarks" | "terminal" | "claudian";
 export type Edge = "top" | "left" | "right" | "bottom";
 export type Unsubscribe = () => void;
 export interface Disposable { dispose(): void; }

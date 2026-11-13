@@ -29,6 +29,7 @@ import { openGitDialog } from "./utils/portals";
 import { GitMoveTracker } from "./move-tracker";
 import { gitErrorSummary } from "./utils/git-error-summary";
 import { readBranchSync } from "./utils/branch-sync";
+import { workingDiff } from "./utils/working-diff";
 
 export class GitController {
     constructor(plugin, vaultPath, data) {
@@ -505,11 +506,24 @@ export class GitController {
         });
     }
 
-    async showDiff(paths, newTab = false, stage) {
+    async showDiff(paths, newTab = false, stage, document = this.app.workspace.containerEl.ownerDocument) {
         if (!paths.length || this.disposed || this.busy) return;
         try {
-            const leaf = (!newTab && this.app.workspace.getLeavesOfType(DIFF_VIEW).find(leaf => leaf.view.comparison === "working" && leaf.view.containerEl.ownerDocument === this.app.workspace.containerEl.ownerDocument))
-                || this.app.workspace.getLeaf(newTab === "window" ? "window" : "tab");
+            if (!newTab) {
+                if (document !== this.app.workspace.containerEl.ownerDocument || !document.defaultView || document.defaultView.closed) throw new Error("The invoking window is unavailable.");
+                const root = this.repository.root;
+                const request = this.diffRequest = (this.diffRequest ?? 0) + 1;
+                const current = () => !this.disposed && root === this.repository.root && request === this.diffRequest && document.defaultView && !document.defaultView.closed;
+                const head = stage === "unstaged" ? undefined : await this.repository.head();
+                if (!current()) return;
+                const text = await workingDiff(this, [...paths], stage === "staged", true, stage === "unstaged" ? "index" : "head");
+                if (!current()) return;
+                await this.openDiffText(text, paths.length === 1 ? paths[0] : "Git Diff", document, {
+                    comparisonLabels: { left: stage === "unstaged" ? "Index" : head?.slice(0, 8) || "--------", right: stage === "staged" ? "Index" : "Current Version" },
+                }, current);
+                return;
+            }
+            const leaf = this.app.workspace.getLeaf(newTab === "window" ? "window" : "tab");
             await leaf.setViewState({ type: DIFF_VIEW, active: true, state: { title: paths.length === 1 ? `Diff: ${paths[0]}` : "Git Diff", paths, comparison: "working", baseline: stage === "unstaged" ? "index" : "head", staged: stage === "staged" } });
             await this.app.workspace.revealLeaf(leaf);
         } catch (error) { if (!this.disposed) new Notice(`Git: ${error.message}`, 10000); }
@@ -519,11 +533,12 @@ export class GitController {
 
     compare(left = "HEAD", right = "", paths = []) { openGitDialog(this, new GitCompareModal(this, left, right, paths)); }
 
-    async openDiffText(text, title, document = this.app.workspace.containerEl.ownerDocument, options = {}) {
-        if (this.disposed || !document.defaultView || text === undefined) return;
+    async openDiffText(text, title, document = this.app.workspace.containerEl.ownerDocument, options = {}, isCurrent = () => true) {
+        if (this.disposed || !document.defaultView || document.defaultView.closed || text === undefined || !isCurrent()) return;
         if (document !== this.app.workspace.containerEl.ownerDocument) throw new Error("The invoking window is unavailable.");
-        const files = await this.plugin.history.git.parseDiff(text);
-        if (this.disposed || !document.defaultView) return;
+        const root = this.repository.root;
+        const files = options.files ?? await this.plugin.history.git.parseDiff(text);
+        if (this.disposed || root !== this.repository.root || !document.defaultView || document.defaultView.closed || !isCurrent()) return;
         openGitDialog(this, new GitDiffModal(this, document, title, text, files, options));
     }
 

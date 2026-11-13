@@ -22,6 +22,9 @@ export class GitDiffModal extends Modal {
         this.historical = options.historical === true;
         this.revision = options.revision;
         this.baseRevisions = options.baseRevisions;
+        this.comparisonLabels = options.comparisonLabels;
+        this.notification = options.notification;
+        if (this.notification) this.collapse = false;
         this.setTitle(title);
         this.modalEl.classList.add("pw-git-diff-modal");
     }
@@ -69,11 +72,18 @@ export class GitDiffModal extends Modal {
         button(viewers, null, "Side by side", () => { this.mode = "split"; this.render(); }, this.mode === "split").classList.add("pw-diff-viewer-toggle");
         button(viewers, null, "Unified", () => { this.mode = "unified"; this.render(); }, this.mode === "unified").classList.add("pw-diff-viewer-toggle");
         button(right, "settings", "Diff Settings", event => diffSettings(this, event));
+        if (this.notification && !this.notificationHidden) {
+            const notification = this.contentEl.createDiv({ cls: "pw-diff-notification", attr: { role: "status" } });
+            notification.createSpan({ cls: "pw-diff-notification-icon", text: "!", attr: { "aria-hidden": "true" } });
+            notification.createSpan({ text: this.notification });
+            const hide = notification.createEl("button", { cls: "pw-diff-notification-hide", text: "Hide", attr: { type: "button" } });
+            hide.onclick = () => { this.notificationHidden = true; notification.remove(); };
+        }
         const output = this.contentEl.createEl("pre", { cls: "pw-git-output", attr: { tabindex: "0" } });
         renderDiff(output, this.raw, this.files, this.mode, undefined, 3000, {
             positions, onExpandContext: () => { this.collapse = false; this.render(); },
             align: this.align, sync: this.sync, wrap: this.wrap, collapse: this.collapse,
-            historical: this.historical, revision: this.revision, baseRevisions: this.baseRevisions,
+            historical: this.historical, revision: this.revision, baseRevisions: this.baseRevisions, comparisonLabels: this.comparisonLabels,
             registerCleanup: cleanup => this.documentListeners.push(cleanup),
         });
     }
