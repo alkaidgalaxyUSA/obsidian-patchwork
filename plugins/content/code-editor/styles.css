@@ -145,7 +145,7 @@ body .menu[data-pw-module="content"][data-pw-surface="code-menu"]:not(:where([da
 
 /* A section selection fills every SQL line, including the final line at EOF. */
 .ce-editor-container .cm-line.ce-sql-section-selected:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
-    background: rgba(80, 110, 160, 0.28);
+    background: var(--text-selection);
 }
 .ce-editor-container .ce-sql-group-selected .cm-selectionBackground:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
     background: transparent !important;

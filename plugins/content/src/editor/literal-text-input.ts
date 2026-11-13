@@ -1,10 +1,12 @@
 import { Plugin, editorLivePreviewField } from "obsidian";
-import { EditorSelection, EditorState, Prec } from "@codemirror/state";
-import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
+import { EditorSelection, EditorState, Prec, Transaction, TransactionSpec } from "@codemirror/state";
+import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType, keymap } from "@codemirror/view";
+import { isolateHistory } from "@codemirror/commands";
 import { syntaxTree } from "@codemirror/language";
 import { scanCodeBlocks } from "./utils/note-code-block.js";
 import { decodeLiteralToken, escapeLiteralText, isEscapedAt, isInlineHtmlAt, isLiteralPunctuation, literalTextPattern, transformLiteralText } from "../utils/literal-text";
 import { canFormatEditor } from "../utils/editor-context";
+import { blockShortcut } from "./utils/block-shortcuts";
 
 const codeRanges = new WeakMap<EditorState, ReturnType<typeof scanCodeBlocks>>();
 const protectedSyntax = /code|math|frontmatter|hmd-internal-link|hmd-external-link/i;
@@ -32,6 +34,51 @@ function isProse(state: EditorState, from: number, to = from): boolean {
 
 export function selectionIsProse(state: EditorState): boolean {
     return state.selection.ranges.every(range => isProse(state, range.from, range.to));
+}
+
+function convertBlock(view: EditorView, trigger: " " | "Enter", focusBlock: (view: EditorView) => void): boolean {
+    const { state } = view;
+    if (view.composing || state.selection.ranges.length !== 1 || !state.selection.main.empty) return false;
+    const at = state.selection.main.head;
+    const line = state.doc.lineAt(at);
+    if (!isProse(state, line.from, at) || trigger === "Enter" && at !== line.to) return false;
+    const conversion = blockShortcut(state.sliceDoc(line.from, at), trigger);
+    if (!conversion) return false;
+    view.dispatch({
+        changes: { from: line.from, to: at, insert: conversion.text },
+        selection: { anchor: line.from + conversion.caret },
+        annotations: isolateHistory.of("full"), userEvent: "input.block", scrollIntoView: true,
+    });
+    // Native table widgets resolve cell focus after the document has been updated.
+    view.dispatch({ selection: { anchor: line.from + conversion.caret } });
+    focusBlock(view);
+    return true;
+}
+
+function preserveEmptyTaskLine(transaction: Transaction): Transaction | TransactionSpec[] {
+    const state = transaction.startState;
+    if (!transaction.docChanged || state.readOnly || !state.field(editorLivePreviewField, false)
+        || transaction.isUserEvent("undo") || transaction.isUserEvent("redo")
+        || state.selection.ranges.length !== 1 || !state.selection.main.empty) return transaction;
+    const at = state.selection.main.head;
+    const line = state.doc.lineAt(at);
+    if (!/^ {0,3}(?:[-+*]|\d+[.)])[\t ]+\[[ xX]\][\t ]*$/.test(line.text)
+        || at < line.from + line.text.indexOf("]") + 1 || !isProse(state, line.from, at)) return transaction;
+    let count = 0, restoreAt: number | undefined;
+    transaction.changes.iterChanges((from, to, _fromB, _toB, inserted) => {
+        count++;
+        if (inserted.length) return;
+        if (line.from > 0 && from === line.from - 1 && to === line.to) restoreAt = from;
+        if (line.to < state.doc.length && from === line.from && to === line.to + 1) restoreAt = from;
+    });
+    if (count !== 1 || restoreAt === undefined) return transaction;
+    // Native list deletion bypasses keymaps and consumes an adjacent newline.
+    // Restore it in the same transaction, including the caret outside any fence.
+    return [transaction, {
+        changes: { from: restoreAt, insert: "\n" },
+        selection: { anchor: line.from }, sequential: true,
+        annotations: isolateHistory.of("full"), scrollIntoView: true,
+    }];
 }
 
 function literalInput(text: string, state: EditorState, at: number): string {
@@ -99,13 +146,16 @@ class LiteralTextView {
     }
 }
 
-export function installLiteralTextInput(plugin: Plugin): void {
+export function installLiteralTextInput(plugin: Plugin, focusBlock: (view: EditorView) => void): void {
     const visuals = ViewPlugin.define(view => new LiteralTextView(view), {
         decorations: value => value.decorations,
         provide: extension => EditorView.atomicRanges.of(view => view.plugin(extension)?.atomics ?? Decoration.none),
     });
     plugin.registerEditorExtension([
+        Prec.highest(keymap.of([{ key: "Enter", run: view => convertBlock(view, "Enter", focusBlock) }])),
+        Prec.highest(EditorState.transactionFilter.of(preserveEmptyTaskLine)),
         Prec.highest(EditorView.inputHandler.of((view, from, to, text, insert) => {
+            if (text === " " && from === to && from === view.state.selection.main.head && convertBlock(view, " ", focusBlock)) return true;
             if (!isProse(view.state, from, to)) return false;
             if (literalInput(text, view.state, from) === text) return false;
             const transaction = insert();

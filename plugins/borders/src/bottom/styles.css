@@ -66,6 +66,7 @@ body .pw-encoding-menu { width: 196px; min-width: 0; max-width: calc(100vw - 16p
 body .pw-encoding-menu .menu-item-title { white-space: normal; }
 body.pw-document-footer-enabled .status-bar > .plugin-word-count { order: 40; display: flex; white-space: nowrap; }
 body.pw-document-footer-enabled .status-bar > .pw-status-lock { display: flex; align-items: center; justify-content: center; order: 50; width: 24px; height: 22px; box-sizing: border-box; padding: 3px; --icon-size: 15px; }
+body.pw-document-footer-enabled .status-bar > .pw-status-lock { color:var(--text-muted); --icon-stroke:currentColor; }
 body.pw-document-footer-enabled .status-bar > .pw-status-lock svg { width: 16px; height: 16px; }
 body.pw-document-footer-enabled .status-bar > [hidden] { display: none; }
 body.pw-document-footer-enabled > .pw-sidebar-edge { bottom: 24px; height: auto; }

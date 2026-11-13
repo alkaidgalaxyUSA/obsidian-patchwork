@@ -102,6 +102,7 @@ export class ZenActions {
         composer.append(collapse);
         host.append(dock);
         this.entries.set(root, entry);
+        this.syncSurfaces();
         const win = getWindow(doc);
         if (win) {
             // Resolve the starting opacity before enabling hover/active transitions.

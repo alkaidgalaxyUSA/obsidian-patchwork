@@ -4,6 +4,8 @@ import { renderDiff } from "./history/utils/render-diff";
 import { scopeModule } from "../../utils/module-scope";
 import { enableModalDrag } from "./utils/modal-drag";
 import { enableModalResize } from "./utils/modal-resize";
+import { navigateDifference } from "./utils/diff-navigation";
+import { diffSettings } from "./utils/diff-settings";
 import { differenceCount } from "./utils/difference-count";
 
 /** Shared read-only Diff surface used by history and revision entry points. */
@@ -16,6 +18,7 @@ export class GitDiffModal extends Modal {
         this.raw = raw;
         this.files = files;
         this.mode = options.mode === "unified" ? "unified" : "split";
+        this.align = options.align === true; this.sync = options.sync !== false; this.wrap = false; this.collapse = true; this.menus = new Set();
         this.historical = options.historical === true;
         this.revision = options.revision;
         this.baseRevisions = options.baseRevisions;
@@ -30,10 +33,13 @@ export class GitDiffModal extends Modal {
         this.contentEl.classList.add("pw-git-diff-view");
         this.stopDrag = enableModalDrag(this.modalEl, this.titleEl);
         this.stopResize = enableModalResize(this.modalEl);
+        this.onKey = event => { if (event.key === "F7") { event.preventDefault(); this.navigate(event.shiftKey ? -1 : 1); } };
+        this.contentEl.addEventListener("keydown", this.onKey);
         this.render();
     }
 
     render() {
+        const positions = [...this.contentEl.querySelectorAll(".pw-diff-documents")].map(el => [...el.querySelectorAll(".pw-diff-document")].map(side => [side.scrollTop, side.scrollLeft]));
         this.clearDocumentListeners();
         this.contentEl.empty();
         const toolbar = this.contentEl.createDiv({ cls: "pw-git-diff-actions" });
@@ -55,25 +61,27 @@ export class GitDiffModal extends Modal {
         this.updateFileCount();
         button(left, "idea/expui/general/right_dark.svg", "Next File", () => this.navigateFile(1));
         separator(left);
-        button(left, "git-collapse-all", "Collapse Unchanged Fragments", () => new Notice("Diff fragment collapsing is unavailable for this comparison."));
+        button(left, "git-collapse-all", "Collapse Unchanged Fragments", () => { this.collapse = !this.collapse; this.render(); }, this.collapse);
         this.differenceLabel = right.createSpan({ cls: "pw-git-diff-difference-count", attr: { "aria-live": "polite" } });
         this.updateDifferenceCount();
         const viewers = right.createDiv({ cls: "pw-diff-viewer-toggles" });
         button(viewers, null, "Side by side", () => { this.mode = "split"; this.render(); }, this.mode === "split").classList.add("pw-diff-viewer-toggle");
         button(viewers, null, "Unified", () => { this.mode = "unified"; this.render(); }, this.mode === "unified").classList.add("pw-diff-viewer-toggle");
-        button(right, "settings", "Diff Settings", () => new Notice("Diff settings are not available for this comparison."));
+        button(right, "settings", "Diff Settings", event => diffSettings(this, event));
         const output = this.contentEl.createEl("pre", { cls: "pw-git-output", attr: { tabindex: "0" } });
         renderDiff(output, this.raw, this.files, this.mode, undefined, 3000, {
+            positions, onExpandContext: () => { this.collapse = false; this.render(); },
+            align: this.align, sync: this.sync, wrap: this.wrap, collapse: this.collapse,
             historical: this.historical, revision: this.revision, baseRevisions: this.baseRevisions,
             registerCleanup: cleanup => this.documentListeners.push(cleanup),
         });
     }
 
     navigate(direction) {
-        const hunks = [...this.contentEl.querySelectorAll(".pw-diff-hunk")];
-        if (!hunks.length) return;
-        this.index = this.index === undefined ? (direction > 0 ? 0 : hunks.length - 1) : (this.index + direction + hunks.length) % hunks.length;
-        hunks[this.index].scrollIntoView({ block: "center" }); hunks[this.index].focus({ preventScroll: true });
+        const selected = navigateDifference(this.contentEl, this.index, direction);
+        if (!selected) return;
+        this.index = selected.index; this.fileIndex = selected.fileIndex;
+        this.updateFileCount(); this.updateDifferenceCount();
     }
 
     navigateFile(step) {
@@ -107,5 +115,5 @@ export class GitDiffModal extends Modal {
         this.documentListeners = [];
     }
 
-    onClose() { this.clearDocumentListeners(); this.stopDrag?.(); this.stopResize?.(); this.footer?.remove(); this.scope?.dispose(); this.contentEl.empty(); }
+    onClose() { this.contentEl.removeEventListener("keydown", this.onKey); for (const menu of this.menus) menu.hide(); this.menus.clear(); this.clearDocumentListeners(); this.stopDrag?.(); this.stopResize?.(); this.footer?.remove(); this.scope?.dispose(); this.contentEl.empty(); }
 }

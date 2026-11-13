@@ -8,6 +8,11 @@ function codeTokens(doc, text, language, unit, previous, theme = "night-owl") {
     const parser = cm.modes[info?.mode ?? language];
     if (previous?.text === text && previous.language === language && previous.unit === unit
         && previous.parser === parser && previous.theme === theme) return previous;
+    const plain = () => ({ text, language, unit, parser, theme, tokens: [] });
+    // Highlighting runs on the UI thread. Large blocks must remain readable
+    // without creating hundreds of thousands of spans or blocking startup.
+    if (text.length > 100_000) return plain();
+    const deadline = performance.now() + 25;
     const markdown = isNightOwlMarkdown(language, theme);
     const spec = markdown ? { name: "markdown", highlightFormatting: true }
         : info?.mime ?? (cm.modes[language] ? language : "text/plain");
@@ -17,10 +22,12 @@ function codeTokens(doc, text, language, unit, previous, theme = "night-owl") {
     const lines = text.split("\n");
     let offset = 0;
     for (let index = 0; index < lines.length; index++) {
+        if (index >= 2_000 || performance.now() >= deadline) return plain();
         const stream = new cm.StringStream(lines[index], unit);
         if (!lines[index]) mode.blankLine?.(state);
         let stalled = 0;
         while (!stream.eol()) {
+            if (tokens.length >= 20_000 || performance.now() >= deadline) return plain();
             stream.start = stream.pos;
             const style = mode.token(stream, state);
             if (stream.pos === stream.start) {
@@ -45,7 +52,7 @@ function codeTokens(doc, text, language, unit, previous, theme = "night-owl") {
 function highlightCode(code, language, unit, previous) {
     const text = code.textContent;
     const result = codeTokens(code.ownerDocument, text, language, unit, previous, code.closest("[data-pw-theme]")?.dataset.pwTheme ?? "night-owl");
-    if (!result || result.text !== text || result === previous && !code.querySelector(".token")) return previous;
+    if (!result || result.text !== text || result === previous) return previous;
     const fragment = code.ownerDocument.createDocumentFragment();
     let offset = 0;
     for (const token of result.tokens) {

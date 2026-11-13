@@ -1,9 +1,10 @@
-import { ContentModal as Modal } from "../utils/portals";
-import { WorkspaceLeaf } from "obsidian";
+import { Modal, WorkspaceLeaf } from "obsidian";
+import { installMeldPasswords } from "../integrations/meld-passwords.js";
 
 /** Keep a document-local locked state; Meld still owns password verification and decryption. */
 export function installEncryptedUnlock(plugin) {
     const { app } = plugin;
+    const passwords = installMeldPasswords(plugin);
     const entries = new Map();
     const originalOpen = Modal.prototype.open;
     const originalSetState = WorkspaceLeaf.prototype.setViewState;
@@ -103,6 +104,13 @@ export function installEncryptedUnlock(plugin) {
             status.textContent = entry.attempted ? "Incorrect password. Try again." : "";
             // A retry in a background tab must not steal focus from another document.
             if (app.workspace.activeLeaf === leaf) input.focus();
+            if (!entry.attempted) {
+                const remembered = passwords.recall(file.path);
+                if (remembered) {
+                    input.value = remembered;
+                    form.requestSubmit();
+                }
+            }
         };
         form.addEventListener("submit", (event) => {
             event.preventDefault();
@@ -125,7 +133,7 @@ export function installEncryptedUnlock(plugin) {
         replace(view, "setViewBusy", function (busy) {
             const result = setViewBusy.call(this, busy);
             if (busy || this.isUnlocking || entry.closed) return result;
-            if (this.isSavingEnabled) cleanup();
+            if (this.isSavingEnabled) { passwords.remember(this); cleanup(); }
             else {
                 form.setAttribute("aria-busy", "false");
                 input.disabled = true;

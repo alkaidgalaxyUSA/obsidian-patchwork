@@ -41,7 +41,7 @@ function readOptions(info) {
 function scanCodeBlocks(doc) {
     const blocks = [];
     let current;
-    let frontmatter = doc.line(1).text === "---";
+    let frontmatter = doc.line(1).text.replace(/\r$/, "") === "---";
     for (let number = 1; number <= doc.lines; number++) {
         const line = doc.line(number);
         if (frontmatter) {
@@ -56,7 +56,7 @@ function scanCodeBlocks(doc) {
             }
             continue;
         }
-        const open = line.text.match(/^( {0,3})(`{3,}|~{3,})(.*)$/);
+        const open = line.text.match(/^( {0,3})(`{3,}|~{3,})([^\r\n]*)\r?$/);
         if (!open || (open[2][0] === "`" && open[3].includes("`"))) continue;
         current = {
             from: line.from, openTo: line.to, contentFrom: Math.min(line.to + 1, doc.length),

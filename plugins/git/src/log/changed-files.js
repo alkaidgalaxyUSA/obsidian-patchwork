@@ -25,7 +25,7 @@ export class ChangedFiles {
         this.clear();
     }
 
-    clear(message = "Select commit to view changes", loading = false) {
+    clear(message = "", loading = false) {
         this.commit = undefined;
         this.files = [];
         this.selected.clear();

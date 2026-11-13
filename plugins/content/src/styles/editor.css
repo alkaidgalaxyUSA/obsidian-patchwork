@@ -353,8 +353,8 @@ body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .pw-n
 body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .markdown-source-view.mod-cm6 .cm-line.pw-note-code-opening:has(.pw-note-code-header[data-collapsed="true"]):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { padding-bottom: 12px !important; }
 body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .pw-note-code-header:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { overflow: visible; }
 
-/* Keep the name, fold triangle and Run button visible; reveal other actions only for this block. */
-body .pw-note-code-header :is(.pw-code-select, .pw-note-code-separator, [data-action="copy"], [data-action="more"]):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+/* Keep the name and fold triangle visible; reveal actions only for this block. */
+body .pw-note-code-header :is(.pw-code-select, .pw-note-code-separator, [data-action="run"], [data-action="copy"], [data-action="more"]):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
     opacity: 0;
     pointer-events: none;
 }
@@ -1262,7 +1262,7 @@ body :is(pre, .pw-note-code-body, .HyperMD-codeblock)[data-pw-language="markdown
 body :is(pre, .pw-note-code-body, .HyperMD-codeblock)[data-pw-language="markdown"][data-pw-theme="night-owl"] .cm-meta:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { color: var(--pw-content-code-meta) !important; }
 body :is(pre, .pw-note-code-body, .HyperMD-codeblock)[data-pw-language="markdown"][data-pw-theme="night-owl"] .cm-link:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { text-decoration: underline; }
 body .pw-note-code-body .cm-cursor:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { border-left-color: var(--pw-content-code-cursor); }
-body .pw-note-code-body .cm-editor.cm-focused .cm-selectionBackground:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { background: rgb(80 153 236 / 50%); }
+body .pw-note-code-body .cm-editor .cm-selectionBackground:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) { background: var(--text-selection); }
 /* Backticks stay visible text outside fenced code in Live Preview. */
 
 
@@ -1281,4 +1281,26 @@ body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) .inli
 }
 body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view)[data-mode="preview"] .inline-title.pw-note-title:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
     caret-color: transparent;
+}
+/* Code card outlines and empty paragraph affordances. */
+body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) :is(.pw-note-code-header, .pw-note-code-body):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    --pw-content-code-border-width: 1px;
+    --pw-content-code-border: #313131;
+}
+body .workspace-leaf-content:is([data-type="markdown"], .pw-markdown-view) :is(.pw-note-code-header, .pw-note-code-body)[data-hover="true"]:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    --pw-content-code-border: #253C56;
+}
+body .pw-paragraph-controls[data-empty="true"][data-caret="true"]:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *))::after {
+    content: "Type/ evoke more";
+    position: absolute;
+    left: 0;
+    top: var(--pw-paragraph-control-center, 13px);
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    font: inherit;
+    pointer-events: none;
+    user-select: none;
+}
+body .pw-paragraph-controls[data-empty="true"]:has(> .pw-code-drag:hover):where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *))::before {
+    background: #161F29;
 }

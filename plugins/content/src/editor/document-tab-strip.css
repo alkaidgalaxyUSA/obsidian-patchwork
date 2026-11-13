@@ -102,6 +102,9 @@ body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-top-area > .pw-d
 body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-top-area > .pw-document-tab-strip .workspace-tab-header:is(.is-active, :hover) .workspace-tab-header-inner-title:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
     color: var(--pw-tab-text);
 }
+body .mod-root .pw-document-tab-strip .workspace-tab-header[data-pw-tab-git-status="modified"] .workspace-tab-header-inner-title:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
+    color: #70AEFF !important;
+}
 body .mod-root .workspace-tabs:not(.mod-stacked) > .pw-document-top-area > .pw-document-tab-strip .workspace-tab-header-inner-close-button:where([data-pw-module="content"], [data-pw-module="content"] *):not(:where([data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]), [data-pw-module="content"] [data-pw-module]:not([data-pw-module="content"]) *)) {
     /* Native inactive-tab rules otherwise remove this slot from layout. */
     display: flex !important;

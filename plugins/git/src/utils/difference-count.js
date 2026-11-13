@@ -1,13 +1,5 @@
-/** Adjacent removed/added lines form one change, even inside a shared Git hunk. */
+import { diffBlocks } from "../history/utils/diff-blocks";
+
 export function differenceCount(file) {
-    let count = 0;
-    for (const hunk of file?.hunks ?? []) {
-        let changing = false;
-        for (const line of hunk.lines) {
-            const changed = line.type === "add" || line.type === "del";
-            if (changed && !changing) count++;
-            changing = changed;
-        }
-    }
-    return count;
+    return (file?.hunks ?? []).reduce((total, hunk) => total + diffBlocks(hunk).filter(block => block.type !== "context").length, 0);
 }

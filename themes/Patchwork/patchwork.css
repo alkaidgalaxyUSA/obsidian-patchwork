@@ -697,7 +697,7 @@ body {
     --text-on-accent-inverted: black;
     --text-error: var(--color-red);
     --text-success: var(--color-green);
-    --text-selection: hsla(var(--color-accent-hsl), 0.2);
+    --text-selection: rgb(80 153 236 / 20%);
     --text-highlight-bg: rgba(255, 208, 0, 0.4);
     --text-accent: var(--color-accent);
     --text-accent-hover: var(--color-accent-2);
@@ -750,7 +750,7 @@ body {
     --background-modifier-cover: rgba(10, 10, 10, 0.4);
     --text-highlight-bg: rgba(255, 208, 0, 0.4);
     --text-highlight-bg-active: rgba(255, 128, 0, 0.4);
-    --text-selection: hsla(var(--interactive-accent-hsl), 0.4);
+    --text-selection: rgb(80 153 236 / 20%);
     --input-shadow: inset 0 0 0 1px #f0f6fc1a;
     --input-shadow-hover: inset 0 0 0 1px var(--color-base-70);
     --shadow-s: none;
@@ -928,6 +928,19 @@ button.mod-cta {
 }
 button.mod-cta:hover {
     background-color: var(--color-btn-primary-hover-bg);
+}
+
+/* Text selection */
+::selection {
+    background-color: var(--text-selection);
+}
+
+/* Toggle switches */
+.checkbox-container.is-enabled {
+    background-color: var(--color-blue);
+}
+.checkbox-container.is-enabled:hover {
+    background-color: color-mix(in srgb, var(--color-blue) 85%, black);
 }
 
 /* Callout */

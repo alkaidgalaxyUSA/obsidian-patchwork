@@ -24,9 +24,8 @@ class NoteCodeControls {
         const options = { signal: this.listeners.signal };
         view.scrollDOM.addEventListener("scroll", () => this.schedule(), options);
         view.dom.addEventListener("pointermove", (event) => {
-            const element = event.target.closest?.("[data-pw-block], .pw-note-code-header, .pw-code-controls");
             const margin = this.marginAt(event);
-            this.hovered = element?.dataset.pwBlock ?? element?.dataset.from ?? margin?.entry.root.dataset.from ?? this.paragraphs.hoverAt(event);
+            this.hovered = this.hoverAt(event) ?? this.paragraphs.hoverAt(event);
             view.dom.classList.toggle("pw-code-margin-hover", Boolean(margin));
             this.schedule();
         }, options);
@@ -64,6 +63,15 @@ class NoteCodeControls {
     current(entry) {
         if (entry.paragraph) return this.paragraphs.current(entry);
         return this.view.state.field(this.controller.field, false)?.blocks.find((block) => block.from === Number(entry.root.dataset.from));
+    }
+
+    hoverAt(event) {
+        for (const [key, entry] of this.entries) {
+            if (entry.root.contains(event.target)) return key;
+            const rect = entry.root.getBoundingClientRect();
+            if (event.clientX >= rect.left && event.clientX < rect.right
+                && event.clientY >= rect.top && event.clientY < rect.bottom) return key;
+        }
     }
 
     marginAt(event) {
@@ -180,11 +188,9 @@ class NoteCodeControls {
             Object.assign(entry.root.style, { left: `${rect.left - origin.left}px`, top: `${rect.top - origin.top}px`, width: `${rect.width}px`, height: `${bottom - rect.top}px` });
             entry.root.dataset.hover = String(this.hovered === key);
             header.dataset.hover = String(this.hovered === key);
-            const focused = header.contains(this.doc.activeElement) || entry.root.contains(this.doc.activeElement)
-                || Boolean(body?.contains(this.doc.activeElement))
-                || this.view.contentDOM.contains(this.doc.activeElement) && this.view.state.selection.ranges.some((range) => range.head >= block.from && range.head <= block.to);
-            entry.everFocused ||= focused;
-            entry.root.dataset.resizeVisible = String(!entry.everFocused || focused);
+            if (body && body.dataset.hover !== header.dataset.hover) body.dataset.hover = header.dataset.hover;
+            const focused = header.contains(this.doc.activeElement) || entry.root.contains(this.doc.activeElement);
+            entry.root.dataset.resizeVisible = String(this.hovered === key || focused);
             entry.root.dataset.focused = String(focused);
             entry.root.dataset.folded = String(folded);
             entry.root.hidden = this.view.state.readOnly;

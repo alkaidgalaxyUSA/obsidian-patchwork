@@ -22,15 +22,14 @@ import { installModulePreferences } from "../settings/module-preferences";
 import { AttachmentManager } from "../attachments/attachment-manager.js";
 import { NoteOutline } from "./note-outline.js";
 import { installLiteralTextInput } from "./literal-text-input";
-import { installGitGutter } from "./git-gutter.js";
+import { installDocumentTabGitStatus } from "./document-tab-git-status.js";
 
 // Content owns document behavior and optional public service integrations.
 export function installEditorRuntime(plugin) {
         installContentSurfaces(plugin);
         installReadingMode(plugin);
         installEncryptedUnlock(plugin);
-        installLiteralTextInput(plugin);
-        installGitGutter(plugin);
+        installLiteralTextInput(plugin, view => plugin.noteCodeEditor?.focusBody(view));
         plugin.noteCodeEditor = new NoteCodeEditor(plugin, {
             EditorView, EditorState, EditorSelection, Decoration, ViewPlugin, StateField, StateEffect, ChangeSet, Prec, Text, Transaction, keymap,
             defaultKeymap, undo, redo, invertedEffects, isolateHistory, syntaxTree, highlightingFor, highlightTree,
@@ -47,6 +46,7 @@ export function installEditorRuntime(plugin) {
         plugin.register(() => plugin.noteNavigation.dispose());
         installDocumentTabs(plugin);
         installDocumentTabStrip(plugin);
+        installDocumentTabGitStatus(plugin);
         installDocumentModeActions(plugin);
         const attachments = new AttachmentManager(plugin);
         plugin.attachmentManager = attachments;

@@ -118,6 +118,7 @@ This is a multi-plugin project. Source nesting does not imply a shared installed
 - `dev:console` requires `dev:debug on`. Inspect captured errors, use bounded CLI calls, and detach debugging when finished. Do not leave indefinitely blocked CLI processes behind.
 - Do not log note contents, secrets, credentials or decrypted text while diagnosing user files.
 - Delete only confirmed empty directories, with a fresh emptiness check. Do not recurse into `.git`, dependencies, generated outputs, IDE/application state or linked directories for source cleanup.
+- install the plugin after development is complete
 
 ## Implementation conventions
 

@@ -41,7 +41,9 @@ export function installClaudianSurfaces(plugin: Plugin): () => void {
             documents.add(leaf.view.containerEl.ownerDocument);
             if (leaf.view.getViewType() === "claudian-view") current.add(leaf.view.containerEl);
         });
-        for (const doc of documents) for (const root of doc.querySelectorAll<HTMLElement>(".claudian-zen-host")) current.add(root);
+        for (const doc of documents) {
+            for (const root of doc.querySelectorAll<HTMLElement>(".claudian-zen-host > .claudian-container.claudian-zen, .claudian-zen-host > .claudian-extension-zen-dock")) current.add(root);
+        }
         for (const root of current) if (!roots.has(root)) roots.set(root, scopeModule(root, "claudian"));
         for (const [root, scope] of roots) if (!current.has(root)) { scope.dispose(); roots.delete(root); }
     };

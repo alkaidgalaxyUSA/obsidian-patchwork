@@ -25,7 +25,6 @@ import { getLanguageFromExtension } from "./extensions";
 import { highlightToTokens } from "./highlighter";
 import { getStyleMap, getCombinedOverrides, getForegroundColor } from "./themes";
 import { copySqlSelectionOrSection, sqlSectionExtensions } from "./sql-sections";
-import { codeGitExtensions } from "./git-gutter.js";
 import { codeContextMenu } from "./context-menu";
 
 // Check if content appears to be binary (contains null bytes)
@@ -228,7 +227,6 @@ export class CodeEditorView extends TextFileView {
 
 		// Build extensions array
         const extensions = [
-            codeGitExtensions(this),
             this.readOnlyCompartment.of([EditorState.readOnly.of(this.documentReadOnly), EditorView.editable.of(!this.documentReadOnly)]),
 			// Line numbers (configurable)
 			this.lineNumbersCompartment.of(
@@ -277,7 +275,7 @@ export class CodeEditorView extends TextFileView {
 				// Match the focused selection layer so CodeMirror's light default cannot win.
 				"&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground":
 					{
-						backgroundColor: "rgba(80, 110, 160, 0.28)",
+						backgroundColor: "var(--text-selection)",
 					},
 				".cm-gutters": {
 					backgroundColor: "var(--background-secondary)",

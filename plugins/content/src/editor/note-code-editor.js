@@ -1,4 +1,4 @@
-import { MARKDOWN_VIEW_SELECTOR } from "../utils/markdown-views";
+import { MARKDOWN_VIEW_SELECTOR, markdownViews } from "../utils/markdown-views";
 import { canRunPowerShell, runPowerShell } from "../utils/run-powershell";
 import { LANGUAGES, THEMES, scanCodeBlocks, updateOpening, codeAttributes } from "./utils/note-code-block.js";
 import { NoteCodeMenus } from "./note-code-menus.js";
@@ -196,6 +196,17 @@ class NoteCodeEditor {
         // Reconcile after the outer editor finishes its update, avoiding nested dispatch.
         body.schedule();
         return true;
+    }
+
+    focusBody(view) {
+        const position = view.state.selection.main.head;
+        for (const dom of view.dom.querySelectorAll(".pw-note-code-body")) {
+            const body = this.bodies.get(dom);
+            if (!body || position < body.block.contentFrom || position > body.block.contentTo) continue;
+            body.sync();
+            body.view.focus();
+            return;
+        }
     }
 
     updateEditorHeader(header, view, block, folded, headerHidden) {
@@ -651,10 +662,18 @@ class NoteCodeEditor {
         const scope = `.mod-root ${MARKDOWN_VIEW_SELECTOR}`;
         if (!element.closest(scope) && !context.containerEl?.closest(scope)) { this.enhanceSyntax(element, context); return; }
         this.enhanceReadingHeadings(element, context);
+        const owner = markdownViews(this.app).find(view => view.file?.path === context.sourcePath
+            && view.containerEl.ownerDocument === element.ownerDocument
+            && (view.previewMode?.containerEl.contains(element) || context.containerEl && view.previewMode?.containerEl.contains(context.containerEl)));
         for (const pre of element.querySelectorAll("pre")) {
             if (pre.dataset.pwCode !== undefined || !pre.querySelector("code")) continue;
-            const info = context.getSectionInfo(pre);
-            if (!info) continue;
+            const section = context.getSectionInfo(pre);
+            if (!section) continue;
+            // Native code renderers can supply only their block text in section info.
+            // Resolve absolute line numbers against this same document's source.
+            const text = owner ? owner.getViewType() === "meld-encrypted-view"
+                ? owner.getUnencryptedViewData() : owner.getViewData() : section.text;
+            const info = { ...section, text };
             const blocks = scanCodeBlocks(this.Text.of(info.text.split("\n")));
             let block = blocks.find((entry) => entry.startLine - 1 === info.lineStart);
             if (!block || !this.isManaged(block)) continue;
@@ -733,15 +752,32 @@ class NoteCodeEditor {
             const original = code.innerHTML;
             const source = code.textContent;
             let previous;
+            let frame;
+            let disposed = false;
+            const win = code.ownerDocument.defaultView;
+            const observation = { childList: true, subtree: true, characterData: true };
+            const observer = new win.MutationObserver(() => {
+                if (disposed || frame !== undefined) return;
+                frame = win.requestAnimationFrame(() => {
+                    frame = undefined;
+                    render();
+                });
+            });
             const render = () => {
-                const unit = Number.parseInt(code.ownerDocument.defaultView.getComputedStyle(code.parentElement).tabSize, 10) || 4;
-                previous = highlightCode(code, language, unit, previous);
+                if (disposed || !code.parentElement) return;
+                observer.disconnect();
+                try {
+                    const unit = Number.parseInt(win.getComputedStyle(code.parentElement).tabSize, 10) || 4;
+                    previous = highlightCode(code, language, unit, previous);
+                } finally {
+                    if (!disposed) observer.observe(code, observation);
+                }
             };
             code.dataset.pwSyntax = "editor";
             render();
-            const observer = new code.ownerDocument.defaultView.MutationObserver(render);
-            observer.observe(code, { childList: true, subtree: true, characterData: true });
             const child = new this.ReadingChild(code, () => {
+                disposed = true;
+                if (frame !== undefined) win.cancelAnimationFrame(frame);
                 observer.disconnect();
                 delete code.dataset.pwSyntax;
                 if (code.textContent === source) code.innerHTML = original;

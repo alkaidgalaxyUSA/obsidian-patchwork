@@ -25,7 +25,7 @@ export function highlightSegments(host, content, path, segments) {
     let offset = 0;
     const ranges = segments.flatMap(segment => {
         const start = offset; offset += segment.value.length;
-        return segment.changed ? [{ start, end: offset }] : [];
+        return segment.changed ? [{ start, end: offset, type: segment.type || "modify" }] : [];
     });
     const walker = host.ownerDocument.createTreeWalker(host, 4);
     const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -38,7 +38,7 @@ export function highlightSegments(host, content, path, segments) {
         for (const range of overlaps) {
             const from = Math.max(0, range.start - start), to = Math.min(text.length, range.end - start);
             fragment.append(text.slice(position, from));
-            const mark = host.ownerDocument.createElement("span"); mark.className = "pw-diff-word"; mark.textContent = text.slice(from, to); fragment.append(mark); position = to;
+            const mark = host.ownerDocument.createElement("span"); mark.className = `pw-diff-word pw-diff-word-${range.type}`; mark.textContent = text.slice(from, to); fragment.append(mark); position = to;
         }
         fragment.append(text.slice(position)); node.replaceWith(fragment);
     }

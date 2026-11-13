@@ -782,7 +782,7 @@ export class GitLogPane {
             row.classList.toggle("is-selected", active);
             row.setAttribute("aria-selected", String(active));
         }
-        this.changedFiles.clear("Loading changed files…", true);
+        this.changedFiles.clear("", true);
         this.details.empty();
         if (this.selectedHashes.size !== 1) {
             this.changedFiles.clear(`${this.selectedHashes.size} commits selected`);
@@ -839,8 +839,8 @@ export class GitLogPane {
             }
             const patches = await Promise.all([...groups].map(async ([parent, entries]) => {
                 const paths = [...new Set(entries.flatMap(file => [file.original, file.path].filter(Boolean)))];
-                const patch = parent ? await this.history.git.diffCommit(parent, commit.hash, paths)
-                    : await this.history.git.diffCommitAgainstParent(commit.hash, paths);
+                const patch = parent ? await this.history.git.diffCommit(parent, commit.hash, paths, true)
+                    : await this.history.git.diffCommitAgainstParent(commit.hash, paths, true);
                 return { text: patch, parent };
             }));
             const text = patches.map(patch => patch.text).join("\n");

@@ -4,6 +4,9 @@ import { scopeModule } from "../../utils/module-scope";
 import { scopeGitMenu } from "./utils/portals";
 import { confirm } from "./dialogs";
 import { hunkPatch } from "./history/utils/diff-patch";
+import { differenceCount } from "./utils/difference-count";
+import { navigateDifference } from "./utils/diff-navigation";
+import { diffSettings } from "./utils/diff-settings";
 import { renderDiff } from "./history/utils/render-diff";
 import { withWorktreeIndex } from "./utils/worktree-renames";
 import { getServiceRegistry } from "../../utils/service-registry";
@@ -17,7 +20,7 @@ export class DiffView extends ItemView {
     getViewType() { return DIFF_VIEW; }
     getDisplayText() { return this.title || "Git Diff"; }
     getIcon() { return iconName("git-show-diff"); }
-    getState() { return { title: this.title, text: this.comparison === "working" ? undefined : this.text, paths: this.paths, comparison: this.comparison, revision: this.revision, historical: this.historical, mode: this.mode, wrap: this.wrap, fullContext: this.fullContext, staged: this.staged, baseline: this.baseline, root: this.root }; }
+    getState() { return { title: this.title, text: this.comparison === "working" ? undefined : this.text, paths: this.paths, comparison: this.comparison, revision: this.revision, historical: this.historical, mode: this.mode, wrap: this.wrap, fullContext: this.fullContext, align: this.align, sync: this.sync, staged: this.staged, baseline: this.baseline, root: this.root }; }
 
     async onOpen() {
         this.moduleScope = scopeModule(this.contentEl, "git", { surface: "diff" });
@@ -44,6 +47,7 @@ export class DiffView extends ItemView {
         this.mode = (state.mode ?? preferences.diffMode) === "split" ? "split" : "unified";
         this.wrap = state.wrap ?? preferences.diffWrap ?? false;
         this.fullContext = state.fullContext ?? preferences.diffFullContext ?? false;
+        this.align = state.align === true; this.sync = state.sync !== false;
         this.staged = !!state.staged;
         this.baseline = state.baseline === "index" || state.staged ? "index" : "head";
         this.renderedSignature = undefined;
@@ -80,6 +84,7 @@ export class DiffView extends ItemView {
         } catch (error) {
             if (this.closed || generation !== this.generation) return;
             this.renderedSignature = undefined;
+            this.clearDocumentListeners();
             this.contentEl.empty();
             this.contentEl.createDiv({ text: `Could not refresh diff: ${error.message}`, attr: { role: "status" } });
         }
@@ -93,7 +98,9 @@ export class DiffView extends ItemView {
 
     render() {
         const scrollTop = this.contentEl.scrollTop;
-        const focusLabel = this.contentEl.contains(this.contentEl.ownerDocument.activeElement) ? this.contentEl.ownerDocument.activeElement.textContent : undefined;
+        const focusLabel = this.contentEl.contains(this.contentEl.ownerDocument.activeElement) ? this.contentEl.ownerDocument.activeElement.getAttribute("aria-label") : undefined;
+        const positions = [...this.contentEl.querySelectorAll(".pw-diff-documents")].map(el => [...el.querySelectorAll(".pw-diff-document")].map(side => [side.scrollTop, side.scrollLeft]));
+        this.clearDocumentListeners();
         this.contentEl.empty();
         this.contentEl.classList.toggle("is-line-wrap", !!this.wrap);
         const toolbar = this.contentEl.createDiv({ cls: "pw-git-diff-actions" });
@@ -119,10 +126,10 @@ export class DiffView extends ItemView {
         iconAction(left, "chevron-right", "Next File", () => this.navigateFile(1));
         separator(left);
         iconAction(left, "collapse", "Collapse Unchanged Fragments", () => { this.fullContext = !this.fullContext; this.savePreferences(); void this.refresh(this.comparison === "working"); }, !this.fullContext);
-        if ((this.files || []).length && (this.files || []).some(file => file.hunks?.length)) center.createSpan({ cls: "pw-git-diff-difference-count", text: `${(this.files || []).reduce((count, file) => count + (file.hunks?.length || 0), 0)} difference${(this.files || []).reduce((count, file) => count + (file.hunks?.length || 0), 0) === 1 ? "" : "s"}` });
+        if ((this.files || []).length && (this.files || []).some(file => file.hunks?.length)) center.createSpan({ cls: "pw-git-diff-difference-count", text: `${(this.files || []).reduce((count, file) => count + differenceCount(file), 0)} difference${(this.files || []).reduce((count, file) => count + differenceCount(file), 0) === 1 ? "" : "s"}` });
         iconAction(right, "layout-sidebar-left", "Side by side", () => { this.mode = "split"; this.savePreferences(); this.render(); }, this.mode === "split");
         iconAction(right, "layout", "Unified", () => { this.mode = "unified"; this.savePreferences(); this.render(); }, this.mode === "unified");
-        iconAction(right, "settings", "Diff Settings", () => { this.wrap = !this.wrap; this.savePreferences(); this.render(); }, !!this.wrap);
+        iconAction(right, "settings", "Diff Settings", event => diffSettings(this, event), !!this.wrap);
         if (this.comparison === "working") {
             const baseline = center.createEl("select", { attr: { "aria-label": "Diff comparison" } });
             for (const [value, text] of [["head", "HEAD → Working tree"], ["index", "Index → Working tree"], ["staged", "HEAD → Index (staged)"]]) baseline.createEl("option", { value, text });
@@ -133,7 +140,8 @@ export class DiffView extends ItemView {
         const output = this.contentEl.createEl("pre", { cls: "pw-git-output" });
         renderDiff(output, this.text, this.files, this.mode,
             this.historical ? undefined : (event, file, fileIndex, hunkIndex) => this.hunkMenu(event, file, fileIndex, hunkIndex),
-            3000, this.historical ? { historical: true, revision: this.revision } : undefined);
+            3000, { positions, collapse: this.comparison !== "working" && !this.fullContext, onExpandContext: () => { this.fullContext = true; this.savePreferences(); void this.refresh(this.comparison === "working"); }, historical: this.historical, revision: this.revision, align: this.align, sync: this.sync, wrap: this.wrap,
+                registerCleanup: cleanup => this.documentListeners.push(cleanup) });
         output.ondblclick = event => {
             const line = event.target.closest("[data-new-line][data-path]");
             if (line) void this.openWorkingLine(line.dataset.path, Number(line.dataset.newLine));
@@ -144,7 +152,7 @@ export class DiffView extends ItemView {
             if (line) { event.preventDefault(); void this.openWorkingLine(line.dataset.path, Number(line.dataset.newLine)); }
         };
         this.contentEl.scrollTop = scrollTop;
-        if (focusLabel) [...toolbar.querySelectorAll("button")].find(button => button.textContent === focusLabel)?.focus({ preventScroll: true });
+        if (focusLabel) [...toolbar.querySelectorAll("button")].find(button => button.getAttribute("aria-label") === focusLabel)?.focus({ preventScroll: true });
     }
 
     navigateFile(step) {
@@ -166,11 +174,8 @@ export class DiffView extends ItemView {
     }
 
     navigateHunk(step) {
-        const hunks = [...this.contentEl.querySelectorAll(".pw-diff-hunk")];
-        if (!hunks.length) return;
-        this.hunkIndex = Math.max(0, Math.min(hunks.length - 1, (this.hunkIndex ?? -1) + step));
-        hunks[this.hunkIndex].focus({ preventScroll: true });
-        hunks[this.hunkIndex].scrollIntoView({ block: "center" });
+        const selected = navigateDifference(this.contentEl, this.hunkIndex, step);
+        if (selected) this.hunkIndex = selected.index;
     }
 
     async openWorkingLine(path, line) {
@@ -217,7 +222,13 @@ export class DiffView extends ItemView {
         } catch (error) { if (!this.closed) new Notice(error.message); }
     }
 
+    clearDocumentListeners() {
+        for (const cleanup of this.documentListeners ?? []) cleanup();
+        this.documentListeners = [];
+    }
+
     async onClose() {
+        this.clearDocumentListeners();
         this.closed = true; ++this.generation;
         clearTimeout(this.refreshTimer); this.stopHistory?.();
         for (const menu of this.menus) menu.hide(); this.menus.clear();

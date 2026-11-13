@@ -66,7 +66,7 @@ class NoteParagraphControls {
         if (this.doc !== this.view.state.doc) {
             for (const entry of this.entries.values()) this.controller.menus.closeForHeader(entry.root);
             this.doc = this.view.state.doc;
-            this.blocks = documentBlocks(this.doc).filter((block) => block.type !== "code" && !/^\^[\w-]+\s*$/.test(this.doc.sliceString(block.from, block.to)))
+            this.blocks = documentBlocks(this.doc, true).filter((block) => block.type !== "code" && !/^\^[\w-]+\s*$/.test(this.doc.sliceString(block.from, block.to)))
                 .flatMap((block) => this.expandQuote(block))
                 .map((block) => ({ ...block, contentTo: block.to, options: { offset: 0 } }));
         }
@@ -74,10 +74,14 @@ class NoteParagraphControls {
         const origin = this.view.dom.getBoundingClientRect();
         const content = this.view.contentDOM.getBoundingClientRect();
         const live = this.controller.isLive(this.view.state) && !this.view.state.readOnly;
+        const selection = this.view.state.selection.main;
+        const caretLine = this.view.hasFocus && selection.empty ? this.doc.lineAt(selection.head).from : -1;
         for (const block of live ? this.blocks : []) {
             // Visible ranges are half-open: touching a fold boundary does not
             // make the hidden block visible or give it a handle on the heading.
-            if (!this.view.visibleRanges.some((range) => block.to > range.from && block.from < range.to)) continue;
+            if (!this.view.visibleRanges.some((range) => block.empty
+                ? block.from >= range.from && (block.from < range.to || block.from === this.doc.length && range.to === this.doc.length)
+                : block.to > range.from && block.from < range.to)) continue;
             const first = this.view.lineBlockAt(block.from);
             const last = this.view.lineBlockAt(block.to);
             const key = String(block.from);
@@ -86,6 +90,10 @@ class NoteParagraphControls {
             if (!entry) { entry = this.create(block); this.entries.set(key, entry); }
             entry.hoverHeight = block.type === "quote" && !block.complex ? first.height : last.top + last.height - first.top;
             entry.root.dataset.type = block.type;
+            const empty = String(Boolean(block.empty));
+            if (entry.root.dataset.empty !== empty) entry.root.dataset.empty = empty;
+            const caret = String(Boolean(block.empty && block.from === caretLine));
+            if (entry.root.dataset.caret !== caret) entry.root.dataset.caret = caret;
             Object.assign(entry.root.style, {
                 left: `${content.left - origin.left}px`, top: `${this.view.documentTop + first.top - origin.top}px`,
                 width: `${content.width}px`, height: `${last.top + last.height - first.top}px`,

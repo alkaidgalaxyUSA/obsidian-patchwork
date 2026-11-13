@@ -1,7 +1,7 @@
 import { scanCodeBlocks } from "./note-code-block.js";
 
 // Keep fenced blocks, tables and contiguous quote lines together during a move.
-function documentBlocks(doc) {
+function documentBlocks(doc, includeEmpty = false) {
     const fences = new Map(scanCodeBlocks(doc).map((block) => [block.startLine, block]));
     const blocks = [];
     let number = 1;
@@ -12,7 +12,11 @@ function documentBlocks(doc) {
     }
     while (number <= doc.lines) {
         const line = doc.line(number);
-        if (!line.text.trim()) { number++; continue; }
+        if (!line.text.trim()) {
+            if (includeEmpty && !line.text.length) blocks.push({ from: line.from, to: line.to, contentFrom: line.from, type: "text", empty: true });
+            number++;
+            continue;
+        }
         const fence = fences.get(number);
         if (fence) {
             blocks.push({ from: fence.from, to: fence.to, type: "code", contentFrom: fence.contentFrom });

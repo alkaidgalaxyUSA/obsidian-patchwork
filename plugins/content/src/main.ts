@@ -393,7 +393,9 @@ function liveTaskCheckbox(plugin: PatchworkEditorPlugin) {
 						const active = sel.ranges.some((r) => r.from <= line.to && r.to >= line.from);
 						if (m && active) {
 							b.add(
-								line.from + m[1].length,
+								// Leave the list prefix to Obsidian's native replacement.
+								// Overlapping it can swallow this widget after joining lines.
+								line.from + m[0].length - 3,
 								line.from + m[0].length,
 								Decoration.replace({ widget: new BoxWidget(m[2] !== " ", m[2]) })
 							);
@@ -558,6 +560,7 @@ interface PatchworkEditorSettings {
 	transcriptionModel: string;
 	wysiwygMarks: boolean;
 	liveCheckboxes: boolean;
+	rememberEncryptedPasswords: boolean;
 	aiActions: { name: string; prompt: string }[];
 	dictationMode: "raw" | "tidy" | "bullets";
 	lineSpacing: "compact" | "normal" | "relaxed";
@@ -627,6 +630,7 @@ const DEFAULT_SETTINGS: PatchworkEditorSettings = {
 	transcriptionModel: "",
 	wysiwygMarks: true,
 	liveCheckboxes: true,
+	rememberEncryptedPasswords: false,
 	aiActions: [],
 	dictationMode: "raw",
 	lineSpacing: "normal",
