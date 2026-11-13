@@ -201,3 +201,5 @@ body .menu[data-pw-module="project"][data-pw-surface="view-menu"] .menu-item:not
 /* Match the configured IDEA UI font for detached Project menus as well as tree rows. */
 body .menu[data-pw-module="project"]:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)),
 body .menu[data-pw-module="project"] :is(.menu-item, .menu-item-title, .menu-item-shortcut):not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { font-family:"Microsoft YaHei UI", var(--font-interface); font-size:12px; font-weight:400; }
+
+body.theme-dark .workspace-leaf-content[data-type="file-explorer"][data-pw-module="project"] > .nav-header:not(:where([data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]), [data-pw-module="project"] [data-pw-module]:not([data-pw-module="project"]) *)) { border-bottom:1px solid #26282C; }

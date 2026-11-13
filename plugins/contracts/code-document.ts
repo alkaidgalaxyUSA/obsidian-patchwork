@@ -8,6 +8,7 @@ export interface CodeDocumentAdapter {
     navigate(location: DocumentLocation, context: CallContext): Promise<void>;
     getSelection(leafId: string, context: WindowContext): EditorSelectionSnapshot | undefined;
     insert(location: DocumentLocation, text: string, context: CallContext): Promise<void>;
+    save?(location: DocumentLocation, context: CallContext): Promise<void>;
     /** Editor protection only; Content retains filesystem permission ownership. */
     setReadOnly(location: DocumentLocation, readOnly: boolean, context: CallContext): void;
     onChange(listener: (snapshot: DocumentSnapshot) => void): Unsubscribe;

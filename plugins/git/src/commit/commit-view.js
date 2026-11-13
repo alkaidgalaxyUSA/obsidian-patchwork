@@ -303,7 +303,7 @@ export class CommitView extends ItemView {
             event.preventDefault(); const next = rows[Math.max(0, Math.min(rows.length - 1, position))];
             this.selectedStage = next.dataset.stage; this.selectActionFile(next.dataset.path, event); next.focus();
         };
-        row.ondblclick = event => { if (event.target !== checkbox) void this.controller.showDiff([entry.path], false, stage); };
+        row.ondblclick = event => { if (event.target !== checkbox) void this.controller.showDiff([entry.path], false, stage, this.contentEl.ownerDocument); };
         row.oncontextmenu = event => {
             this.selectedStage = stage;
             if (!this.actionSelection.has(entry.path)) this.selectActionFile(entry.path);

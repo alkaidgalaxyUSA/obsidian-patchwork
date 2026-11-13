@@ -40,6 +40,7 @@ export class LeftActions {
                 button = this.main.ownerDocument.createElement("button");
                 button.type = "button";
                 button.className = `clickable-icon${definition.id === "project" ? " pw-left-sidebar-toggle" : definition.id === "git:commit" ? " pw-git-ribbon-action" : ""}`;
+                if (definition.id === "bookmarks") button.classList.add("pw-bookmarks-ribbon-action");
                 button.setAttribute("aria-label", definition.label); button.setAttribute("data-tooltip-position", "right");
                 setTooltip(button, definition.label, { placement: "right", delay: 0 });
                 setIcon(button, definition.icon);

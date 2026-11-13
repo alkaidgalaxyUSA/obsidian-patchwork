@@ -3,6 +3,7 @@ import { overlayScrollbar } from "./overlay-scrollbar";
 import { diffConnectors } from "./diff-connectors";
 import { synchronizedScroll } from "./diff-blocks";
 import { smoothDiffScroll } from "./smooth-diff-scroll";
+import { diffStripe } from "./diff-stripe";
 
 /** Both surfaces share the same independent documents, gutters and geometry. */
 export function splitDocuments(output, blocks, registerCleanup, options = {}) {
@@ -52,6 +53,8 @@ export function splitDocuments(output, blocks, registerCleanup, options = {}) {
                 const bn = rightTrack.createDiv({ text: b.dataset.lineNumber });
                 an.className = `pw-diff-number${a.classList.contains("pw-diff-empty") ? "" : ` pw-diff-${group.dataset.diffType}`}`;
                 bn.className = `pw-diff-number${b.classList.contains("pw-diff-empty") ? "" : ` pw-diff-${group.dataset.diffType}`}`;
+                if (!a.classList.contains("pw-diff-empty") && a.classList.contains("pw-diff-inner")) an.classList.add("pw-diff-inner");
+                if (!b.classList.contains("pw-diff-empty") && b.classList.contains("pw-diff-inner")) bn.classList.add("pw-diff-inner");
                 pairs.push({ a, b, an, bn });
             }
             scrollBlock.end = pairs.length;
@@ -78,6 +81,7 @@ export function splitDocuments(output, blocks, registerCleanup, options = {}) {
     };
     let leftAnchors = [], rightAnchors = [], lineHeight = 20;
     const scrollPositions = new WeakMap();
+    const stripeUpdates = [];
     const rememberPositions = () => {
         for (const side of [left, right]) scrollPositions.set(side, { y: side.scrollTop, x: side.scrollLeft });
     };
@@ -111,6 +115,7 @@ export function splitDocuments(output, blocks, registerCleanup, options = {}) {
         }
         if (aligned) right.scrollTop = left.scrollTop;
         rememberPositions(); updateNumbers(); paint();
+        for (const update of stripeUpdates) update();
     };
     const scheduleLayout = () => { if (!disposed && layoutFrame === undefined) layoutFrame = win.requestAnimationFrame(layout); };
     const sync = current => {
@@ -186,6 +191,17 @@ export function splitDocuments(output, blocks, registerCleanup, options = {}) {
         scrollMotion.move(current, dx, dy);
     };
     const wheelLeft = event => wheel(event, left), wheelRight = event => wheel(event, right);
+    for (const [side, key] of [[left, "left"], [right, "right"]]) {
+        stripeUpdates.push(diffStripe(side, documents, changes.map(change => ({ group: change[key], type: change.type })), registerCleanup,
+            (group, firstCell) => {
+                scrollMotion.cancel(); peerTransition = undefined;
+                const y = (firstCell ?? group).getBoundingClientRect().top - side.getBoundingClientRect().top + side.scrollTop;
+                side.scrollTop = Math.max(0, y - side.clientHeight / 2 + lineHeight / 2);
+                // Use the clicked editor as the source. Disabled sync leaves its peer alone.
+                sync(side);
+                updateNumbers(); paint();
+            }, event => wheel(event, side)));
+    }
     for (const surface of [left, leftNumbers]) surface.addEventListener("wheel", wheelLeft, { passive: false });
     for (const surface of [right, rightNumbers]) surface.addEventListener("wheel", wheelRight, { passive: false });
     const syncLeft = () => sync(left), syncRight = () => sync(right);

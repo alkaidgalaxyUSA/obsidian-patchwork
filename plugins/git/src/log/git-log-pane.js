@@ -17,6 +17,7 @@ import { readMyBranches } from "./utils/my-branches";
 import { isProtectedRemoteBranch } from "../utils/branch-protection";
 import { renderBranchSync } from "../ui/branch-sync";
 import { branchFolder } from "../utils/branch-tree-model";
+import { revisionLocalDiff } from "../utils/revision-local-diff";
 
 export class GitLogPane {
     constructor(controller, parent, rename, initialFilter) {
@@ -823,6 +824,23 @@ export class GitLogPane {
             }
             if (!detail.branches.length) branches.appendText("None");
         } catch (error) { if (!request.signal.aborted && !this.disposed && revision === this.selectionRevision) this.changedFiles.clear(error.message); }
+    }
+
+    async openLocalDiff(commit, file) {
+        const revision = this.diffRevision = (this.diffRevision || 0) + 1;
+        const repository = this.controller.repository, root = repository.root;
+        const document = this.el.ownerDocument;
+        const current = () => !this.disposed && !this.controller.disposed && this.el.isConnected
+            && revision === this.diffRevision && repository === this.controller.repository && root === repository.root
+            && document.defaultView && !document.defaultView.closed;
+        try {
+            const comparison = await revisionLocalDiff(repository, commit.hash, file.path, current);
+            if (!current() || !comparison) return;
+            await this.controller.openDiffText(comparison.text, file.path, document, {
+                files: comparison.files, notification: comparison.notification,
+                comparisonLabels: { left: commit.hash.slice(0, 8), right: "Current Version" },
+            }, current);
+        } catch (error) { if (current()) new Notice(error.message); }
     }
 
     async openDiff(commit, file) {

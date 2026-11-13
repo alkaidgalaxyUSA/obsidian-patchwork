@@ -25,32 +25,63 @@ export function overlayScrollbar(viewport, host, registerCleanup, axis = "vertic
         }
         track.hidden = max <= 0;
         const size = Math.min(length, Math.max(24, length * visible / (max + visible)));
+        const offset = max > 0 ? position() / max * (length - size) : 0;
+        // Only whole-file additions/deletions tint the overlapping thumb segment.
+        // Solid overlap colors avoid a theme-dependent grey/green alpha mixture.
+        if (!horizontal && host.classList.contains("pw-diff-single-document")) {
+            const top = rect.top + offset;
+            const layers = [...host.querySelectorAll(".pw-diff-stripe-mark")].flatMap(mark => {
+                if (!mark.style.top) return [];
+                const bounds = mark.getBoundingClientRect();
+                const start = Math.max(0, bounds.top - top), end = Math.min(size, bounds.bottom - top);
+                if (end <= start) return [];
+                const color = mark.classList.contains("pw-diff-stripe-add") ? "#60806A" : "#876363";
+                return [`linear-gradient(to bottom, transparent ${start}px, ${color} ${start}px, ${color} ${end}px, transparent ${end}px)`];
+            });
+            const background = layers.join(", ");
+            if (thumb.style.backgroundImage !== background) thumb.style.backgroundImage = background;
+        }
         thumb.style[horizontal ? "width" : "height"] = `${size}px`;
-        thumb.style.transform = `translate${horizontal ? "X" : "Y"}(${max > 0 ? position() / max * (length - size) : 0}px)`;
+        thumb.style.transform = `translate${horizontal ? "X" : "Y"}(${offset}px)`;
     };
     const update = () => { if (frame === undefined) frame = win.requestAnimationFrame(paint); };
     const stop = () => {
         const id = drag?.id;
         drag = undefined;
+        thumb.classList.remove("is-dragging");
         if (id !== undefined && thumb.hasPointerCapture(id)) thumb.releasePointerCapture(id);
     };
     const down = event => {
         if (event.button !== 0) return;
-        drag = { id: event.pointerId, coordinate: horizontal ? event.clientX : event.clientY, position: position() };
+        drag = { id: event.pointerId, coordinate: horizontal ? event.clientX : event.clientY, position: position(), moved: false };
         thumb.setPointerCapture(event.pointerId);
+        thumb.classList.add("is-dragging");
         event.preventDefault(); event.stopPropagation();
     };
     const move = event => {
         if (drag?.id !== event.pointerId) return;
+        const distance = (horizontal ? event.clientX : event.clientY) - drag.coordinate;
+        if (!drag.moved && Math.abs(distance) < 3) return;
+        drag.moved = true;
         const travel = horizontal ? track.clientWidth - thumb.offsetWidth : track.clientHeight - thumb.offsetHeight;
         if (travel <= 0) return;
-        const next = Math.max(0, Math.min(extent(), drag.position + ((horizontal ? event.clientX : event.clientY) - drag.coordinate) * extent() / travel));
+        const next = Math.max(0, Math.min(extent(), drag.position + distance * extent() / travel));
         if (horizontal) viewport.scrollLeft = next - (rtl ? extent() : 0);
         else viewport.scrollTop = next;
     };
-    const listeners = { pointerdown: down, pointermove: move, pointerup: stop, pointercancel: stop, lostpointercapture: stop };
+    const up = event => {
+        if (drag?.id !== event.pointerId) return;
+        const clicked = !horizontal && !drag.moved && Math.abs(event.clientY - drag.coordinate) < 3;
+        stop();
+        // The thumb is painted above the marks. Forward a click, but never a drag,
+        // to the underlying diff stripe without transferring pointer capture.
+        if (clicked) viewport.dispatchEvent(new win.CustomEvent("pw-diff-stripe-activate", { detail: { clientY: event.clientY } }));
+    };
+    const listeners = { pointerdown: down, pointermove: move, pointerup: up, pointercancel: stop, lostpointercapture: stop };
     for (const [event, listener] of Object.entries(listeners)) thumb.addEventListener(event, listener);
     viewport.addEventListener("scroll", update, { passive: true });
+    viewport.addEventListener("pw-diff-stripe-layout", update);
+    win.addEventListener("blur", stop);
     const observer = new win.ResizeObserver(update);
     observer.observe(viewport);
     update();
@@ -58,6 +89,8 @@ export function overlayScrollbar(viewport, host, registerCleanup, axis = "vertic
         stop(); observer.disconnect();
         if (frame !== undefined) win.cancelAnimationFrame(frame);
         viewport.removeEventListener("scroll", update);
+        viewport.removeEventListener("pw-diff-stripe-layout", update);
+        win.removeEventListener("blur", stop);
         for (const [event, listener] of Object.entries(listeners)) thumb.removeEventListener(event, listener);
         track.remove();
     });

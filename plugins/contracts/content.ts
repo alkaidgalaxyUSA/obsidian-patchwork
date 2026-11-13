@@ -28,6 +28,8 @@ export interface InsertRequest extends CallContext {
 export interface ContentApi {
     readonly version: 1;
     openDocument(request: DocumentOpenRequest): Promise<DocumentLocation>;
+    /** Flush pending saves for open documents before an external filesystem operation. */
+    saveDocuments?(paths: readonly string[], context: CallContext): Promise<void>;
     getDocument(context: WindowContext): DocumentSnapshot;
     onDocument(listener: (snapshot: DocumentSnapshot) => void): Unsubscribe;
     getHeadings(location: DocumentLocation, context: CallContext): Promise<readonly HeadingItem[]>;

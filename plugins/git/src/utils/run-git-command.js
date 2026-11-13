@@ -17,7 +17,7 @@ async function stopCommand(child) {
 
 /** Own the deadline independently of execFile's exit/stdio callback. */
 export function runGitCommand(repo, args, options = {}) {
-    const { allowedExitCodes = [], signal, timeout = 120000, ...processOptions } = options;
+    const { allowedExitCodes = [], signal, timeout = 120000, returnResult = false, input, ...processOptions } = options;
     signal?.throwIfAborted();
     return new Promise((resolve, reject) => {
         let settled = false, stopping = false, timer;
@@ -48,9 +48,11 @@ export function runGitCommand(repo, args, options = {}) {
                 ? [stderr, stdout].filter(value => value?.length).map(value => String(value).trim()).filter(Boolean).join("\n")
                 : "";
             finish(error && !allowedExitCodes.includes(error.code)
-                ? new Error(details || String(error.message).trim()) : undefined, stdout);
+                ? new Error(details || String(error.message).trim()) : undefined, returnResult ? { stdout, stderr, code: error?.code ?? 0 } : stdout);
         });
         repo.children.add(child);
+        child.stdin?.on("error", () => {}); // An early Git exit is reported by execFile, not by an unhandled EPIPE.
+        child.stdin?.end(input);
         if (timeout > 0) timer = setTimeout(() => void stop(new Error(`Git ${args[0]} timed out after ${Math.round(timeout / 1000)} seconds.`)), timeout);
         signal?.addEventListener("abort", abort, { once: true });
         if (signal?.aborted) abort();

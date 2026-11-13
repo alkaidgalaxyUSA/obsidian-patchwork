@@ -30,6 +30,10 @@ import { GitMoveTracker } from "./move-tracker";
 import { gitErrorSummary } from "./utils/git-error-summary";
 import { readBranchSync } from "./utils/branch-sync";
 import { workingDiff } from "./utils/working-diff";
+import { commitResult } from "./utils/commit-result";
+import { showCommitNotification } from "./commit/commit-notification";
+import { GitPushModal } from "./push/push-modal";
+import { pushAfterCommit } from "./push/after-commit";
 
 export class GitController {
     constructor(plugin, vaultPath, data) {
@@ -265,6 +269,7 @@ export class GitController {
             const historyChanged = this.head !== head || this.refs !== refs;
             this.operation = operation;
             this.head = head; this.refs = refs;
+            if (this.commitNotice && (this.commitNotice.hash !== head || this.commitNotice.root !== this.repository.root)) this.commitNotice.dispose();
             const ignoredChanged = JSON.stringify(ignored) !== JSON.stringify(this.ignored);
             for (const entry of entries) if (!this.known.has(entry.path) && !entry.untracked) this.selected.add(entry.path);
             const paths = new Set(entries.map(entry => entry.path));
@@ -341,6 +346,13 @@ export class GitController {
         let committed = false;
         await this.act(async () => {
             if (this.repository.root !== root || await this.repository.head() !== head) throw new Error("The repository or HEAD changed. Review the commit again.");
+            const content = getServiceRegistry(this.app).get("content");
+            const paths = (mode === "staged" ? this.entries.filter(entry => entry.staged).map(entry => entry.path) : [...selected])
+                .map(path => relative(this.repository.vaultPath, resolve(root, path)).replaceAll("\\", "/"))
+                .filter(path => !isAbsolute(path) && path !== ".." && !path.startsWith("../"));
+            if (content?.saveDocuments) await content.saveDocuments(paths, getWindowContext(this.app.workspace.containerEl.ownerDocument));
+            if (this.repository.root !== root || await this.repository.head() !== head) throw new Error("The repository or HEAD changed while saving. Review the commit again.");
+            const branch = await this.repository.branch();
             const result = mode === "staged" ? await this.repository.commitStaged(message, amend, checks)
                 : await this.repository.commit(selected, message, amend, checks);
             this.draft = { message: "", amend: false };
@@ -348,11 +360,11 @@ export class GitController {
             this.validationRequested = false;
             for (const view of this.views) { view.message.value = ""; view.amend.checked = false; }
             this.saveDraft();
-            if (result.warning) { new Notice(result.warning, 15000); return; }
-            new Notice("Commit created.");
-            committed = true;
+            const details = await commitResult(this.repository, head, amend, result);
+            showCommitNotification(this, { ...details, branch, message: details.message ?? message });
+            committed = !details.warning;
         }, false, { title: "Git: Commit" });
-        if (committed && push && !this.disposed && this.repository.root === root) this.network("push");
+        if (committed && push && !this.disposed && this.repository.root === root) this.network("push", undefined, { afterCommit: true });
     }
 
     commitValidation() {
@@ -444,9 +456,10 @@ export class GitController {
     }
 
     network(action, branch, options, document = this.app.workspace.containerEl.ownerDocument) {
+        if (action === "push" && options?.afterCommit) { void pushAfterCommit(this); return; }
         if (action === "pull" && !branch && !options) return this.updateProject(document);
         if (["push", "pull"].includes(action)) {
-            openGitDialog(this, new GitNetworkModal(this, action, branch, options));
+            openGitDialog(this, action === "push" ? new GitPushModal(this, branch, options) : new GitNetworkModal(this, action, branch, options));
             return;
         }
         const cancellation = new AbortController();
@@ -565,6 +578,7 @@ export class GitController {
     }
 
     dispose() {
+        this.commitNotice?.dispose();
         if (this.disposed) return;
         this.disposed = true;
         clearTimeout(this.refreshTimer); clearTimeout(this.draftTimer);

@@ -25,6 +25,12 @@ export function installCodeDocumentAdapter(plugin: Plugin): () => void {
     };
     const api: CodeDocumentAdapter = {
         version: 1,
+        async save(location, context) {
+            const { view } = requireView(location.leafId, context, location.path);
+            if (view.documentReadOnly) return;
+            await view.save();
+            requireView(location.leafId, context, location.path);
+        },
         supports: (id, context) => !disposed && resolveWindow(context.windowId)?.document === context.document && !!find(id, context),
         getSnapshot(id, context) {
             const { view } = requireView(id, context);

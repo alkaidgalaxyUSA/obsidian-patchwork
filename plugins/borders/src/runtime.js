@@ -1,6 +1,7 @@
 import { ModuleUnavailableError } from "../../utils/module-errors";
 import { getWindowContext } from "../../utils/windows";
 import { scopeModule } from "../../utils/module-scope";
+import { createNativePanel } from "../../utils/native-panel";
 import { NativeWorkspace } from "./utils/native-workspace";
 import { WindowActions } from "./top/window-actions";
 import { TooltipDelays } from "./top/tooltip-delays";
@@ -49,6 +50,7 @@ export class BordersRuntime {
 
     sync() {
         if (this.disposed || !this.app.workspace.layoutReady) return;
+        this.syncBookmarks();
         const docs = new Set([this.app.workspace.containerEl.ownerDocument]);
         this.app.workspace.iterateAllLeaves(leaf => docs.add(leaf.view.containerEl.ownerDocument));
         for (const [id, shell] of this.windows) {
@@ -118,6 +120,18 @@ export class BordersRuntime {
                 this.schedule();
             }).catch(error => { this.migrationStarted = false; console.error("Could not migrate Borders settings; donor data was retained.", error); });
         }
+    }
+
+    syncBookmarks() {
+        const available = this.app.internalPlugins?.plugins?.bookmarks?.enabled;
+        if (!available) { this.bookmarks?.dispose(); this.bookmarks = undefined; return; }
+        if (this.bookmarks) return;
+        this.bookmarks = this.registerPanel({
+            id: "bookmarks", owner: "borders", label: "Bookmarks", icon: "idea/expui/toolwindows/bookmarks_dark.svg",
+            dock: "left", rail: "left", railGroup: "main", order: 30,
+            host: { kind: "native-leaf", viewType: "bookmarks" },
+            create: (host, context) => createNativePanel(this.app, host, context),
+        });
     }
 
     registerPanel(definition) {

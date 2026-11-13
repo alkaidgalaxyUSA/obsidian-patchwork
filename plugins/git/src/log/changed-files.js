@@ -8,20 +8,23 @@ const fileKey = file => `${file.parentHash || ""}:${file.path}`;
 
 /** The Log's changed-file tree and its selection-dependent actions. */
 export class ChangedFiles {
-    constructor(pane, host) {
+    constructor(pane, host, options = {}) {
         this.pane = pane;
         this.host = host;
+        this.optionsConfig = options;
         this.grouped = pane.controller.plugin.settingsStore.preferences.logFilesGrouped !== false;
         this.selected = new Set();
         const toolbar = host.createDiv({ cls: "pw-log-files-actions" });
         this.diffButton = pane.button(toolbar, "Show Diff", "git-show-diff", () => this.showDiff());
         this.revertButton = pane.button(toolbar, "Revert Selected Changes", "git-rollback", () => this.revert());
         this.historyButton = pane.button(toolbar, "History Up to Here", "history", () => this.showHistory());
+        if (options.previewOnly) { this.revertButton.hidden = true; this.historyButton.hidden = true; }
         pane.button(toolbar, "View Options", "git-log-view", event => this.options(event));
         const right = toolbar.createDiv({ cls: "pw-log-files-expand" });
         this.expandButton = pane.button(right, "Expand All", "git-expand-all", () => this.expand(true));
         this.collapseButton = pane.button(right, "Collapse All", "git-collapse-all", () => this.expand(false));
-        this.tree = host.createDiv({ cls: "pw-log-files-tree", attr: { role: "tree", "aria-label": "Changed files", "aria-multiselectable": "true" } });
+        this.label = host.createSpan({ text: "Changed files", attr: { id: `pw-log-files-label-${crypto.randomUUID()}`, hidden: "" } });
+        this.tree = host.createDiv({ cls: "pw-log-files-tree", attr: { role: "tree", "aria-labelledby": this.label.id, "aria-multiselectable": "true" } });
         this.clear();
     }
 
@@ -31,7 +34,7 @@ export class ChangedFiles {
         this.selected.clear();
         this.selectedFolder = undefined;
         this.anchor = undefined;
-        this.tree.setAttribute("aria-label", "Changed files");
+        this.label.setText("Changed files");
         this.tree.setAttribute("aria-busy", String(loading));
         this.tree.setText(message);
         this.updateActions();
@@ -41,7 +44,7 @@ export class ChangedFiles {
         const same = this.commit?.hash === commit.hash;
         this.commit = commit; this.files = files;
         this.tree.setAttribute("aria-busy", "false");
-        this.tree.setAttribute("aria-label", `Changed files (${files.length})`);
+        this.label.setText(`Changed files (${files.length})`);
         this.selected = new Set(same ? [...this.selected].map(file => files.find(next => fileKey(next) === fileKey(file))).filter(Boolean) : []);
         this.anchor = undefined;
         this.render();
@@ -55,7 +58,7 @@ export class ChangedFiles {
             this.updateActions();
             return;
         }
-        const project = this.createFolder(this.tree, basename(this.pane.controller.repository.root), "repository", collapsed, "project-module");
+        const project = this.createFolder(this.tree, basename(this.pane.repository?.root || this.pane.controller.repository.root), "repository", collapsed, "project-module");
         project.parentElement.classList.add("pw-log-repository");
         const parents = this.commit.parents.length > 1 ? this.commit.parents : [undefined];
         for (const parentHash of parents) {
@@ -122,8 +125,6 @@ export class ChangedFiles {
             row.dataset.fileKey = fileKey(file);
             setIcon(row.createSpan(), fileIcon(file.path));
             row.createSpan({ cls: "pw-log-file-path", text: name });
-            row.createSpan({ cls: "pw-log-file-status", text: file.status[0] });
-            row.title = `${file.original ? file.original + " → " : ""}${file.path}\n${file.binary ? "Binary file" : `+${file.additions} −${file.deletions}`}`;
             row.addEventListener("click", event => this.select(file, event.ctrlKey || event.metaKey, event.shiftKey));
             row.addEventListener("dblclick", () => this.showDiff());
             row.addEventListener("keydown", event => {
@@ -136,7 +137,8 @@ export class ChangedFiles {
                 event.preventDefault();
                 if (!this.selected.has(file)) this.select(file, false);
                 const menu = this.pane.createMenu();
-                addHistoryFileMenu(menu, this.pane, this.commit, file);
+                if (this.optionsConfig.fileMenu) this.optionsConfig.fileMenu(menu, file);
+                else addHistoryFileMenu(menu, this.pane, this.commit, file);
                 menu.showAtMouseEvent(event);
             });
         }

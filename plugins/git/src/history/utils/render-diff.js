@@ -3,6 +3,7 @@ import { pairLines, wordDiff } from "./word-diff";
 import { setIcon } from "../../utils/icons";
 import { splitDocuments } from "./split-documents";
 import { diffBlocks } from "./diff-blocks";
+import { singleDocument } from "./single-document";
 
 /** Render parsed changes with Patchwork's own diff classes and typography. */
 export function renderDiff(output, raw, files, mode, contextMenu, limit = 3000, options = {}) {
@@ -20,24 +21,29 @@ export function renderDiff(output, raw, files, mode, contextMenu, limit = 3000, 
     for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
         if (count >= limit) { more(); return; }
         const file = files[fileIndex];
+        const single = !!options.registerCleanup && ["added", "deleted"].includes(file.change);
         const fileLabel = file.oldPath ? `${file.oldPath} → ${file.path}` : file.path;
         const header = output.createSpan({ cls: "pw-diff-file" });
         header.dataset.fileIndex = String(fileIndex);
-        if (options.historical) {
+        if (options.historical || options.comparisonLabels) {
             header.classList.add("pw-diff-revision-headers");
-            const revisionHeader = (revision, path) => {
+            const revisionHeader = (revision, path, label) => {
                 const side = header.createSpan({ cls: "pw-diff-revision-header" });
                 setIcon(side.createSpan({ cls: "pw-diff-file-lock", attr: { "aria-hidden": "true" } }), "status-file-lock");
-                side.createSpan({ cls: "pw-diff-file-revision", text: revision?.slice(0, 8) || "--------" });
+                side.createSpan({ cls: "pw-diff-file-revision", text: label ?? (revision?.slice(0, 8) || "--------") });
                 if (path) side.createSpan({ cls: "pw-diff-file-path", text: path });
             };
-            revisionHeader(file.change === "added" ? "Absent" : options.baseRevisions?.[fileIndex], file.oldPath || file.path);
-            revisionHeader(file.change === "deleted" ? "Absent" : options.revision, file.path);
+            if (!single || file.change === "deleted") revisionHeader(file.change === "added" ? "Absent" : options.baseRevisions?.[fileIndex], file.oldPath || file.path, file.change === "added" ? undefined : options.comparisonLabels?.left);
+            if (!single || file.change === "added") revisionHeader(file.change === "deleted" ? "Absent" : options.revision, file.path, file.change === "deleted" ? undefined : options.comparisonLabels?.right);
         } else header.setText(`${fileLabel}  +${file.additions} −${file.deletions}\n`);
         if (file.binary) { output.createSpan({ text: "Binary file changed\n" }); continue; }
         if (!file.hunks.length) { output.createSpan({ text: file.oldPath ? "Renamed; content unchanged\n" : file.change === "modified" ? "File mode changed; content unchanged\n" : `${file.change === "added" ? "Added" : "Deleted"} empty file\n` }); continue; }
         const blocks = [];
-        const finish = () => { if (options.registerCleanup && mode === "split") splitDocuments(output, blocks, registerCleanup, { ...options, position: options.positions?.[fileIndex] }); };
+        const finish = () => {
+            const settings = { ...options, position: options.positions?.[fileIndex] };
+            if (single) singleDocument(output, blocks, registerCleanup, { ...settings, deleted: file.change === "deleted" });
+            else if (options.registerCleanup && mode === "split") splitDocuments(output, blocks, registerCleanup, settings);
+        };
         for (let hunkIndex = 0; hunkIndex < file.hunks.length; hunkIndex++) {
             if (count >= limit) { finish(); more(); return; }
             const rawHunk = file.hunks[hunkIndex];
@@ -51,18 +57,20 @@ export function renderDiff(output, raw, files, mode, contextMenu, limit = 3000, 
             count += hunk.lines.length;
             const block = output.createSpan({ cls: "pw-diff-hunk", attr: { tabindex: "0" } });
             blocks.push(block);
-            if (mode !== "split") block.createSpan({ cls: "pw-diff-hunk-heading", text: `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@ ${hunk.header}\n` });
-            if (mode === "split") renderSplit(block, hunk, file.path, fileIndex, hunkIndex, options, wordsFor);
+            if (mode !== "split" && !single) block.createSpan({ cls: "pw-diff-hunk-heading", text: `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@ ${hunk.header}\n` });
+            if (mode === "split" || single) renderSplit(block, hunk, file.path, fileIndex, hunkIndex, options, wordsFor);
             else {
                 const segments = new Map();
-                for (const pair of pairLines(hunk.lines)) {
-                    if (pair.type !== "modify" || pair.left.content.length > 2000 || pair.right.content.length > 2000) continue;
-                    const words = wordsFor(pair.left.content, pair.right.content);
-                    if (words) { segments.set(pair.left, words.old); segments.set(pair.right, words.new); }
+                for (const change of diffBlocks(hunk, fileIndex, hunkIndex)) {
+                    for (const { pair, words } of changePresentation(change, wordsFor).rows) {
+                        if (words?.old) segments.set(pair.left, words.old);
+                        if (words?.new) segments.set(pair.right, words.new);
+                    }
                 }
                 const changes = new Map(diffBlocks(hunk, fileIndex, hunkIndex).filter(change => change.type !== "context").map(change => [change.lines[0], change]));
                 for (const line of hunk.lines) {
                 const span = block.createSpan({ cls: `pw-diff-unified-line pw-diff-${line.type}` });
+                if (segments.has(line)) span.classList.add("pw-diff-inner");
                 const change = changes.get(line);
                 if (change) { span.dataset.diffChange = change.id; span.tabIndex = 0; }
                 if (line.newLineNo) { span.dataset.path = file.path; span.dataset.newLine = String(line.newLineNo); }
@@ -104,20 +112,33 @@ function renderSplit(block, hunk, path, fileIndex, hunkIndex, options, wordsFor)
         group.dataset.oldStart = String(change.oldStart); group.dataset.oldEnd = String(change.oldEnd);
         group.dataset.newStart = String(change.newStart); group.dataset.newEnd = String(change.newEnd);
         if (change.type !== "context") { group.dataset.diffChange = change.id; group.tabIndex = 0; }
-        for (const pair of pairLines(change.lines)) {
+        const presentation = changePresentation(change, wordsFor);
+        for (const { pair, words } of presentation.rows) {
             const row = group.createDiv({ cls: "pw-diff-pair" });
             const rightLine = pair.right || (pair.type === "context" ? pair.left : undefined);
             const left = row.createSpan({ cls: `pw-diff-cell pw-diff-left pw-diff-${change.type}` });
             const right = row.createSpan({ cls: `pw-diff-cell pw-diff-${change.type}` });
-            let words;
-            if (pair.type === "modify" && pair.left.content.length <= 2000 && pair.right.content.length <= 2000) words = wordsFor(pair.left.content, pair.right.content);
-            if (change.type === "modify" && pair.type === "add") words = { new: [{ value: pair.right.content, changed: true, type: "add" }] };
-            if (change.type === "modify" && pair.type === "del") words = { old: [{ value: pair.left.content, changed: true, type: "del" }] };
+            if (presentation.inner) { left.classList.add("pw-diff-inner"); right.classList.add("pw-diff-inner"); }
             renderCell(left, pair.left, words?.old, pair.left?.oldLineNo, path, options);
             renderCell(right, rightLine, words?.new, rightLine?.newLineNo, path, options);
             if (rightLine?.newLineNo) { right.dataset.path = path; right.dataset.newLine = String(rightLine.newLineNo); }
         }
     }
+}
+
+/** Inner fragments weaken the whole change in the editor, never its gutter or connector. */
+function changePresentation(change, wordsFor) {
+    const rows = pairLines(change.lines).map(pair => ({ pair,
+        words: pair.type === "modify" ? wordsFor(pair.left.content, pair.right.content) : undefined,
+    }));
+    const inner = change.type === "modify" && rows.some(row => row.words);
+    if (inner) for (const row of rows) {
+        if (row.words) continue;
+        const { pair } = row;
+        const segment = line => line ? [{ value: line.content, changed: true, type: pair.type }] : undefined;
+        row.words = { old: segment(pair.left), new: segment(pair.right) };
+    }
+    return { rows, inner };
 }
 
 function renderCell(cell, line, segments, number, path, options) {

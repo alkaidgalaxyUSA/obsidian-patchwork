@@ -8,7 +8,7 @@ import { differenceCount } from "./utils/difference-count";
 import { navigateDifference } from "./utils/diff-navigation";
 import { diffSettings } from "./utils/diff-settings";
 import { renderDiff } from "./history/utils/render-diff";
-import { withWorktreeIndex } from "./utils/worktree-renames";
+import { workingDiff } from "./utils/working-diff";
 import { getServiceRegistry } from "../../utils/service-registry";
 import { getWindowContext } from "../../utils/windows";
 
@@ -62,16 +62,7 @@ export class DiffView extends ItemView {
             if (live && this.root !== root) throw new Error("This diff belongs to another repository. Open it again from that repository.");
             let text = this.text;
             if (live && this.paths.length) {
-                const entries = await this.controller.repository.status();
-                const unborn = this.baseline === "head" && !this.staged && !await this.controller.repository.head();
-                const selected = entries.filter(entry => this.paths.some(path => path === "." || entry.path === path || entry.path.startsWith(path + "/") || entry.original === path));
-                const paths = [...new Set([...this.paths, ...selected.flatMap(entry => [entry.path, entry.original].filter(Boolean))])];
-                const moved = !this.staged && selected.some(entry => entry.worktreeRename);
-                if (moved) text = await withWorktreeIndex(this.controller.repository, paths, (env, baseline) => this.controller.repository.run([
-                    "diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color", "-M", ...(this.fullContext ? ["-U99999"] : []), this.baseline === "head" ? "HEAD" : baseline, "--", ...paths,
-                ], { env }));
-                else text = unborn ? "" : await this.controller.plugin.history.git.diff(paths, this.staged, !!this.fullContext, this.baseline);
-                if (!this.staged && !moved) for (const entry of selected.filter(entry => entry.untracked || unborn && !entry.code.includes("D"))) text += await this.controller.plugin.history.git.diffUntracked(entry.path, !!this.fullContext);
+                text = await workingDiff(this.controller, this.paths, this.staged, this.fullContext, this.baseline);
             }
             const signature = JSON.stringify([text, this.mode, this.staged, this.baseline, this.fullContext]);
             if (this.closed || generation !== this.generation || root !== this.controller.repository.root) return;

@@ -3,6 +3,7 @@
 body.pw-window-actions-enabled .workspace-ribbon.mod-primary :is(
     .pw-left-sidebar-toggle,
     .pw-git-ribbon-action,
+    .pw-bookmarks-ribbon-action,
     .pw-bottom-tool-actions > button
 )[aria-pressed="true"] {
     --icon-color: var(--text-normal);
@@ -13,6 +14,7 @@ body.pw-window-actions-enabled .workspace-ribbon.mod-primary :is(
 body.pw-window-actions-enabled .workspace-ribbon.mod-primary :is(
     .pw-left-sidebar-toggle,
     .pw-git-ribbon-action,
+    .pw-bookmarks-ribbon-action,
     .pw-bottom-tool-actions > button
 )[aria-pressed="true"][data-pw-panel-focused="true"] {
     --icon-color: white;

@@ -1,4 +1,4 @@
-import { Notice } from "obsidian";
+import { CommitFileActions } from "../commit/file-actions";
 import { iconName } from "../utils/icons";
 import { confirm, prompt } from "../dialogs";
 import { GIT_ACTIONS } from "../utils/git-action-definitions";
@@ -42,12 +42,17 @@ export function addHistoryCommitMenu(menu, pane, commit) {
 export function addHistoryFileMenu(menu, pane, commit, file) {
     menu.addItem(item => item.setTitle(GIT_ACTIONS.showDiff.title).setIcon(iconName(GIT_ACTIONS.showDiff.icon)).onClick(() => pane.openDiff(commit, file)));
     menu.addItem(item => item.setTitle(GIT_ACTIONS.showHistory.title).setIcon(iconName(GIT_ACTIONS.showHistory.icon)).onClick(() => pane.controller.openHistory([file.path], pane.el.ownerDocument)));
-    const current = pane.controller.sourceFile(file.path);
-    menu.addItem(item => item.setTitle("Open current file").setIcon(iconName("git-file")).setDisabled(!current || pane.el.ownerDocument !== pane.app.workspace.containerEl.ownerDocument).onClick(async () => {
-        if (!current || pane.disposed) return;
-        if (pane.el.ownerDocument !== pane.app.workspace.containerEl.ownerDocument) { new Notice("Open the current file from the main window."); return; }
-        await pane.controller.jumpToSource([file.path]);
-    }));
+    const source = new CommitFileActions(pane.controller, [file.path], pane.el.ownerDocument);
+    menu.addItem(item => item.setTitle("Compare with Local").setIcon(iconName("git-show-diff"))
+        .setDisabled(!source.existing(file.path)).onClick(() => pane.openLocalDiff(commit, file)));
+    menu.addItem(item => item.setTitle("Compare Before with Local").setIcon(iconName("git-show-diff"))
+        .onClick(() => pane.openDiff(commit, file)));
+    if (!file.status.startsWith("D") && source.existing(file.path)) {
+        menu.addItem(item => item.setTitle("Edit Source").setIcon(iconName("pencil")).onClick(() => {
+            if (pane.disposed || !pane.el.isConnected) return;
+            return source.open();
+        }));
+    }
     menu.addSeparator();
     menu.addItem(item => item.setTitle("Restore file from this commit…").setIcon(iconName("git-rollback")).setDisabled(file.status.startsWith("D")).onClick(() => pane.action(async controller => {
         const paths = [file.original, file.path].filter(Boolean);
