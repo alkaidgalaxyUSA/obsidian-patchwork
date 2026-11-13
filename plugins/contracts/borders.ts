@@ -14,7 +14,7 @@ export interface PanelInstance extends Disposable {
     resize(bounds: DOMRectReadOnly): void;
 }
 export interface PanelDefinition {
-    id: PanelId; owner: Exclude<ModuleId, "borders">;
+    id: PanelId; owner: ModuleId;
     label: string; icon: string; dock: "left" | "right" | "bottom";
     rail: "left" | "right"; railGroup: "main" | "tools"; order: number;
     bounds?: { minWidth?: number; maxWidth?: number; maxWidthRatio?: number; minHeight?: number };

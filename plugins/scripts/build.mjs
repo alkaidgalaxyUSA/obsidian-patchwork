@@ -29,6 +29,7 @@ for (const file of [
   "idea/expui/general/moveUp_dark.svg", "idea/expui/general/moveDown_dark.svg",
   "idea/dvcs/currentBranchLabel_dark.svg", "idea/dvcs/currentBranchFavoriteLabel_dark.svg", "idea/dvcs/branchLabel_dark.svg",
   "idea/expui/nodes/star_dark.svg", "idea/expui/toolwindows/commit_dark.svg", "idea/expui/toolwindows/vcs_dark.svg",
+  "idea/expui/toolwindows/bookmarks_dark.svg",
 ]) {
   iconAssets[file] = await readFile(join(iconRoot, file), "utf8");
 }
