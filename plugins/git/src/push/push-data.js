@@ -84,6 +84,19 @@ export async function readPushPlan(repo, destination, signal, limit = 200, verif
         checkedOut, verified, remoteError, needsFetch, count, incoming, commits, limit, isNew: verified && !tip };
 }
 
+/** Fetch only missing preview objects from the reviewed push endpoint, without changing local branches. */
+export async function fetchPushPlanObjects(repo, plan, signal) {
+    signal?.throwIfAborted();
+    if (!plan.verified || !plan.needsFetch) return;
+    const urls = (await repo.run(["remote", "get-url", "--push", "--all", plan.remote], { signal })).trim();
+    if (urls !== plan.pushConfiguration) throw new Error("The push configuration changed. Reopen Push.");
+    const refs = plan.isNew ? plan.remoteRefs.map(item => item.ref) : [`refs/heads/${plan.target}`];
+    for (let offset = 0; offset < refs.length; offset += 100) {
+        signal?.throwIfAborted();
+        await repo.run(["fetch", "--no-tags", "--no-prune", "--no-write-fetch-head", "--refmap=", "--", plan.pushUrl, ...refs.slice(offset, offset + 100)], { signal });
+    }
+}
+
 /** Preserve blob identity when joining changes, including rename chains and gaps in selection. */
 export async function collectPushChanges(repo, commits, signal) {
     const chains = [];

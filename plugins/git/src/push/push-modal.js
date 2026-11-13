@@ -11,7 +11,7 @@ import { discoverRoots } from "../utils/discover-roots";
 import { enableModalDrag } from "../utils/modal-drag";
 import { enableModalResize } from "../utils/modal-resize";
 import { updateCurrentBranch } from "../utils/update-branch";
-import { defaultPushTarget, readPushPlan, collectPushChanges, pushChangeDiff } from "./push-data";
+import { defaultPushTarget, readPushPlan, fetchPushPlanObjects, collectPushChanges, pushChangeDiff } from "./push-data";
 import { executePush, protectedPushTarget } from "./push-operation";
 import { editPushTarget } from "./push-target-modal";
 
@@ -31,10 +31,6 @@ export class GitPushModal extends GitTaskModal {
         this.disposers.push(enableModalDrag(this.modalEl, this.titleEl), enableModalResize(this.modalEl));
         this.body.classList.add("pw-push-layout");
         this.left = this.body.createDiv({ cls: "pw-push-left" });
-        const toolbar = this.left.createDiv({ cls: "pw-log-files-actions" });
-        this.iconButton(toolbar, "Refresh", "refresh-cw", () => this.reloadAll());
-        this.iconButton(toolbar, "Fetch", "download", () => this.fetch(this.active));
-        this.iconButton(toolbar, "Discover Repositories", "folder", () => this.discover());
         this.tree = this.left.createDiv({ cls: "pw-push-commits", attr: { role: "tree", "aria-label": "Outgoing commits" } });
         this.splitter = this.body.createDiv({ cls: "pw-push-splitter", attr: { role: "separator", tabindex: "0", "aria-orientation": "vertical", "aria-label": "Resize commit list" } });
         this.bindSplitter(Number(prefs.pushSplit) || 45);
@@ -47,11 +43,8 @@ export class GitPushModal extends GitTaskModal {
         };
         this.files = new ChangedFiles(this.pane, this.right, { previewOnly: true, fileMenu: (menu, file) => this.fileMenu(menu, file) });
         const fileToolbar = this.right.querySelector(".pw-log-files-actions");
-        this.iconButton(fileToolbar, "Edit Source", "pencil", () => this.editSource([...this.files.selected]));
-        this.iconButton(fileToolbar, "Show Commit Details", "info", () => {
-            this.details.hidden = !this.details.hidden;
-            return this.controller.plugin.settingsStore.savePreferences({ pushShowDetails: !this.details.hidden });
-        });
+        const editSource = this.iconButton(fileToolbar, "Edit Source", "pencil", () => this.editSource([...this.files.selected]));
+        fileToolbar.querySelector('[aria-label="View Options"]').after(editSource);
         this.details = this.right.createEl("pre", { cls: "pw-push-details" });
         this.details.hidden = prefs.pushShowDetails === false;
         this.parents = this.right.createEl("select", { cls: "pw-push-parents", attr: { "aria-label": "Compare merge against parent" } });
@@ -61,35 +54,37 @@ export class GitPushModal extends GitTaskModal {
         this.contentEl.insertBefore(this.banner, this.actions);
         const options = this.contentEl.createDiv({ cls: "pw-push-options" });
         this.contentEl.insertBefore(options, this.actions);
+        this.iconButton(options, "Show Commit Details", "info", () => {
+            this.details.hidden = !this.details.hidden;
+            return this.controller.plugin.settingsStore.savePreferences({ pushShowDetails: !this.details.hidden });
+        });
         const tags = options.createEl("label", { text: "Push tags: " });
-        this.tags = tags.createEl("select", { attr: { "aria-label": "Push tags" } });
+        const tagSelect = tags.createSpan({ cls: "pw-push-tags-select" });
+        this.tags = tagSelect.createEl("select", { attr: { "aria-label": "Push tags" } });
+        setIcon(tagSelect.createSpan({ cls: "pw-push-tags-arrow", attr: { "aria-hidden": "true" } }), "chevron-down");
         for (const [value, text] of [["none", "None"], ["all", "All"], ["follow", "Follow annotated tags"]]) this.tags.createEl("option", { value, text });
-        this.tags.value = ["all", "follow"].includes(prefs.pushTags) ? prefs.pushTags : "none";
+        this.tags.value = "all";
         this.tags.onchange = () => this.updateActions();
-        this.hooks = this.checkbox(options, "Run Git hooks", true);
-        this.previewOption = this.checkbox(options, "Preview before Commit and Push", prefs.previewCommitPush !== false);
-        this.previewOption.onchange = () => void this.controller.plugin.settingsStore.savePreferences({ previewCommitPush: this.previewOption.checked }).catch(error => new Notice(error.message));
-        this.controls.push(this.tags, this.hooks, this.previewOption);
-        this.pushButton = this.button("Push", () => this.transfer(false), true);
+        this.controls.push(this.tags);
+        const pushActions = this.primaryActions.createDiv({ cls: "pw-push-split-button", attr: { role: "group", "aria-label": "Push actions" } });
+        this.primaryActions.insertBefore(pushActions, this.cancelButton);
+        this.pushButton = this.button("Push", () => this.transfer(false), true, pushActions);
         this.forceButton = this.button("▾", () => {
             const menu = this.createMenu();
             menu.addItem(item => item.setTitle("Force Push…").setDisabled(!this.canForce()).onClick(() => void this.perform(() => this.transfer(true))));
             const rect = this.forceButton.getBoundingClientRect(); menu.showAtPosition({ x: rect.left, y: rect.bottom });
-        }, true);
+        }, true, pushActions);
+        this.forceButton.setAttribute("aria-haspopup", "menu");
         this.forceButton.setAttribute("aria-label", "More push actions");
         setIcon(this.forceButton, "chevron-down");
         this.updateActions();
         void this.report(async () => {
             await this.addRepository(this.repo, true, this.branch, this.defaults);
             await this.reloadAll();
+            await this.discover();
         });
         const poll = setInterval(() => void this.checkSources(), 2500);
         this.disposers.push(() => clearInterval(poll));
-    }
-    checkbox(host, text, checked) {
-        const label = host.createEl("label");
-        const input = label.createEl("input", { type: "checkbox" }); input.checked = checked;
-        label.createSpan({ text }); return input;
     }
     createMenu() { return scopeGitMenu(new Menu(), this.modalEl); }
     iconButton(host, label, icon, action) {
@@ -157,8 +152,8 @@ export class GitPushModal extends GitTaskModal {
             const repo = new Repository(this.repo.vaultPath, this.repo.executable); repo.discoveryPath = root;
             try { await repo.discover(); await this.addRepository(repo, false); }
             catch (error) { repo.dispose(); throw error; }
+            await Promise.all(this.models.filter(model => model.repo === repo).map(model => this.reload(model)));
         }
-        await this.reloadAll();
     }
     async reloadAll() { await Promise.all(this.models.map(model => this.reload(model))); }
     async reload(model) {
@@ -172,7 +167,16 @@ export class GitPushModal extends GitTaskModal {
             this.validate(); signal.throwIfAborted();
             this.renderTree();
             if (this.active === model) void this.report(() => this.select(model, undefined, { preserve: model.selectedHashes.size > 0 }));
-            const plan = await readPushPlan(model.repo, model.destination, signal, model.limit);
+            let plan = await readPushPlan(model.repo, model.destination, signal, model.limit);
+            this.validate(); signal.throwIfAborted();
+            if (plan.verified && plan.needsFetch) {
+                await model.repo.mutate(async () => {
+                    this.validate(); signal.throwIfAborted();
+                    await fetchPushPlanObjects(model.repo, plan, signal);
+                });
+                this.validate(); signal.throwIfAborted();
+                plan = await readPushPlan(model.repo, model.destination, signal, model.limit);
+            }
             this.validate();
             if (generation !== model.generation) return;
             model.plan = plan;
@@ -190,38 +194,37 @@ export class GitPushModal extends GitTaskModal {
         const focused = this.tree.ownerDocument.activeElement;
         const focusedHash = focused?.dataset.hash;
         const focusedRoot = focused?.closest(".pw-push-repository")?.dataset.root;
-        const collapsed = new Set([...this.tree.querySelectorAll("details:not([open])")].map(node => node.dataset.root));
         this.tree.empty();
         for (const model of this.models) {
             model.rowElements = new Map();
             const rootKey = `${model.repo.root}:${model.endpointIndex}`;
-            const group = this.tree.createEl("details", { cls: "pw-push-repository", attr: { "data-root": rootKey } }); group.open = !collapsed.has(rootKey);
-            const row = group.createEl("summary", { cls: "pw-push-target", attr: { role: "treeitem", "aria-expanded": String(group.open) } });
+            const group = this.tree.createDiv({ cls: "pw-push-repository", attr: { "data-root": rootKey, role: "group", "aria-label": model.repo.root } });
+            const row = group.createDiv({ cls: "pw-push-target", attr: { role: "treeitem", tabindex: "0" } });
             model.summary = row;
-            const chevron = row.createSpan({ cls: "pw-push-chevron" });
-            const sync = () => { row.setAttribute("aria-expanded", String(group.open)); setIcon(chevron, group.open ? "chevron-down" : "chevron-right"); };
-            group.ontoggle = sync; sync();
-            chevron.onclick = event => { event.preventDefault(); event.stopPropagation(); group.open = !group.open; };
-            const checkbox = row.createEl("input", { type: "checkbox", attr: { "aria-label": `Push ${model.repo.root}` } }); checkbox.checked = model.selected;
-            checkbox.onclick = event => event.stopPropagation();
-            checkbox.onchange = () => { model.selected = checkbox.checked; this.updateActions(); };
-            const name = row.createSpan({ text: basename(model.repo.root), cls: "pw-push-repository-name" }); name.title = model.repo.root;
-            if (model.endpointCount > 1) row.createSpan({ text: `#${model.endpointIndex + 1}`, cls: "pw-push-badge" });
+            row.oncontextmenu = event => {
+                if (this.models.length < 2) return;
+                event.preventDefault();
+                const menu = this.createMenu();
+                menu.addItem(item => item.setTitle("Include in Push").setChecked(model.selected).setDisabled(this.pending || this.editing)
+                    .onClick(() => { model.selected = !model.selected; this.updateActions(); }));
+                menu.showAtMouseEvent(event);
+            };
+            row.onkeydown = event => {
+                if (event.target !== row || !["Enter", " "].includes(event.key)) return;
+                event.preventDefault(); void this.report(() => this.select(model));
+            };
             row.createSpan({ text: model.destination.branch || "HEAD", cls: "pw-push-source" });
             row.createSpan({ text: "→", cls: "pw-push-arrow" });
             const target = row.createEl("button", { text: model.destination.remote ? `${model.destination.remote} : ${model.destination.target}` : "Define remote…", cls: "pw-push-link", attr: { type: "button" } });
             target.onclick = event => { event.preventDefault(); event.stopPropagation(); void this.report(() => this.editTarget(model)); };
-            if (model.plan?.isNew) row.createSpan({ text: "New", cls: "pw-push-badge" });
-            row.onclick = event => { if (event.target === checkbox || target.contains(event.target)) return; event.preventDefault(); void this.report(() => this.select(model)); };
+            row.onclick = event => { if (target.contains(event.target)) return; event.preventDefault(); void this.report(() => this.select(model)); };
             const rows = group.createDiv({ attr: { role: "group" } });
             if (model.loading || model.error) rows.createDiv({ cls: "pw-push-state", text: model.loading ? "Loading commits…" : model.error });
             for (const commit of model.plan?.commits || []) {
                 const item = rows.createEl("button", { cls: "pw-push-commit", attr: { type: "button", role: "treeitem", "data-hash": commit.hash, "aria-selected": String(this.active === model && model.selectedHashes.has(commit.hash)) } });
                 model.rowElements.set(commit.hash, item);
                 item.classList.toggle("is-selected", this.active === model && model.selectedHashes.has(commit.hash));
-                setIcon(item.createSpan({ cls: "pw-push-commit-icon" }), "git-commit");
                 item.createSpan({ cls: "pw-push-subject", text: commit.subject });
-                item.createSpan({ cls: "pw-push-hash", text: commit.hash.slice(0, 8) });
                 item.onclick = event => void this.report(() => this.select(model, commit, event));
                 item.onkeydown = event => this.navigate(event, model, commit);
                 item.oncontextmenu = event => { event.preventDefault(); this.commitMenu(event, model, commit); };
@@ -299,20 +302,6 @@ export class GitPushModal extends GitTaskModal {
         model.setUpstream = choice.setUpstream;
         await this.reload(model);
     }
-    async fetch(model) {
-        if (!model?.destination.remote) throw new Error("Select a remote first.");
-        const remote = model.destination.remote;
-        const pushUrl = model.destination.pushEndpoint || (await model.repo.run(["remote", "get-url", "--push", remote])).trim();
-        const fetchUrl = (await model.repo.run(["remote", "get-url", remote])).trim();
-        await this.change(async () => {
-            const refs = model.plan?.isNew ? model.plan.remoteRefs.map(item => item.ref) : [`refs/heads/${model.destination.target}`];
-            if (pushUrl === fetchUrl) await model.repo.run(["fetch", "--", remote], { signal: this.lifetime.signal });
-            if (pushUrl !== fetchUrl || model.plan?.needsFetch) {
-                for (let offset = 0; offset < refs.length; offset += 100) await model.repo.run(["fetch", "--no-tags", "--", pushUrl, ...refs.slice(offset, offset + 100)], { signal: this.lifetime.signal });
-            }
-        }, "Fetch");
-        await this.reload(model);
-    }
     commitMenu(event, model, commit) {
         const menu = this.createMenu();
         menu.addItem(item => item.setTitle("Copy Revision").onClick(() => void this.context.document.defaultView.navigator.clipboard.writeText(commit.hash)));
@@ -357,9 +346,9 @@ export class GitPushModal extends GitTaskModal {
         const selected = this.models.filter(model => model.selected);
         const available = selected.length && selected.every(model => model.plan && !model.loading && !model.error && !model.plan.needsFetch);
         this.pushButton.disabled = this.pending || this.editing || !!this.controller.busy || !available;
-        this.forceButton.disabled = this.pending || this.editing || !!this.controller.busy || !this.canForce();
+        this.forceButton.disabled = this.pending || this.editing || !!this.controller.busy;
         const model = this.active, plan = model?.plan;
-        this.banner?.setText(model?.error || (plan?.needsFetch ? "The remote has commits that are not available locally. Fetch before pushing."
+        this.banner?.setText(model?.error || (plan?.needsFetch ? "The remote changed during preparation. Reopen Push to check again."
             : plan?.remoteError ? `Remote verification failed. The preview uses locally available history. ${plan.remoteError}`
             : plan?.incoming && plan.count ? `${plan.incoming} remote commits are not in this branch. A normal push may be rejected; update or review before Force Push.`
             : plan?.incoming ? `The local branch is behind the remote by ${plan.incoming} commits.` : ""));
@@ -369,7 +358,7 @@ export class GitPushModal extends GitTaskModal {
         const selected = this.models.filter(model => model.selected);
         if (!selected.length || selected.some(model => !model.plan || model.loading)) throw new Error("Wait for the push preview.");
         if (force && (!this.canForce() || !await confirm(this.controller, "Force Push", `Replace the remote history for ${selected.map(model => `${model.plan.remote}/${model.plan.target}`).join(", ")}? The push will be rejected if the reviewed remote version has changed.`, "Force Push"))) return;
-        const options = { force, tags: this.tags.value, runHooks: this.hooks.checked };
+        const options = { force, tags: this.tags.value, runHooks: true };
         const results = [];
         this.operationRequest = new AbortController();
         await this.controller.plugin.settingsStore.savePreferences({ pushTags: options.tags });
