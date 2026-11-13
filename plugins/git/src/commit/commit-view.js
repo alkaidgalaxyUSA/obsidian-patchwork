@@ -184,7 +184,6 @@ export class CommitView extends ItemView {
         header.tabIndex = -1;
         header.onclick = event => {
             if (event.target.closest("button, input")) return;
-            this.selectedStage = stage; this.actionSelection = new Set(entries.map(entry => entry.path)); this.updateActionSelection();
             header.focus({ preventScroll: true });
         };
         header.ondblclick = event => {
@@ -193,10 +192,13 @@ export class CommitView extends ItemView {
             this.toggleGroup(groupId);
         };
         header.oncontextmenu = event => { this.selectedStage = stage; this.openContextMenu(event, entries.map(entry => entry.path), changelistId); };
-        const toggle = header.createEl("button", { cls: "clickable-icon", attr: { "aria-label": name, "aria-expanded": String(!this.controller.collapsed.has(groupId)) } });
+        const toggle = header.createEl("button", { cls: "clickable-icon pw-git-change-toggle", attr: { "aria-expanded": String(!this.controller.collapsed.has(groupId)) } });
         const content = header.createDiv({ cls: "pw-git-change-content" });
         const checkbox = content.createEl("input", { type: "checkbox", attr: { "aria-label": `Select ${name}` } });
-        content.createEl(bold ? "strong" : "span", { text: name });
+        const label = content.createEl(bold ? "strong" : "span", { text: name });
+        this.groupLabelId = (this.groupLabelId ?? 0) + 1;
+        label.id = `pw-git-group-${this.leaf.id}-${this.groupLabelId}`;
+        toggle.setAttribute("aria-labelledby", label.id);
         content.createSpan({ cls: "pw-git-file-count", text: `${entries.length} ${entries.length === 1 ? "file" : "files"}` });
         const chosen = entries.filter(entry => this.controller.selected.has(entry.path)).length;
         checkbox.checked = !!entries.length && chosen === entries.length;

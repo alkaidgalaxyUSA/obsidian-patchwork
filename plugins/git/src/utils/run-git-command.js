@@ -44,8 +44,11 @@ export function runGitCommand(repo, args, options = {}) {
             env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "Never", GIT_LITERAL_PATHSPECS: "1", GIT_OPTIONAL_LOCKS: "0", ...options.env },
         }, (error, stdout, stderr) => {
             if (stopping) return;
+            const details = error && !allowedExitCodes.includes(error.code)
+                ? [stderr, stdout].filter(value => value?.length).map(value => String(value).trim()).filter(Boolean).join("\n")
+                : "";
             finish(error && !allowedExitCodes.includes(error.code)
-                ? new Error(String(stderr?.length ? stderr : error.message).trim()) : undefined, stdout);
+                ? new Error(details || String(error.message).trim()) : undefined, stdout);
         });
         repo.children.add(child);
         if (timeout > 0) timer = setTimeout(() => void stop(new Error(`Git ${args[0]} timed out after ${Math.round(timeout / 1000)} seconds.`)), timeout);

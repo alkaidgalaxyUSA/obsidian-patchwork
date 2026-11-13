@@ -28,7 +28,8 @@ export class GitDiffModal extends Modal {
 
     onOpen() {
         if (this.modalEl.ownerDocument !== this.document) { this.close(); return; }
-        this.scope = scopeModule(this.modalEl, "git", { surface: "diff" });
+        // Modal.scope owns keyboard routing and must remain intact until close().
+        this.moduleScope = scopeModule(this.modalEl, "git", { surface: "diff" });
         this.footer = this.modalEl.createDiv({ cls: "pw-diff-footer", attr: { "aria-hidden": "true" } });
         this.contentEl.classList.add("pw-git-diff-view");
         this.stopDrag = enableModalDrag(this.modalEl, this.titleEl);
@@ -115,5 +116,5 @@ export class GitDiffModal extends Modal {
         this.documentListeners = [];
     }
 
-    onClose() { this.contentEl.removeEventListener("keydown", this.onKey); for (const menu of this.menus) menu.hide(); this.menus.clear(); this.clearDocumentListeners(); this.stopDrag?.(); this.stopResize?.(); this.footer?.remove(); this.scope?.dispose(); this.contentEl.empty(); }
+    onClose() { this.contentEl.removeEventListener("keydown", this.onKey); for (const menu of this.menus) menu.hide(); this.menus.clear(); this.clearDocumentListeners(); this.stopDrag?.(); this.stopResize?.(); this.footer?.remove(); this.moduleScope?.dispose(); this.moduleScope = undefined; this.contentEl.empty(); }
 }

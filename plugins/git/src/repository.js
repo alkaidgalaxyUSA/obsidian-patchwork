@@ -7,6 +7,7 @@ import { runPathspecCommand } from "./utils/pathspec-command.js";
 import { stagePaths } from "./utils/stage-paths.js";
 import { readBranchSync } from "./utils/branch-sync.js";
 import { commitArguments } from "./utils/commit-options.js";
+import { reconcileWorktreeStatus } from "./utils/worktree-status.js";
 
 /** Native Git backend; paths are literal and commands never pass through a shell. */
 export class Repository {
@@ -70,7 +71,7 @@ export class Repository {
             entries.push({ path, original, code, untracked, staged: !untracked && code[0] !== " ",
                 conflict: ["DD", "AU", "UD", "UA", "DU", "AA", "UU"].includes(code) });
         }
-        return detectWorktreeRenames(this, entries);
+        return detectWorktreeRenames(this, await reconcileWorktreeStatus(this, entries));
     }
 
     async ignored() {
@@ -182,7 +183,11 @@ export class Repository {
         else await this.run(["checkout", ref, "--"]);
     }
 
-    async checkCommitIndex(checks, env = {}) {
+    async checkCommitIndex(checks, env = {}, amend = false) {
+        if (!amend) {
+            const changed = await this.run(["diff", "--cached", "--name-only", "-z", "--no-ext-diff", "--no-textconv", "--ignore-submodules=none"], { env });
+            if (!changed.length) throw new Error("No changes to commit. The selected content matches the current revision after Git normalization. No commit was created; your commit message has been kept.");
+        }
         if (!checks.checkWhitespace) return;
         const errors = await this.run(["diff", "--cached", "--check", "--no-ext-diff", "--no-textconv"], { env, allowedExitCodes: [2] });
         if (errors.trim()) throw new Error("Pre-commit whitespace check failed. Review whitespace errors or newly added conflict markers in the commit diff, then retry. No commit was created.");
@@ -205,7 +210,7 @@ export class Repository {
         if (!message.trim()) throw new Error("Enter a commit message.");
         if ((await this.status()).some(entry => entry.conflict)) throw new Error("Resolve all conflicts before committing.");
         await this.assertNoOperation();
-        await this.checkCommitIndex(checks);
+        await this.checkCommitIndex(checks, {}, amend);
         await this.run(commitArguments(message, amend, checks));
         return { committed: true };
     }
@@ -248,7 +253,7 @@ export class Repository {
                 await this.run(["read-tree", "--empty"], { env: { GIT_INDEX_FILE: preservedIndex } });
             }
             await stagePaths(this, paths, { env });
-            await this.checkCommitIndex(checks, env);
+            await this.checkCommitIndex(checks, env, amend);
             if (await this.head() !== before) throw new Error("HEAD changed. Refresh the selection and try again.");
             await this.run(commitArguments(message, amend, checks), { env });
             committed = true;

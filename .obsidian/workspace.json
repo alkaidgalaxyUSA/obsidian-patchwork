@@ -81,6 +81,7 @@
   },
   "active": "7d3f9fa4cb4f7380",
   "lastOpenFiles": [
+    "plugins/git/src/utils/worktree-status.js",
     "plugins/git/src/history/utils/smooth-diff-scroll.js",
     "tests/git-diff/live-dense-preview.js",
     "tests/git-diff/live-scroll-regression.js",
@@ -92,7 +93,6 @@
     "tests/git-diff/unit.ts",
     "tests/git-diff/run.mjs",
     "tests/git-diff",
-    "tests",
     "icons/action-intelli-sort.svg",
     "issues.md",
     "plugins/git/src/commit/COMMIT_OPTIONS.md",
